@@ -15,7 +15,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
     }
 
-    // Crear usuario en auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -26,17 +25,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: authError.message }, { status: 400 })
     }
 
-    // Insertar en tabla usuarios
     const { error: dbError } = await supabaseAdmin.from('usuarios').insert({
       id: authData.user.id,
       establecimiento_id,
       nombre,
       rol,
+      email,
       es_superadmin: false,
     })
 
     if (dbError) {
-      // Si falla, eliminar el usuario de auth
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
       return NextResponse.json({ error: dbError.message }, { status: 400 })
     }
