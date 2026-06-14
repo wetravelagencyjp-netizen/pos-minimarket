@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next()
+  const path = request.nextUrl.pathname
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,50 +21,31 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { session } } = await supabase.auth.getSession()
-  const path = request.nextUrl.pathname
 
-  // Sin sesión → login
+  // Sin sesión → solo proteger rutas sensibles
   if (!session) {
-    if (path.startsWith('/pos') || path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/caja') || path.startsWith('/superadmin')) {
+    if (path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/caja') || path.startsWith('/superadmin')) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
     return response
   }
 
-  // Con sesión → verificar rol y suscripción
-  if (session) {
+  // Con sesión → verificar rol
+  if (session && (path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/superadmin'))) {
     const { data: usuario } = await supabase
       .from('usuarios')
-      .select('rol, es_superadmin, establecimiento_id, establecimientos(nombre, estado_cuenta, estado_suscripcion, fecha_vencimiento, url_pago)')
+      .select('rol, es_superadmin')
       .eq('id', session.user.id)
       .single()
 
     if (usuario) {
-      const estab = (usuario as any).establecimientos
-      const hoy = new Date()
-      hoy.setHours(0, 0, 0, 0)
-      const venc = new Date(estab?.fecha_vencimiento + 'T00:00:00')
-      const suspendido = estab?.estado_cuenta === 'suspendido' || estab?.estado_suscripcion === false || hoy > venc
-
-      // Suscripción vencida → redirigir
-      if (suspendido && path.startsWith('/pos')) {
-        const url = new URL('/suscripcion-vencida', request.url)
-        url.searchParams.set('url', encodeURIComponent(estab?.url_pago ?? ''))
-        url.searchParams.set('nombre', encodeURIComponent(estab?.nombre ?? ''))
-        return NextResponse.redirect(url)
-      }
-
       const rol = (usuario as any).rol
       const esSuperadmin = (usuario as any).es_superadmin
 
-      // Cajero → solo puede acceder a /pos y /caja
       if (rol === 'cajero') {
-        if (path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/superadmin')) {
-          return NextResponse.redirect(new URL('/pos', request.url))
-        }
+        return NextResponse.redirect(new URL('/pos', request.url))
       }
 
-      // Solo superadmin puede acceder a /superadmin
       if (path.startsWith('/superadmin') && !esSuperadmin) {
         return NextResponse.redirect(new URL('/pos', request.url))
       }
@@ -74,5 +56,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/pos/:path*', '/admin/:path*', '/dashboard/:path*', '/caja/:path*', '/superadmin/:path*', '/login'],
+  matcher: ['/admin/:path*', '/dashboard/:path*', '/caja/:path*', '/superadmin/:path*', '/login'],
 }
