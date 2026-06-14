@@ -22,24 +22,10 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // Sin sesión → proteger rutas
+  // Sin sesión → solo proteger admin y dashboard
   if (!session) {
-    if (path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/caja') || path.startsWith('/superadmin')) {
+    if (path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/caja')) {
       return NextResponse.redirect(new URL('/login', request.url))
-    }
-    return response
-  }
-
-  // Cajero → solo POS y caja
-  if (session && (path.startsWith('/admin') || path.startsWith('/dashboard'))) {
-    const { data: usuario } = await supabase
-      .from('usuarios')
-      .select('rol')
-      .eq('id', session.user.id)
-      .single()
-
-    if (usuario && (usuario as any).rol === 'cajero') {
-      return NextResponse.redirect(new URL('/pos', request.url))
     }
   }
 
@@ -47,5 +33,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/dashboard/:path*', '/caja/:path*', '/superadmin/:path*'],
+  matcher: ['/admin/:path*', '/dashboard/:path*', '/caja/:path*'],
 }
