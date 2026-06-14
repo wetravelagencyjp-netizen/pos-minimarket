@@ -33,7 +33,7 @@ export default function LoginForm() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-2xl">🛒</div>
-          <h1 className="text-xl font-semibold text-gray-900">POS Minimarket</h1>
+          <h1 className="text-xl font-semibold text-gray-900">POS Sistema</h1>
           <p className="mt-1 text-sm text-gray-500">Ingresa para continuar</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
