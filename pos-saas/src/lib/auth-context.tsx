@@ -12,6 +12,7 @@ interface UsuarioSimple {
   establecimiento_id: number
   nombre: string | null
   rol: string
+  es_superadmin?: boolean
   establecimiento?: {
     nombre: string
     estado_suscripcion: boolean
@@ -40,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('usuarios')
-        .select('*, establecimiento:establecimientos(nombre, estado_suscripcion, fecha_vencimiento, url_pago)')
+        .select('*, es_superadmin, establecimiento:establecimientos(nombre, estado_suscripcion, fecha_vencimiento, url_pago)')
         .eq('id', userId)
         .single()
 
@@ -60,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         establecimiento_id: row.establecimiento_id,
         nombre: row.nombre,
         rol: row.rol,
+        es_superadmin: row.es_superadmin ?? false,
         establecimiento: estab ?? undefined,
       }
 
