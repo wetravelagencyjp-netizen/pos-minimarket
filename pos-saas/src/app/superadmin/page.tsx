@@ -9,15 +9,18 @@ const fmt = (n: number) => `$${n.toFixed(2)}`
 export default function SuperAdminPage() {
   const { usuario, logout } = useAuth()
   const router = useRouter()
-  const [seccion, setSeccion] = useState<'tiendas' | 'usuarios'>('tiendas')
+  const [seccion, setSeccion] = useState<'tiendas' | 'usuarios' | 'nueva_tienda'>('tiendas')
   const [establecimientos, setEstablecimientos] = useState<any[]>([])
   const [usuarios, setUsuarios] = useState<any[]>([])
   const [metricas, setMetricas] = useState({ totalTiendas: 0, tiendaActivas: 0, totalVentas: 0 })
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState<number | null>(null)
   const [formUsuario, setFormUsuario] = useState({ email: '', password: '', nombre: '', rol: 'cajero', establecimiento_id: '1' })
+  const [formTienda, setFormTienda] = useState({ nombre: '', url_pago: '', plan_actual: 'basico', fecha_vencimiento: '2027-12-31' })
   const [creando, setCreando] = useState(false)
+  const [creandoTienda, setCreandoTienda] = useState(false)
   const [mensaje, setMensaje] = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
+  const [mensajeTienda, setMensajeTienda] = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
 
   useEffect(() => {
     if (usuario && !(usuario as any).es_superadmin) router.push('/pos')
@@ -69,6 +72,30 @@ export default function SuperAdminPage() {
   const cambiarFecha = async (id: number, fecha: string) => {
     await supabase.from('establecimientos').update({ fecha_vencimiento: fecha }).eq('id', id)
     cargar()
+  }
+
+  const crearTienda = async () => {
+    if (!formTienda.nombre) return
+    setCreandoTienda(true)
+    setMensajeTienda(null)
+    const limite = formTienda.plan_actual === 'pro' ? 500 : 50
+    const { error } = await supabase.from('establecimientos').insert({
+      nombre: formTienda.nombre,
+      url_pago: formTienda.url_pago || null,
+      plan_actual: formTienda.plan_actual,
+      limite_productos: limite,
+      estado_cuenta: 'activo',
+      estado_suscripcion: true,
+      fecha_vencimiento: formTienda.fecha_vencimiento,
+    })
+    if (error) {
+      setMensajeTienda({ texto: `❌ Error: ${error.message}`, tipo: 'error' })
+    } else {
+      setMensajeTienda({ texto: '✅ Tienda creada correctamente — ahora crea sus usuarios', tipo: 'ok' })
+      setFormTienda({ nombre: '', url_pago: '', plan_actual: 'basico', fecha_vencimiento: '2027-12-31' })
+      cargar()
+    }
+    setCreandoTienda(false)
   }
 
   const crearUsuario = async () => {
@@ -129,10 +156,10 @@ export default function SuperAdminPage() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
         <aside className="w-48 border-r border-gray-700 bg-gray-800 p-4 space-y-1">
           {[
             { id: 'tiendas', label: '🏪 Tiendas' },
+            { id: 'nueva_tienda', label: '➕ Nueva tienda' },
             { id: 'usuarios', label: '👤 Usuarios' },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setSeccion(id as any)}
@@ -165,6 +192,7 @@ export default function SuperAdminPage() {
                 ))}
               </div>
 
+              {/* TIENDAS */}
               {seccion === 'tiendas' && (
                 <div className="rounded-2xl border border-gray-700 bg-gray-800">
                   <div className="border-b border-gray-700 px-5 py-3">
@@ -217,9 +245,52 @@ export default function SuperAdminPage() {
                 </div>
               )}
 
+              {/* NUEVA TIENDA */}
+              {seccion === 'nueva_tienda' && (
+                <div className="rounded-2xl border border-gray-700 bg-gray-800 p-5">
+                  <h2 className="mb-4 text-sm font-semibold text-white">➕ Crear nueva tienda</h2>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[10px] text-gray-500 mb-1">Nombre de la tienda *</p>
+                      <input placeholder="Ej: Minimarket Don Juan" value={formTienda.nombre} onChange={e => setFormTienda(f => ({ ...f, nombre: e.target.value }))}
+                        className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white outline-none placeholder-gray-400 focus:border-yellow-500" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 mb-1">Link de pago (para renovar suscripción)</p>
+                      <input placeholder="https://mpago.la/tu-link" value={formTienda.url_pago} onChange={e => setFormTienda(f => ({ ...f, url_pago: e.target.value }))}
+                        className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white outline-none placeholder-gray-400 focus:border-yellow-500" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[10px] text-gray-500 mb-1">Plan</p>
+                        <select value={formTienda.plan_actual} onChange={e => setFormTienda(f => ({ ...f, plan_actual: e.target.value }))}
+                          className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white outline-none focus:border-yellow-500">
+                          <option value="basico">📦 Básico (50 productos)</option>
+                          <option value="pro">⭐ Pro (500 productos)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-500 mb-1">Fecha de vencimiento</p>
+                        <input type="date" value={formTienda.fecha_vencimiento} onChange={e => setFormTienda(f => ({ ...f, fecha_vencimiento: e.target.value }))}
+                          className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white outline-none focus:border-yellow-500" />
+                      </div>
+                    </div>
+                    {mensajeTienda && (
+                      <div className={`rounded-lg px-3 py-2 text-sm ${mensajeTienda.tipo === 'ok' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+                        {mensajeTienda.texto}
+                      </div>
+                    )}
+                    <button onClick={crearTienda} disabled={creandoTienda || !formTienda.nombre}
+                      className="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-yellow-400 disabled:opacity-50">
+                      {creandoTienda ? 'Creando…' : '✅ Crear tienda'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* USUARIOS */}
               {seccion === 'usuarios' && (
                 <div className="space-y-6">
-                  {/* Crear usuario */}
                   <div className="rounded-2xl border border-gray-700 bg-gray-800 p-5">
                     <h2 className="mb-4 text-sm font-semibold text-white">➕ Crear nuevo usuario</h2>
                     <div className="grid grid-cols-2 gap-3">
@@ -250,7 +321,6 @@ export default function SuperAdminPage() {
                     </button>
                   </div>
 
-                  {/* Lista de usuarios */}
                   <div className="rounded-2xl border border-gray-700 bg-gray-800">
                     <div className="border-b border-gray-700 px-5 py-3">
                       <h2 className="text-sm font-semibold text-white">👤 Usuarios registrados ({usuarios.length})</h2>
