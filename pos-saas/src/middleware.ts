@@ -19,19 +19,15 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
 
-  if (!user && request.nextUrl.pathname.startsWith('/pos')) {
+  if (!session && request.nextUrl.pathname.startsWith('/pos')) {
     return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  if (user && request.nextUrl.pathname === '/login') {
-    return NextResponse.redirect(new URL('/pos', request.url))
   }
 
   return response
 }
 
 export const config = {
-  matcher: ['/pos/:path*', '/login'],
+  matcher: ['/pos/:path*'],
 }
