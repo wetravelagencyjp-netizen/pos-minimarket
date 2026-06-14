@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useInventario, useCarrito } from '@/hooks'
 import { ProductCard } from './ProductCard'
@@ -17,6 +18,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const [procesando, setProcesando] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { usuario, logout } = useAuth()
+  const router = useRouter()
 
   const { productos, categorias, vendedores, loading, error, buscar, recargar } = useInventario(establecimientoId)
   const { grupos, total, totalItems, metodoPago, setMetodoPago, agregar, cambiarCantidad, eliminar, vaciar, procesarVenta } = useCarrito(establecimientoId)
@@ -70,16 +72,18 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
       <header className="flex items-center justify-between border-b border-gray-100 bg-white px-5 py-3">
         <div>
           <h1 className="text-sm font-semibold text-gray-900">Punto de venta</h1>
-          <p className="text-xs text-gray-400">
-            {vendedores.length} vendedores
-          </p>
+          <p className="text-xs text-gray-400">{vendedores.length} vendedores</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-medium text-green-700">Abierta</span>
+          <button onClick={() => router.push('/dashboard')} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-500 hover:bg-gray-50 transition-colors">📊 Dashboard</button>
+          <button onClick={() => router.push('/caja')} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-500 hover:bg-gray-50 transition-colors">🏦 Caja</button>
+          <button onClick={() => router.push('/admin')} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-500 hover:bg-gray-50 transition-colors">⚙️ Admin</button>
+          {(usuario as any)?.es_superadmin && (
+            <button onClick={() => router.push('/superadmin')} className="rounded-lg border border-yellow-300 bg-yellow-50 px-2.5 py-1.5 text-xs text-yellow-700 hover:bg-yellow-100 transition-colors">⚡ Super</button>
+          )}
           <span className="text-xs text-gray-500">{usuario?.nombre ?? 'Cajero'}</span>
-          <button onClick={logout} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors">
-            Salir
-          </button>
+          <button onClick={logout} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors">Salir</button>
         </div>
       </header>
 
