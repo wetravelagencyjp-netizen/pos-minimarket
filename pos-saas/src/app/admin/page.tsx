@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-type Seccion = 'productos' | 'vendedores' | 'categorias'
+type Seccion = 'productos' | 'vendedores' | 'categorias' | 'equipo'
 
 export default function AdminPage() {
   const { usuario, logout } = useAuth()
@@ -30,6 +30,7 @@ export default function AdminPage() {
             { id: 'productos', label: '📦 Productos' },
             { id: 'vendedores', label: '👤 Vendedores' },
             { id: 'categorias', label: '🏷️ Categorías' },
+            { id: 'equipo', label: '👥 Mi equipo' },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setSeccion(id as Seccion)}
               className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors
@@ -43,6 +44,7 @@ export default function AdminPage() {
           {seccion === 'productos' && <SeccionProductos establecimientoId={usuario?.establecimiento_id ?? 1} />}
           {seccion === 'vendedores' && <SeccionVendedores establecimientoId={usuario?.establecimiento_id ?? 1} />}
           {seccion === 'categorias' && <SeccionCategorias establecimientoId={usuario?.establecimiento_id ?? 1} />}
+          {seccion === 'equipo' && <SeccionEquipo establecimientoId={usuario?.establecimiento_id ?? 1} />}
         </main>
       </div>
     </div>
@@ -213,7 +215,7 @@ function SeccionVendedores({ establecimientoId }: { establecimientoId: number })
   }
 
   const eliminar = async (id: number) => {
-    if (!confirm('¿Eliminar este vendedor? Sus productos quedarán sin vendedor asignado.')) return
+    if (!confirm('¿Eliminar este vendedor?')) return
     await supabase.from('vendedores').delete().eq('id', id)
     cargar()
   }
@@ -338,6 +340,124 @@ function SeccionCategorias({ establecimientoId }: { establecimientoId: number })
                   <td className="px-5 py-3 text-right">
                     <button onClick={() => { setEditando(c.id); setForm({ nombre: c.nombre, icono: c.icono ?? '' }) }} className="mr-2 text-blue-500 hover:text-blue-700 text-xs">Editar</button>
                     <button onClick={() => eliminar(c.id)} className="text-red-400 hover:text-red-600 text-xs">Eliminar</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── MI EQUIPO ────────────────────────────────────────────
+function SeccionEquipo({ establecimientoId }: { establecimientoId: number }) {
+  const [usuarios, setUsuarios] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState({ nombre: '', email: '', password: '', rol: 'cajero' })
+  const [creando, setCreando] = useState(false)
+  const [mensaje, setMensaje] = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
+
+  const cargar = useCallback(async () => {
+    setLoading(true)
+    const { data } = await supabase.from('usuarios').select('*').eq('establecimiento_id', establecimientoId).order('nombre')
+    setUsuarios(data ?? [])
+    setLoading(false)
+  }, [establecimientoId])
+
+  useEffect(() => { cargar() }, [cargar])
+
+  const crearUsuario = async () => {
+    if (!form.nombre || !form.email || !form.password) return
+    setCreando(true)
+    setMensaje(null)
+    try {
+      const res = await fetch('/api/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, establecimiento_id: establecimientoId }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setMensaje({ texto: '✅ Usuario creado correctamente', tipo: 'ok' })
+        setForm({ nombre: '', email: '', password: '', rol: 'cajero' })
+        cargar()
+      } else {
+        setMensaje({ texto: `❌ Error: ${data.error}`, tipo: 'error' })
+      }
+    } catch {
+      setMensaje({ texto: '❌ Error de conexión', tipo: 'error' })
+    }
+    setCreando(false)
+  }
+
+  const eliminar = async (id: string, nombre: string) => {
+    if (!confirm(`¿Eliminar a "${nombre}"?`)) return
+    await fetch('/api/usuarios', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    cargar()
+  }
+
+  const rolLabel: Record<string, string> = { admin: '👔 Admin', cajero: '🧾 Cajero' }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">➕ Agregar miembro del equipo</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <input placeholder="Nombre completo *" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+          <input placeholder="Correo electrónico *" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+          <input placeholder="Contraseña *" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+          <select value={form.rol} onChange={e => setForm(f => ({ ...f, rol: e.target.value }))}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400">
+            <option value="cajero">🧾 Cajero</option>
+            <option value="admin">👔 Admin</option>
+          </select>
+        </div>
+        {mensaje && (
+          <div className={`mt-3 rounded-lg px-3 py-2 text-sm ${mensaje.tipo === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+            {mensaje.texto}
+          </div>
+        )}
+        <button onClick={crearUsuario} disabled={creando}
+          className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+          {creando ? 'Creando…' : '✅ Agregar usuario'}
+        </button>
+      </div>
+
+      <div className="rounded-2xl border border-gray-200 bg-white">
+        <div className="border-b border-gray-100 px-5 py-3">
+          <h2 className="text-sm font-semibold text-gray-900">👥 Mi equipo ({usuarios.length})</h2>
+        </div>
+        {loading ? <div className="p-5 text-sm text-gray-400">Cargando…</div> : (
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-100 text-xs text-gray-400">
+              <tr>
+                <th className="px-5 py-3 text-left">Nombre</th>
+                <th className="px-5 py-3 text-left">Rol</th>
+                <th className="px-5 py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usuarios.map(u => (
+                <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-5 py-3 font-medium text-gray-900">{u.nombre}</td>
+                  <td className="px-5 py-3">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${u.rol === 'admin' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {rolLabel[u.rol] ?? u.rol}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    {!u.es_superadmin && (
+                      <button onClick={() => eliminar(u.id, u.nombre)} className="text-red-400 hover:text-red-600 text-xs">Eliminar</button>
+                    )}
                   </td>
                 </tr>
               ))}
