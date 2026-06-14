@@ -10,9 +10,9 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
           )
         },
       },
@@ -21,12 +21,10 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Si no está logueado y quiere entrar al POS → redirigir a login
   if (!user && request.nextUrl.pathname.startsWith('/pos')) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Si ya está logueado y va al login → redirigir al POS
   if (user && request.nextUrl.pathname === '/login') {
     return NextResponse.redirect(new URL('/pos', request.url))
   }
