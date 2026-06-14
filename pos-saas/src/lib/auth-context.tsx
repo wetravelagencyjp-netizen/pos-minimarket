@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { calcularEstadoSuscripcion, type Usuario, type EstadoSuscripcion } from '@/types'
+import { calcularEstadoSuscripcion, type Usuario, type Establecimiento, type EstadoSuscripcion } from '@/types'
 
 interface AuthContextValue {
   usuario: Usuario | null
@@ -21,7 +21,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  // Carga el perfil del usuario + verifica suscripción
   const cargarPerfil = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from('usuarios')
@@ -35,21 +34,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    setUsuario(data as Usuario)
+    const row = data as unknown as Record<string, unknown>
+    const estab = row.establecimiento as Establecimiento
+    const usuarioFinal: Usuario = {
+      id: row.id as string,
+      establecimiento_id: row.establecimiento_id as number,
+      nombre: row.nombre as string | null,
+      rol: row.rol as 'admin' | 'cajero',
+      creado_en: row.creado_en as string,
+      establecimiento: estab,
+    }
 
-    // ── Verificación de suscripción ──────────────────────────────
-    const estado = calcularEstadoSuscripcion(data.establecimiento)
+    setUsuario(usuarioFinal)
+
+    const estado = calcularEstadoSuscripcion(estab)
     setEstadoSuscripcion(estado)
 
     if (estado === 'vencida' || estado === 'suspendida') {
-      // Redirige a la pantalla de suscripción vencida con la URL de pago
-      const urlPago = data.establecimiento.url_pago ?? ''
-      router.push(`/suscripcion-vencida?url=${encodeURIComponent(urlPago)}&nombre=${encodeURIComponent(data.establecimiento.nombre)}`)
+      const urlPago = estab.url_pago ?? ''
+      router.push(`/suscripcion-vencida?url=${encodeURIComponent(urlPago)}&nombre=${encodeURIComponent(estab.nombre)}`)
     }
   }, [router])
 
   useEffect(() => {
-    // Sesión inicial al montar
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         cargarPerfil(session.user.id).finally(() => setLoading(false))
@@ -58,7 +65,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    // Escucha cambios de sesión (login / logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         cargarPerfil(session.user.id)
