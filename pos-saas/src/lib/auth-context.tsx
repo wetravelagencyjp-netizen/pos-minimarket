@@ -3,10 +3,24 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { calcularEstadoSuscripcion, type Usuario, type Establecimiento, type EstadoSuscripcion } from '@/types'
+import { type EstadoSuscripcion } from '@/types'
+
+interface UsuarioSimple {
+  id: string
+  email: string
+  establecimiento_id: number
+  nombre: string | null
+  rol: string
+  establecimiento?: {
+    nombre: string
+    estado_suscripcion: boolean
+    fecha_vencimiento: string
+    url_pago: string | null
+  }
+}
 
 interface AuthContextValue {
-  usuario: Usuario | null
+  usuario: UsuarioSimple | null
   estadoSuscripcion: EstadoSuscripcion | null
   loading: boolean
   login: (email: string, password: string) => Promise<{ error?: string }>
@@ -16,50 +30,69 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const [usuario, setUsuario] = useState<UsuarioSimple | null>(null)
   const [estadoSuscripcion, setEstadoSuscripcion] = useState<EstadoSuscripcion | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  const cargarPerfil = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('*, establecimiento:establecimientos(*)')
-      .eq('id', userId)
-      .single()
+  const cargarPerfil = useCallback(async (userId: string, email: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*, establecimiento:establecimientos(nombre, estado_suscripcion, fecha_vencimiento, url_pago)')
+        .eq('id', userId)
+        .single()
 
-    if (error || !data) {
+      if (error || !data) {
+        console.error('Error cargando perfil:', error)
+        setUsuario(null)
+        setEstadoSuscripcion(null)
+        return
+      }
+
+      const estab = data.establecimiento as { nombre: string; estado_suscripcion: boolean; fecha_vencimiento: string; url_pago: string | null } | null
+
+      const usuarioFinal: UsuarioSimple = {
+        id: userId,
+        email,
+        establecimiento_id: data.establecimiento_id,
+        nombre: data.nombre,
+        rol: data.rol,
+        establecimiento: estab ?? undefined,
+      }
+
+      setUsuario(usuarioFinal)
+
+      if (!estab) {
+        setEstadoSuscripcion('activa')
+        return
+      }
+
+      const hoy = new Date()
+      hoy.setHours(0, 0, 0, 0)
+      const venc = new Date(estab.fecha_vencimiento + 'T00:00:00')
+
+      let estado: EstadoSuscripcion = 'activa'
+      if (!estab.estado_suscripcion) estado = 'suspendida'
+      else if (hoy > venc) estado = 'vencida'
+
+      setEstadoSuscripcion(estado)
+
+      if (estado !== 'activa') {
+        const urlPago = estab.url_pago ?? ''
+        router.push(`/suscripcion-vencida?url=${encodeURIComponent(urlPago)}&nombre=${encodeURIComponent(estab.nombre)}`)
+      }
+    } catch (e) {
+      console.error('Error en cargarPerfil:', e)
       setUsuario(null)
       setEstadoSuscripcion(null)
-      return
-    }
-
-    const row = data as unknown as Record<string, unknown>
-    const estab = row.establecimiento as Establecimiento
-    const usuarioFinal: Usuario = {
-      id: row.id as string,
-      establecimiento_id: row.establecimiento_id as number,
-      nombre: row.nombre as string | null,
-      rol: row.rol as 'admin' | 'cajero',
-      creado_en: row.creado_en as string,
-      establecimiento: estab,
-    }
-
-    setUsuario(usuarioFinal)
-
-    const estado = calcularEstadoSuscripcion(estab)
-    setEstadoSuscripcion(estado)
-
-    if (estado === 'vencida' || estado === 'suspendida') {
-      const urlPago = estab.url_pago ?? ''
-      router.push(`/suscripcion-vencida?url=${encodeURIComponent(urlPago)}&nombre=${encodeURIComponent(estab.nombre)}`)
     }
   }, [router])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        cargarPerfil(session.user.id).finally(() => setLoading(false))
+        cargarPerfil(session.user.id, session.user.email ?? '').finally(() => setLoading(false))
       } else {
         setLoading(false)
       }
@@ -67,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        cargarPerfil(session.user.id)
+        cargarPerfil(session.user.id, session.user.email ?? '')
       } else {
         setUsuario(null)
         setEstadoSuscripcion(null)
