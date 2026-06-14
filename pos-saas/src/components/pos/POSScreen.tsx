@@ -47,14 +47,12 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
     else mostrarToast(`Error: ${res.error}`, 'error')
   }, [procesarVenta, recargar, mostrarToast])
 
-  // Alerta de suscripción próxima a vencer (menos de 7 días)
   const diasSub = usuario?.establecimiento?.fecha_vencimiento
     ? diasRestantes(usuario.establecimiento.fecha_vencimiento as unknown as string)
     : null
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gray-50">
-      {/* Alerta de suscripción próxima a vencer */}
       {diasSub !== null && diasSub <= 7 && diasSub >= 0 && (
         <div className="flex items-center justify-between bg-amber-50 border-b border-amber-200 px-5 py-2">
           <span className="text-xs text-amber-700">
@@ -69,12 +67,11 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
         </div>
       )}
 
-      {/* Topbar */}
       <header className="flex items-center justify-between border-b border-gray-100 bg-white px-5 py-3">
         <div>
           <h1 className="text-sm font-semibold text-gray-900">Punto de venta</h1>
           <p className="text-xs text-gray-400">
-            {vendedores.length} vendedores · {new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}
+            {vendedores.length} vendedores
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -87,7 +84,6 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
       </header>
 
       <div className="grid flex-1 overflow-hidden" style={{ gridTemplateColumns: '1fr 360px' }}>
-        {/* Panel catálogo */}
         <section className="flex flex-col overflow-hidden">
           <div className="border-b border-gray-100 bg-white px-4 py-3">
             <div className="relative">
