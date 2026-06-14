@@ -1,5 +1,6 @@
 'use client'
 import { useCallback } from 'react'
+import { useAuth } from '@/lib/auth-context'
 import type { GrupoVendedor, MetodoPago } from '@/types'
 
 const METODOS: { value: MetodoPago; label: string; icon: string }[] = [
@@ -15,7 +16,6 @@ interface Props {
   grupos: GrupoVendedor[]
   total: number; totalItems: number
   metodoPago: MetodoPago; procesando: boolean
-  comprobante?: string
   onCambiarCantidad: (id: number, delta: number) => void
   onEliminar: (id: number) => void
   onVaciar: () => void
@@ -23,7 +23,7 @@ interface Props {
   onCobrar: () => void
 }
 
-function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: MetodoPago, comprobante: string) {
+function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: MetodoPago, comprobante: string, establecimiento: string) {
   const fecha = new Date().toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
   const metodoLabel: Record<MetodoPago, string> = {
     efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', mixto: 'Mixto'
@@ -86,7 +86,7 @@ function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: Meto
 </head>
 <body>
   <div class="cabecera">
-    <h1>🛒 POS Minimarket</h1>
+    <h1>🛒 ${establecimiento}</h1>
     <p>Sistema Multivendedor</p>
   </div>
   <div class="linea"></div>
@@ -115,18 +115,19 @@ function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: Meto
 
 export function CartPanel({ grupos, total, totalItems, metodoPago, procesando, onCambiarCantidad, onEliminar, onVaciar, onMetodoPago, onCobrar }: Props) {
   const empty = grupos.length === 0
+  const { usuario } = useAuth()
 
   const handleCobrar = useCallback(async () => {
     const gruposSnapshot = [...grupos]
     const totalSnapshot = total
     const metodoSnapshot = metodoPago
+    const nombreEstab = usuario?.establecimiento?.nombre ?? 'POS Sistema'
     await onCobrar()
-    // Pequeño delay para que el comprobante se genere
     setTimeout(() => {
       const comprobante = `001-001-${String(Date.now()).slice(-7)}`
-      imprimirTicket(gruposSnapshot, totalSnapshot, metodoSnapshot, comprobante)
+      imprimirTicket(gruposSnapshot, totalSnapshot, metodoSnapshot, comprobante, nombreEstab)
     }, 500)
-  }, [grupos, total, metodoPago, onCobrar])
+  }, [grupos, total, metodoPago, onCobrar, usuario])
 
   return (
     <aside className="flex h-full flex-col border-l border-gray-100 bg-white">
