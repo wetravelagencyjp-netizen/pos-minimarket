@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
   if (session) {
     const { data: usuario } = await supabase
       .from('usuarios')
-      .select('rol, es_superadmin, establecimiento_id, establecimientos(nombre, estado_cuenta, fecha_vencimiento, url_pago)')
+      .select('rol, es_superadmin, establecimiento_id, establecimientos(nombre, estado_cuenta, estado_suscripcion, fecha_vencimiento, url_pago)')
       .eq('id', session.user.id)
       .single()
 
@@ -43,7 +43,7 @@ export async function middleware(request: NextRequest) {
       const hoy = new Date()
       hoy.setHours(0, 0, 0, 0)
       const venc = new Date(estab?.fecha_vencimiento + 'T00:00:00')
-      const suspendido = estab?.estado_cuenta === 'suspendido' || hoy > venc
+      const suspendido = estab?.estado_cuenta === 'suspendido' || estab?.estado_suscripcion === false || hoy > venc
 
       // Suscripción vencida → redirigir
       if (suspendido && path.startsWith('/pos')) {
