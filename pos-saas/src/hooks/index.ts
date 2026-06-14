@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { type Producto, type Categoria, type Vendedor, type ItemCarrito, type GrupoVendedor, type MetodoPago } from '@/types'
 
-// ── useInventario ─────────────────────────────────────────────────
 export function useInventario(establecimientoId: number) {
   const [todos, setTodos]         = useState<Producto[]>([])
   const [productos, setProductos] = useState<Producto[]>([])
@@ -59,7 +58,6 @@ export function useInventario(establecimientoId: number) {
   return { productos, categorias, vendedores, loading, error, buscar, recargar: cargar }
 }
 
-// ── useCarrito ────────────────────────────────────────────────────
 export function useCarrito(establecimientoId: number) {
   const [items, setItems]       = useState<Record<number, ItemCarrito>>({})
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('efectivo')
@@ -105,11 +103,11 @@ export function useCarrito(establecimientoId: number) {
   const procesarVenta = useCallback(async () => {
     if (!Object.keys(items).length) return { ok: false, error: 'Carrito vacío' }
     try {
-      // Generar comprobante consultando la DB
       const { data: last } = await supabase.from('ventas')
         .select('numero_comprobante').eq('establecimiento_id', establecimientoId)
-        .order('id', { ascending: false }).limit(1).single()
-      const siguiente = last ? parseInt(last.numero_comprobante.split('-')[2] ?? '0') + 1 : 1
+        .order('id', { ascending: false }).limit(1).maybeSingle()
+      const lastData = last as { numero_comprobante: string } | null
+      const siguiente = lastData ? parseInt(lastData.numero_comprobante.split('-')[2] ?? '0') + 1 : 1
       const comprobante = `001-001-${String(siguiente).padStart(7, '0')}`
 
       const { error } = await supabase.rpc('registrar_venta', {
