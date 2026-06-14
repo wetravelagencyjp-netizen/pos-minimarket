@@ -16,8 +16,8 @@ export default function LoginForm() {
     setError('')
     setLoading(true)
     const resultado = await login(email, password)
-    setLoading(false)
     if (resultado.error) {
+      setLoading(false)
       const errores: Record<string, string> = {
         'Invalid login credentials': 'Correo o contraseña incorrectos.',
         'Email not confirmed': 'Debes confirmar tu correo electrónico primero.',
@@ -25,6 +25,7 @@ export default function LoginForm() {
       }
       setError(errores[resultado.error] ?? resultado.error)
     } else {
+      await new Promise(resolve => setTimeout(resolve, 500))
       window.location.href = params.get('next') ?? '/pos'
     }
   }
