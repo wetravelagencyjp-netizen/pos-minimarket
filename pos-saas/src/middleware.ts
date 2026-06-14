@@ -22,7 +22,7 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // Sin sesión → solo proteger rutas sensibles
+  // Sin sesión → proteger rutas
   if (!session) {
     if (path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/caja') || path.startsWith('/superadmin')) {
       return NextResponse.redirect(new URL('/login', request.url))
@@ -30,25 +30,16 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // Con sesión → verificar rol
-  if (session && (path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/superadmin'))) {
+  // Cajero → solo POS y caja
+  if (session && (path.startsWith('/admin') || path.startsWith('/dashboard'))) {
     const { data: usuario } = await supabase
       .from('usuarios')
-      .select('rol, es_superadmin')
+      .select('rol')
       .eq('id', session.user.id)
       .single()
 
-    if (usuario) {
-      const rol = (usuario as any).rol
-      const esSuperadmin = (usuario as any).es_superadmin
-
-      if (rol === 'cajero') {
-        return NextResponse.redirect(new URL('/pos', request.url))
-      }
-
-      if (path.startsWith('/superadmin') && !esSuperadmin) {
-        return NextResponse.redirect(new URL('/pos', request.url))
-      }
+    if (usuario && (usuario as any).rol === 'cajero') {
+      return NextResponse.redirect(new URL('/pos', request.url))
     }
   }
 
@@ -56,5 +47,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/dashboard/:path*', '/caja/:path*', '/superadmin/:path*', '/login'],
+  matcher: ['/admin/:path*', '/dashboard/:path*', '/caja/:path*', '/superadmin/:path*'],
 }
