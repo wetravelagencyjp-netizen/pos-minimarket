@@ -1,4 +1,5 @@
 'use client'
+import { useCallback } from 'react'
 import type { GrupoVendedor, MetodoPago } from '@/types'
 
 const METODOS: { value: MetodoPago; label: string; icon: string }[] = [
@@ -14,6 +15,7 @@ interface Props {
   grupos: GrupoVendedor[]
   total: number; totalItems: number
   metodoPago: MetodoPago; procesando: boolean
+  comprobante?: string
   onCambiarCantidad: (id: number, delta: number) => void
   onEliminar: (id: number) => void
   onVaciar: () => void
@@ -21,8 +23,111 @@ interface Props {
   onCobrar: () => void
 }
 
+function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: MetodoPago, comprobante: string) {
+  const fecha = new Date().toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
+  const metodoLabel: Record<MetodoPago, string> = {
+    efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', mixto: 'Mixto'
+  }
+
+  const lineasGrupos = grupos.map(({ vendedor, items, subtotal }) => `
+    <div class="seccion">
+      <div class="vendedor">— ${vendedor.nombre} —</div>
+      ${items.map(({ producto, cantidad, subtotal: sub }) => `
+        <div class="item">
+          <div class="item-nombre">${producto.nombre}</div>
+          <div class="item-detalle">
+            <span>${cantidad} x ${fmt(producto.precio_venta)}</span>
+            <span>${fmt(sub)}</span>
+          </div>
+        </div>
+      `).join('')}
+      <div class="subtotal">
+        <span>Subtotal ${vendedor.nombre}</span>
+        <span>${fmt(subtotal)}</span>
+      </div>
+    </div>
+  `).join('<div class="separador"></div>')
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Ticket ${comprobante}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      width: 80mm;
+      max-width: 80mm;
+      padding: 4mm;
+      color: #000;
+    }
+    .cabecera { text-align: center; margin-bottom: 6px; }
+    .cabecera h1 { font-size: 14px; font-weight: bold; }
+    .cabecera p { font-size: 10px; }
+    .linea { border-top: 1px dashed #000; margin: 6px 0; }
+    .info { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 2px; }
+    .vendedor { text-align: center; font-weight: bold; font-size: 10px; margin: 6px 0 4px; }
+    .item { margin-bottom: 4px; }
+    .item-nombre { font-size: 11px; }
+    .item-detalle { display: flex; justify-content: space-between; font-size: 10px; color: #333; }
+    .subtotal { display: flex; justify-content: space-between; font-size: 10px; font-style: italic; margin-top: 4px; }
+    .separador { border-top: 1px dotted #999; margin: 6px 0; }
+    .total { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-top: 6px; }
+    .metodo { text-align: center; font-size: 10px; margin-top: 4px; }
+    .pie { text-align: center; font-size: 9px; margin-top: 8px; color: #555; }
+    .seccion { margin: 4px 0; }
+    @media print {
+      body { width: 80mm; }
+      @page { size: 80mm auto; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="cabecera">
+    <h1>🛒 POS Minimarket</h1>
+    <p>Sistema Multivendedor</p>
+  </div>
+  <div class="linea"></div>
+  <div class="info"><span>Fecha:</span><span>${fecha}</span></div>
+  <div class="info"><span>Comprobante:</span><span>${comprobante}</span></div>
+  <div class="linea"></div>
+  ${lineasGrupos}
+  <div class="linea"></div>
+  <div class="total"><span>TOTAL</span><span>${fmt(total)}</span></div>
+  <div class="metodo">Pago: ${metodoLabel[metodoPago]}</div>
+  <div class="linea"></div>
+  <div class="pie">¡Gracias por su compra!<br>Vuelva pronto 😊</div>
+</body>
+</html>`
+
+  const ventana = window.open('', '_blank', 'width=320,height=600')
+  if (!ventana) return
+  ventana.document.write(html)
+  ventana.document.close()
+  ventana.focus()
+  setTimeout(() => {
+    ventana.print()
+    ventana.close()
+  }, 300)
+}
+
 export function CartPanel({ grupos, total, totalItems, metodoPago, procesando, onCambiarCantidad, onEliminar, onVaciar, onMetodoPago, onCobrar }: Props) {
   const empty = grupos.length === 0
+
+  const handleCobrar = useCallback(async () => {
+    const gruposSnapshot = [...grupos]
+    const totalSnapshot = total
+    const metodoSnapshot = metodoPago
+    await onCobrar()
+    // Pequeño delay para que el comprobante se genere
+    setTimeout(() => {
+      const comprobante = `001-001-${String(Date.now()).slice(-7)}`
+      imprimirTicket(gruposSnapshot, totalSnapshot, metodoSnapshot, comprobante)
+    }, 500)
+  }, [grupos, total, metodoPago, onCobrar])
+
   return (
     <aside className="flex h-full flex-col border-l border-gray-100 bg-white">
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
@@ -90,7 +195,7 @@ export function CartPanel({ grupos, total, totalItems, metodoPago, procesando, o
             </button>
           ))}
         </div>
-        <button onClick={onCobrar} disabled={empty || procesando}
+        <button onClick={handleCobrar} disabled={empty || procesando}
           className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all
             ${empty || procesando ? 'cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'}`}>
           {procesando
