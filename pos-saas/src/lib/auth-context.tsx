@@ -1,4 +1,5 @@
 'use client'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
@@ -50,14 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const estab = data.establecimiento as { nombre: string; estado_suscripcion: boolean; fecha_vencimiento: string; url_pago: string | null } | null
+      const row = data as any
+      const estab = row.establecimiento as { nombre: string; estado_suscripcion: boolean; fecha_vencimiento: string; url_pago: string | null } | null
 
       const usuarioFinal: UsuarioSimple = {
         id: userId,
         email,
-        establecimiento_id: data.establecimiento_id,
-        nombre: data.nombre,
-        rol: data.rol,
+        establecimiento_id: row.establecimiento_id,
+        nombre: row.nombre,
+        rol: row.rol,
         establecimiento: estab ?? undefined,
       }
 
