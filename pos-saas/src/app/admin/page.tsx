@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-type Seccion = 'productos' | 'vendedores' | 'categorias' | 'equipo'
+type Seccion = 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes'
 
 export default function AdminPage() {
   const { usuario, logout } = useAuth()
@@ -31,6 +31,7 @@ export default function AdminPage() {
             { id: 'vendedores', label: '👤 Vendedores' },
             { id: 'categorias', label: '🏷️ Categorías' },
             { id: 'equipo', label: '👥 Mi equipo' },
+            { id: 'reportes', label: '📊 Reportes' },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setSeccion(id as Seccion)}
               className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors
@@ -45,6 +46,7 @@ export default function AdminPage() {
           {seccion === 'vendedores' && <SeccionVendedores establecimientoId={usuario?.establecimiento_id ?? 1} />}
           {seccion === 'categorias' && <SeccionCategorias establecimientoId={usuario?.establecimiento_id ?? 1} />}
           {seccion === 'equipo' && <SeccionEquipo establecimientoId={usuario?.establecimiento_id ?? 1} />}
+          {seccion === 'reportes' && <SeccionReportes establecimientoId={usuario?.establecimiento_id ?? 1} />}
         </main>
       </div>
     </div>
@@ -144,7 +146,6 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
           {editando && <button onClick={() => { setEditando(null); limpiarForm() }} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-500 hover:bg-gray-50">Cancelar</button>}
         </div>
       </div>
-
       <div className="rounded-2xl border border-gray-200 bg-white">
         <div className="border-b border-gray-100 px-5 py-3">
           <h2 className="text-sm font-semibold text-gray-900">Productos ({productos.length})</h2>
@@ -234,7 +235,6 @@ function SeccionVendedores({ establecimientoId }: { establecimientoId: number })
           {editando && <button onClick={() => { setEditando(null); setNombre('') }} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-500">Cancelar</button>}
         </div>
       </div>
-
       <div className="rounded-2xl border border-gray-200 bg-white">
         <div className="border-b border-gray-100 px-5 py-3">
           <h2 className="text-sm font-semibold text-gray-900">Vendedores ({vendedores.length})</h2>
@@ -318,7 +318,6 @@ function SeccionCategorias({ establecimientoId }: { establecimientoId: number })
           {editando && <button onClick={() => { setEditando(null); setForm({ nombre: '', icono: '' }) }} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-500">Cancelar</button>}
         </div>
       </div>
-
       <div className="rounded-2xl border border-gray-200 bg-white">
         <div className="border-b border-gray-100 px-5 py-3">
           <h2 className="text-sm font-semibold text-gray-900">Categorías ({categorias.length})</h2>
@@ -431,7 +430,6 @@ function SeccionEquipo({ establecimientoId }: { establecimientoId: number }) {
           {creando ? 'Creando…' : '✅ Agregar usuario'}
         </button>
       </div>
-
       <div className="rounded-2xl border border-gray-200 bg-white">
         <div className="border-b border-gray-100 px-5 py-3">
           <h2 className="text-sm font-semibold text-gray-900">👥 Mi equipo ({usuarios.length})</h2>
@@ -465,6 +463,206 @@ function SeccionEquipo({ establecimientoId }: { establecimientoId: number }) {
           </table>
         )}
       </div>
+    </div>
+  )
+}
+
+// ─── REPORTES ────────────────────────────────────────────
+function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
+  const [periodo, setPeriodo] = useState<'hoy' | 'semana' | 'mes'>('hoy')
+  const [loading, setLoading] = useState(true)
+  const [totalVentas, setTotalVentas] = useState(0)
+  const [numVentas, setNumVentas] = useState(0)
+  const [ventasPorVendedor, setVentasPorVendedor] = useState<any[]>([])
+  const [topProductos, setTopProductos] = useState<any[]>([])
+  const [ventasPorDia, setVentasPorDia] = useState<any[]>([])
+
+  const getFechaInicio = useCallback(() => {
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+    if (periodo === 'hoy') return hoy.toISOString()
+    if (periodo === 'semana') { hoy.setDate(hoy.getDate() - 7); return hoy.toISOString() }
+    hoy.setDate(hoy.getDate() - 30); return hoy.toISOString()
+  }, [periodo])
+
+  const cargar = useCallback(async () => {
+    setLoading(true)
+    const fechaInicio = getFechaInicio()
+
+    const [ventas, detalle] = await Promise.all([
+      supabase.from('ventas').select('*').eq('establecimiento_id', establecimientoId).gte('fecha_venta', fechaInicio).order('fecha_venta'),
+      supabase.from('detalle_ventas')
+        .select('*, producto:productos(nombre), vendedor:vendedores(nombre), venta:ventas!inner(fecha_venta, establecimiento_id)')
+        .eq('venta.establecimiento_id', establecimientoId)
+        .gte('venta.fecha_venta', fechaInicio),
+    ])
+
+    const v = ventas.data ?? []
+    const d = detalle.data ?? []
+
+    setTotalVentas(v.reduce((s, x) => s + x.total, 0))
+    setNumVentas(v.length)
+
+    // Ventas por vendedor
+    const porVendedor: Record<string, { nombre: string; total: number; cantidad: number; items: number }> = {}
+    d.forEach(item => {
+      const nombre = item.vendedor?.nombre ?? 'Sin vendedor'
+      if (!porVendedor[nombre]) porVendedor[nombre] = { nombre, total: 0, cantidad: 0, items: 0 }
+      porVendedor[nombre].total += item.precio_unitario * item.cantidad
+      porVendedor[nombre].cantidad += item.cantidad
+      porVendedor[nombre].items += 1
+    })
+    setVentasPorVendedor(Object.values(porVendedor).sort((a, b) => b.total - a.total))
+
+    // Top 5 productos
+    const porProducto: Record<string, { nombre: string; cantidad: number; total: number }> = {}
+    d.forEach(item => {
+      const nombre = item.producto?.nombre ?? 'Desconocido'
+      if (!porProducto[nombre]) porProducto[nombre] = { nombre, cantidad: 0, total: 0 }
+      porProducto[nombre].cantidad += item.cantidad
+      porProducto[nombre].total += item.precio_unitario * item.cantidad
+    })
+    setTopProductos(Object.values(porProducto).sort((a, b) => b.cantidad - a.cantidad).slice(0, 5))
+
+    // Ventas por día para gráfico
+    const porDia: Record<string, number> = {}
+    v.forEach(venta => {
+      const dia = new Date(venta.fecha_venta).toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric' })
+      porDia[dia] = (porDia[dia] ?? 0) + venta.total
+    })
+    setVentasPorDia(Object.entries(porDia).map(([dia, total]) => ({ dia, total })))
+
+    setLoading(false)
+  }, [establecimientoId, getFechaInicio])
+
+  useEffect(() => { cargar() }, [cargar])
+
+  const fmt = (n: number) => `$${n.toFixed(2)}`
+  const maxVendedor = ventasPorVendedor[0]?.total || 1
+  const maxProducto = topProductos[0]?.cantidad || 1
+
+  return (
+    <div className="space-y-6">
+      {/* Selector de período */}
+      <div className="flex gap-2">
+        {[{ id: 'hoy', label: 'Hoy' }, { id: 'semana', label: 'Esta semana' }, { id: 'mes', label: 'Este mes' }].map(({ id, label }) => (
+          <button key={id} onClick={() => setPeriodo(id as any)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors
+              ${periodo === id ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+        </div>
+      ) : (
+        <>
+          {/* Métricas principales */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5">
+              <div className="text-2xl mb-2">💰</div>
+              <div className="text-3xl font-bold text-gray-900">{fmt(totalVentas)}</div>
+              <div className="text-xs text-gray-400 mt-1">Total vendido</div>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-5">
+              <div className="text-2xl mb-2">🧾</div>
+              <div className="text-3xl font-bold text-gray-900">{numVentas}</div>
+              <div className="text-xs text-gray-400 mt-1">Transacciones</div>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-5">
+              <div className="text-2xl mb-2">📊</div>
+              <div className="text-3xl font-bold text-gray-900">{fmt(numVentas ? totalVentas / numVentas : 0)}</div>
+              <div className="text-xs text-gray-400 mt-1">Ticket promedio</div>
+            </div>
+          </div>
+
+          {/* Gráfico de ventas por día */}
+          {ventasPorDia.length > 0 && (
+            <div className="rounded-2xl border border-gray-200 bg-white p-5">
+              <h2 className="mb-4 text-sm font-semibold text-gray-900">📈 Ventas totales</h2>
+              <div className="flex items-end gap-2 h-32">
+                {ventasPorDia.map(({ dia, total }) => (
+                  <div key={dia} className="flex flex-col items-center flex-1 gap-1">
+                    <div className="text-[10px] text-gray-500 font-medium">{fmt(total)}</div>
+                    <div className="w-full bg-blue-500 rounded-t-md transition-all"
+                      style={{ height: `${(total / Math.max(...ventasPorDia.map(v => v.total))) * 96}px` }} />
+                    <div className="text-[10px] text-gray-400 text-center">{dia}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Liquidación por vendedor */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5">
+              <h2 className="mb-4 text-sm font-semibold text-gray-900">👤 Liquidación por vendedor</h2>
+              {ventasPorVendedor.length === 0 ? (
+                <p className="text-sm text-gray-400">Sin ventas en este período</p>
+              ) : (
+                <div className="space-y-4">
+                  {ventasPorVendedor.map((v, i) => (
+                    <div key={v.nombre}>
+                      <div className="flex justify-between items-center mb-1">
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">{v.nombre}</span>
+                          <span className="ml-2 text-xs text-gray-400">{v.cantidad} uds</span>
+                        </div>
+                        <span className="text-sm font-bold text-blue-600">{fmt(v.total)}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-gray-100">
+                        <div className={`h-2 rounded-full ${i === 0 ? 'bg-blue-500' : i === 1 ? 'bg-green-500' : i === 2 ? 'bg-amber-500' : 'bg-purple-500'}`}
+                          style={{ width: `${(v.total / maxVendedor) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                  <div className="border-t border-gray-100 pt-3 mt-3">
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span className="text-gray-700">Total general</span>
+                      <span className="text-gray-900">{fmt(totalVentas)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Top 5 productos */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5">
+              <h2 className="mb-4 text-sm font-semibold text-gray-900">🏆 Top 5 productos más vendidos</h2>
+              {topProductos.length === 0 ? (
+                <p className="text-sm text-gray-400">Sin ventas en este período</p>
+              ) : (
+                <div className="space-y-3">
+                  {topProductos.map((p, i) => (
+                    <div key={p.nombre}>
+                      <div className="flex justify-between items-center mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white
+                            ${i === 0 ? 'bg-yellow-500' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-amber-600' : 'bg-gray-300'}`}>
+                            {i + 1}
+                          </span>
+                          <span className="text-sm text-gray-700 truncate max-w-[140px]">{p.nombre}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs font-bold text-gray-900">{p.cantidad} uds</div>
+                          <div className="text-[10px] text-gray-400">{fmt(p.total)}</div>
+                        </div>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-gray-100">
+                        <div className={`h-1.5 rounded-full ${i === 0 ? 'bg-yellow-500' : i === 1 ? 'bg-gray-400' : 'bg-blue-400'}`}
+                          style={{ width: `${(p.cantidad / maxProducto) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
