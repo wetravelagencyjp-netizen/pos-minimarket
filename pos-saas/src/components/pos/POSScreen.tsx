@@ -7,7 +7,7 @@ import { useInventario, useCarrito } from '@/hooks'
 import { ProductCard } from './ProductCard'
 import { CartPanel } from './CartPanel'
 import { diasRestantes } from '@/types'
-import type { Produto } from '@/types'
+import type { Producto } from '@/types'
 
 type ToastTipo = 'ok' | 'error' | 'factura'
 type Toast = { mensaje: string; tipo: ToastTipo; claveAcceso?: string }
@@ -118,7 +118,7 @@ function ModalCliente({ onConfirmar, onCancelar, total }: {
             <div className="grid grid-cols-3 gap-1.5">
               {(['cedula', 'ruc', 'pasaporte'] as const).map(tipo => (
                 <button key={tipo} onClick={() => set('tipo_identificacion', tipo)}
-                  className={`rounded-lg border py-2 text-xs font-medium capitalize transition-all
+                  className={`rounded-lg border py-2 text-xs font-medium transition-all
                     ${form.tipo_identificacion === tipo ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-white'}`}>
                   {tipo === 'cedula' ? 'Cédula' : tipo === 'ruc' ? 'RUC' : 'Pasaporte'}
                 </button>
@@ -194,12 +194,12 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const mostrarToast = useCallback((t: Toast) => setToast(t), [])
   const focusSearch  = useCallback(() => setTimeout(() => searchRef.current?.focus(), 100), [])
 
-  const handleAgregar = useCallback((p: any) => {
+  const handleAgregar = useCallback((p: Producto) => {
     agregar(p)
     mostrarToast({ mensaje: `${p.categoria?.icono ?? '📦'} ${p.nombre} agregado`, tipo: 'ok' })
   }, [agregar, mostrarToast])
 
-  const handleSearch   = useCallback((q: string) => { setSearchQ(q); buscar(q, catActiva) }, [buscar, catActiva])
+  const handleSearch    = useCallback((q: string) => { setSearchQ(q); buscar(q, catActiva) }, [buscar, catActiva])
   const handleCategoria = useCallback((id: number | null) => { setCatActiva(id); buscar(searchQ, id) }, [buscar, searchQ])
 
   const cobrarConTicket = useCallback(async () => {
