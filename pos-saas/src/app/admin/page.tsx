@@ -19,6 +19,7 @@ export default function AdminPage() {
           <h1 className="text-sm font-semibold text-gray-900">Panel de Administración</h1>
         </div>
         <div className="flex items-center gap-3">
+          <button onClick={() => router.push('/admin/facturacion')} className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs text-blue-600 hover:bg-blue-100">🧾 Facturación SRI</button>
           <span className="text-xs text-gray-500">{usuario?.nombre ?? 'Admin'}</span>
           <button onClick={logout} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-700">Salir</button>
         </div>
@@ -488,7 +489,6 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
   const cargar = useCallback(async () => {
     setLoading(true)
     const fechaInicio = getFechaInicio()
-
     const [ventas, detalle] = await Promise.all([
       supabase.from('ventas').select('*').eq('establecimiento_id', establecimientoId).gte('fecha_venta', fechaInicio).order('fecha_venta'),
       supabase.from('detalle_ventas')
@@ -496,25 +496,18 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
         .eq('venta.establecimiento_id', establecimientoId)
         .gte('venta.fecha_venta', fechaInicio),
     ])
-
     const v = ventas.data ?? []
     const d = detalle.data ?? []
-
     setTotalVentas(v.reduce((s, x) => s + x.total, 0))
     setNumVentas(v.length)
-
-    // Ventas por vendedor
-    const porVendedor: Record<string, { nombre: string; total: number; cantidad: number; items: number }> = {}
+    const porVendedor: Record<string, { nombre: string; total: number; cantidad: number }> = {}
     d.forEach(item => {
       const nombre = item.vendedor?.nombre ?? 'Sin vendedor'
-      if (!porVendedor[nombre]) porVendedor[nombre] = { nombre, total: 0, cantidad: 0, items: 0 }
+      if (!porVendedor[nombre]) porVendedor[nombre] = { nombre, total: 0, cantidad: 0 }
       porVendedor[nombre].total += item.precio_unitario * item.cantidad
       porVendedor[nombre].cantidad += item.cantidad
-      porVendedor[nombre].items += 1
     })
     setVentasPorVendedor(Object.values(porVendedor).sort((a, b) => b.total - a.total))
-
-    // Top 5 productos
     const porProducto: Record<string, { nombre: string; cantidad: number; total: number }> = {}
     d.forEach(item => {
       const nombre = item.producto?.nombre ?? 'Desconocido'
@@ -523,15 +516,12 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
       porProducto[nombre].total += item.precio_unitario * item.cantidad
     })
     setTopProductos(Object.values(porProducto).sort((a, b) => b.cantidad - a.cantidad).slice(0, 5))
-
-    // Ventas por día para gráfico
     const porDia: Record<string, number> = {}
     v.forEach(venta => {
       const dia = new Date(venta.fecha_venta).toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric' })
       porDia[dia] = (porDia[dia] ?? 0) + venta.total
     })
     setVentasPorDia(Object.entries(porDia).map(([dia, total]) => ({ dia, total })))
-
     setLoading(false)
   }, [establecimientoId, getFechaInicio])
 
@@ -543,7 +533,6 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
 
   return (
     <div className="space-y-6">
-      {/* Selector de período */}
       <div className="flex gap-2">
         {[{ id: 'hoy', label: 'Hoy' }, { id: 'semana', label: 'Esta semana' }, { id: 'mes', label: 'Este mes' }].map(({ id, label }) => (
           <button key={id} onClick={() => setPeriodo(id as any)}
@@ -553,14 +542,12 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
           </button>
         ))}
       </div>
-
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
         </div>
       ) : (
         <>
-          {/* Métricas principales */}
           <div className="grid grid-cols-3 gap-4">
             <div className="rounded-2xl border border-gray-200 bg-white p-5">
               <div className="text-2xl mb-2">💰</div>
@@ -578,8 +565,6 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
               <div className="text-xs text-gray-400 mt-1">Ticket promedio</div>
             </div>
           </div>
-
-          {/* Gráfico de ventas por día */}
           {ventasPorDia.length > 0 && (
             <div className="rounded-2xl border border-gray-200 bg-white p-5">
               <h2 className="mb-4 text-sm font-semibold text-gray-900">📈 Ventas totales</h2>
@@ -587,7 +572,7 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
                 {ventasPorDia.map(({ dia, total }) => (
                   <div key={dia} className="flex flex-col items-center flex-1 gap-1">
                     <div className="text-[10px] text-gray-500 font-medium">{fmt(total)}</div>
-                    <div className="w-full bg-blue-500 rounded-t-md transition-all"
+                    <div className="w-full bg-blue-500 rounded-t-md"
                       style={{ height: `${(total / Math.max(...ventasPorDia.map(v => v.total))) * 96}px` }} />
                     <div className="text-[10px] text-gray-400 text-center">{dia}</div>
                   </div>
@@ -595,14 +580,10 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
               </div>
             </div>
           )}
-
           <div className="grid grid-cols-2 gap-4">
-            {/* Liquidación por vendedor */}
             <div className="rounded-2xl border border-gray-200 bg-white p-5">
               <h2 className="mb-4 text-sm font-semibold text-gray-900">👤 Liquidación por vendedor</h2>
-              {ventasPorVendedor.length === 0 ? (
-                <p className="text-sm text-gray-400">Sin ventas en este período</p>
-              ) : (
+              {ventasPorVendedor.length === 0 ? <p className="text-sm text-gray-400">Sin ventas en este período</p> : (
                 <div className="space-y-4">
                   {ventasPorVendedor.map((v, i) => (
                     <div key={v.nombre}>
@@ -619,7 +600,7 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
                       </div>
                     </div>
                   ))}
-                  <div className="border-t border-gray-100 pt-3 mt-3">
+                  <div className="border-t border-gray-100 pt-3">
                     <div className="flex justify-between text-sm font-semibold">
                       <span className="text-gray-700">Total general</span>
                       <span className="text-gray-900">{fmt(totalVentas)}</span>
@@ -628,13 +609,9 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
                 </div>
               )}
             </div>
-
-            {/* Top 5 productos */}
             <div className="rounded-2xl border border-gray-200 bg-white p-5">
               <h2 className="mb-4 text-sm font-semibold text-gray-900">🏆 Top 5 productos más vendidos</h2>
-              {topProductos.length === 0 ? (
-                <p className="text-sm text-gray-400">Sin ventas en este período</p>
-              ) : (
+              {topProductos.length === 0 ? <p className="text-sm text-gray-400">Sin ventas en este período</p> : (
                 <div className="space-y-3">
                   {topProductos.map((p, i) => (
                     <div key={p.nombre}>
