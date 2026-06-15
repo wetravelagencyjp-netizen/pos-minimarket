@@ -181,4 +181,4 @@ export async function POST(request: NextRequest) {
     console.error('Error firma digital:', e)
     return NextResponse.json({ ok: false, error: 'Error en firma digital', detalle: e.message, logs }, { status: 500 })
   }
-}
+} 
