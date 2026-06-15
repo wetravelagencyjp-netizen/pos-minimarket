@@ -5,12 +5,12 @@ import { supabase } from '@/lib/supabase'
 import { type Producto, type Categoria, type Vendedor, type ItemCarrito, type GrupoVendedor, type MetodoPago } from '@/types'
 
 export function useInventario(establecimientoId: number) {
-  const [todos, setTodos]         = useState<Producto[]>([])
-  const [productos, setProductos] = useState<Producto[]>([])
+  const [todos, setTodos]           = useState<Producto[]>([])
+  const [productos, setProductos]   = useState<Producto[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [vendedores, setVendedores] = useState<Vendedor[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState<string | null>(null)
+  const [loading, setLoading]       = useState(true)
+  const [error, setError]           = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
     setLoading(true); setError(null)
@@ -59,7 +59,7 @@ export function useInventario(establecimientoId: number) {
 }
 
 export function useCarrito(establecimientoId: number) {
-  const [items, setItems]       = useState<Record<number, ItemCarrito>>({})
+  const [items, setItems]           = useState<Record<number, ItemCarrito>>({})
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('efectivo')
 
   const agregar = useCallback((producto: Producto) => {
@@ -86,7 +86,7 @@ export function useCarrito(establecimientoId: number) {
 
   const vaciar = useCallback(() => setItems({}), [])
 
-  const total = useMemo(() => +Object.values(items).reduce((s, i) => s + i.subtotal, 0).toFixed(2), [items])
+  const total      = useMemo(() => +Object.values(items).reduce((s, i) => s + i.subtotal, 0).toFixed(2), [items])
   const totalItems = useMemo(() => Object.values(items).reduce((s, i) => s + i.cantidad, 0), [items])
 
   const grupos = useMemo<GrupoVendedor[]>(() => {
@@ -110,21 +110,27 @@ export function useCarrito(establecimientoId: number) {
       const siguiente = lastData ? parseInt(lastData.numero_comprobante.split('-')[2] ?? '0') + 1 : 1
       const comprobante = `001-001-${String(siguiente).padStart(7, '0')}`
 
-      const { error } = await supabase.rpc('registrar_venta', {
+      const { data: ventaData, error } = await supabase.rpc('registrar_venta', {
         establecimiento_id: establecimientoId,
         numero_comprobante: comprobante,
         total,
         metodo_pago: metodoPago,
         detalles: Object.values(items).map(i => ({
-          producto_id: i.producto.id,
-          vendedor_id: i.producto.vendedor_id,
-          cantidad: i.cantidad,
+          producto_id:     i.producto.id,
+          vendedor_id:     i.producto.vendedor_id,
+          cantidad:        i.cantidad,
           precio_unitario: i.producto.precio_venta,
         })),
       } as never)
+
       if (error) throw error
       vaciar()
-      return { ok: true, comprobante }
+
+      const venta_id = typeof ventaData === 'number'
+        ? ventaData
+        : (ventaData as any)?.id ?? null
+
+      return { ok: true, comprobante, venta_id }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : 'Error al procesar' }
     }
