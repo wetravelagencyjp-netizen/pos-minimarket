@@ -79,6 +79,20 @@ function calcularImpuestos(detalles: any[], porcentajeIva: number = 15) {
   return { subtotal0, subtotalIva, iva, total, porcentajeIva }
 }
 
+// ─── CÓDIGO SRI POR TARIFA (Tabla 17, ficha técnica) ─────
+// ⚠️ El código '8' para la tarifa del 8% (turismo) no está
+// verificado con una fuente oficial — confírmalo con tu
+// contador antes de usarlo en producción con un cliente real.
+const CODIGO_PORCENTAJE_IVA: Record<number, string> = {
+  0: '0',
+  5: '5',
+  8: '8',
+  15: '4',
+}
+function codigoPorcentajeIva(porcentaje: number): string {
+  return CODIGO_PORCENTAJE_IVA[porcentaje] ?? '4'
+}
+
 // ─── GENERAR XML ─────────────────────────────────────────
 function generarXML(params: {
   claveAcceso: string
@@ -88,9 +102,10 @@ function generarXML(params: {
   detalles: any[]
   fecha: Date
   ambiente: '1' | '2'
+  porcentajeIva: number
 }): string {
-  const { claveAcceso, numeroComprobante, credenciales, cliente, detalles, fecha, ambiente } = params
-  const impuestos = calcularImpuestos(detalles)
+  const { claveAcceso, numeroComprobante, credenciales, cliente, detalles, fecha, ambiente, porcentajeIva } = params
+  const impuestos = calcularImpuestos(detalles, porcentajeIva)
 
   const fechaStr = `${String(fecha.getDate()).padStart(2, '0')}/${String(fecha.getMonth() + 1).padStart(2, '0')}/${fecha.getFullYear()}`
   const ambienteLabel = ambiente === '1' ? 'PRUEBAS' : 'PRODUCCION'
@@ -102,7 +117,7 @@ function generarXML(params: {
       : d.precio_unitario
     const subtotalSinIva = +(precioSinIva * d.cantidad).toFixed(2)
     const valorIva = d.tiene_iva ? +(subtotalSinIva * (impuestos.porcentajeIva / 100)).toFixed(2) : 0
-    const codigoIva = d.tiene_iva ? '2' : '0'
+    const codigoIva = d.tiene_iva ? codigoPorcentajeIva(impuestos.porcentajeIva) : '0'
     const tarifaIva = d.tiene_iva ? impuestos.porcentajeIva : 0
 
     return `
@@ -135,7 +150,7 @@ function generarXML(params: {
             </totalImpuesto>
             <totalImpuesto>
                 <codigo>2</codigo>
-                <codigoPorcentaje>2</codigoPorcentaje>
+                <codigoPorcentaje>${codigoPorcentajeIva(impuestos.porcentajeIva)}</codigoPorcentaje>
                 <baseImponible>${impuestos.subtotalIva.toFixed(2)}</baseImponible>
                 <valor>${impuestos.iva.toFixed(2)}</valor>
             </totalImpuesto>`
@@ -254,7 +269,8 @@ export async function POST(request: NextRequest) {
     })
 
     // 6. Calcular totales
-    const impuestos = calcularImpuestos(detalles)
+    const porcentajeIva = cred.es_negocio_turistico && cred.iva_reducido_activo ? 8 : 15
+    const impuestos = calcularImpuestos(detalles, porcentajeIva)
 
     // 7. Generar XML
     const xml = generarXML({
@@ -265,6 +281,7 @@ export async function POST(request: NextRequest) {
       detalles,
       fecha,
       ambiente,
+      porcentajeIva,
     })
 
     // 8. Guardar comprobante en BD

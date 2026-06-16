@@ -184,6 +184,7 @@ function SeccionCredenciales({ establecimientoId }: { establecimientoId: number 
     codigo_establecimiento: '001', codigo_punto_emision: '001',
     tipo_emision: 'pruebas', obligado_contabilidad: false,
     regimen: 'general', contribuyente_especial: '',
+    es_negocio_turistico: false, iva_reducido_activo: false,
   })
 
   const cargar = useCallback(async () => {
@@ -208,6 +209,8 @@ function SeccionCredenciales({ establecimientoId }: { establecimientoId: number 
         obligado_contabilidad: data.obligado_contabilidad ?? false,
         regimen: data.regimen ?? 'general',
         contribuyente_especial: data.contribuyente_especial ?? '',
+        es_negocio_turistico: data.es_negocio_turistico ?? false,
+        iva_reducido_activo: data.iva_reducido_activo ?? false,
       })
     }
     setLoading(false)
@@ -398,6 +401,35 @@ function SeccionCredenciales({ establecimientoId }: { establecimientoId: number 
         <button onClick={guardar} disabled={guardando}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
           {guardando ? 'Guardando…' : '✅ Guardar datos del emisor'}
+        </button>
+      </div>
+
+      {/* ── IVA reducido turismo ── */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3">
+        <h2 className="text-sm font-semibold text-gray-900">🏖️ Tarifa de IVA Turístico (8%)</h2>
+        <p className="text-xs text-gray-500">
+          Solo aplica a establecimientos registrados en el Catastro Turístico del Ministerio de Turismo,
+          y únicamente durante los feriados que el Gobierno decrete expresamente. Si no estás seguro, deja esto apagado.
+        </p>
+        <div className="flex items-center gap-3">
+          <input type="checkbox" id="es-turistico" checked={form.es_negocio_turistico}
+            onChange={e => setForm(f => ({ ...f, es_negocio_turistico: e.target.checked, iva_reducido_activo: e.target.checked ? f.iva_reducido_activo : false }))}
+            className="rounded border-gray-300" />
+          <label htmlFor="es-turistico" className="text-sm text-gray-700">Mi negocio está registrado en el Catastro Turístico (LUAF vigente)</label>
+        </div>
+        {form.es_negocio_turistico && (
+          <div className="flex items-center gap-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5">
+            <input type="checkbox" id="iva-reducido" checked={form.iva_reducido_activo}
+              onChange={e => setForm(f => ({ ...f, iva_reducido_activo: e.target.checked }))}
+              className="rounded border-gray-300" />
+            <label htmlFor="iva-reducido" className="text-sm text-amber-700 flex-1">
+              🎉 Activar tarifa reducida (8%) ahora — feriado turístico vigente
+            </label>
+          </div>
+        )}
+        <button onClick={guardar} disabled={guardando}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+          {guardando ? 'Guardando…' : '✅ Guardar configuración de IVA'}
         </button>
       </div>
 
