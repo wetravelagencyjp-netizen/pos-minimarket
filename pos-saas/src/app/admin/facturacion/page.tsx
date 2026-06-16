@@ -172,6 +172,7 @@ function SeccionComprobantes({ establecimientoId }: { establecimientoId: number 
 function SeccionCredenciales({ establecimientoId }: { establecimientoId: number }) {
   const [credenciales, setCredenciales] = useState<any>(null)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [modoMultivendedor, setModoMultivendedor] = useState(true)
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [probando, setProbando] = useState(false)
@@ -192,8 +193,9 @@ function SeccionCredenciales({ establecimientoId }: { establecimientoId: number 
     const { data } = await supabase.from('sri_credenciales')
       .select('*').eq('establecimiento_id', establecimientoId).maybeSingle()
     const { data: estab } = await supabase.from('establecimientos')
-      .select('logo_url').eq('id', establecimientoId).maybeSingle()
+      .select('logo_url, modo_multivendedor').eq('id', establecimientoId).maybeSingle()
     setLogoUrl(estab?.logo_url ?? null)
+    setModoMultivendedor(estab?.modo_multivendedor ?? true)
     if (data) {
       setCredenciales(data)
       setArchivoNombre(data.certificado_nombre ?? '')
@@ -217,6 +219,18 @@ function SeccionCredenciales({ establecimientoId }: { establecimientoId: number 
   }, [establecimientoId])
 
   useEffect(() => { cargar() }, [cargar])
+
+  // ── Modo multivendedor ──────────────────────────────────
+  const guardarModoMultivendedor = async (valor: boolean) => {
+    setModoMultivendedor(valor)
+    const { error } = await supabase.from('establecimientos').update({ modo_multivendedor: valor }).eq('id', establecimientoId)
+    if (error) {
+      setModoMultivendedor(!valor)
+      setMensaje({ texto: `❌ Error: ${error.message}`, tipo: 'error' })
+    } else {
+      setMensaje({ texto: valor ? '✅ Modo multivendedor activado' : '✅ Modo multivendedor desactivado', tipo: 'ok' })
+    }
+  }
 
   // ── Subir archivo .p12 ──────────────────────────────────
   const handleP12 = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -402,6 +416,23 @@ function SeccionCredenciales({ establecimientoId }: { establecimientoId: number 
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
           {guardando ? 'Guardando…' : '✅ Guardar datos del emisor'}
         </button>
+      </div>
+
+      {/* ── Modo de operación ── */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3">
+        <h2 className="text-sm font-semibold text-gray-900">👥 Modo de Operación</h2>
+        <p className="text-xs text-gray-500">
+          Activa esto si en tu local varias personas tienen productos propios que se venden juntos
+          (por ejemplo, varias emprendedoras compartiendo el mismo espacio). Si tu negocio tiene un
+          solo dueño, déjalo apagado para simplificar el catálogo, el carrito y los recibos.
+        </p>
+        <div className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3">
+          <span className="text-sm text-gray-700">Modo Multivendedor (múltiples dueños en el mismo local)</span>
+          <button type="button" onClick={() => guardarModoMultivendedor(!modoMultivendedor)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${modoMultivendedor ? 'bg-blue-600' : 'bg-gray-300'}`}>
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${modoMultivendedor ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
       </div>
 
       {/* ── IVA reducido turismo ── */}
