@@ -56,11 +56,12 @@ export default function AdminPage() {
 
 // ─── PRODUCTOS (con importador Excel) ──────────────────────
 function SeccionProductos({ establecimientoId }: { establecimientoId: number }) {
+  const { usuario } = useAuth()
   const [productos, setProductos] = useState<any[]>([])
   const [vendedores, setVendedores] = useState<any[]>([])
   const [categorias, setCategorias] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ nombre: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '' })
+  const [form, setForm] = useState({ nombre: '', precio_costo: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '' })
   const [editando, setEditando] = useState<number | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [mostrarImportador, setMostrarImportador] = useState(false)
@@ -80,7 +81,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
 
   useEffect(() => { cargar() }, [cargar])
 
-  const limpiarForm = () => setForm({ nombre: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '' })
+  const limpiarForm = () => setForm({ nombre: '', precio_costo: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '' })
 
   const guardar = async () => {
     if (!form.nombre || !form.precio_venta) return
@@ -88,6 +89,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
     const datos = {
       establecimiento_id: establecimientoId,
       nombre: form.nombre,
+      precio_costo: form.precio_costo ? parseFloat(form.precio_costo) : null,
       precio_venta: parseFloat(form.precio_venta),
       stock_actual: parseInt(form.stock_actual) || 0,
       vendedor_id: form.vendedor_id ? parseInt(form.vendedor_id) : null,
@@ -107,7 +109,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
 
   const editar = (p: any) => {
     setEditando(p.id)
-    setForm({ nombre: p.nombre, precio_venta: String(p.precio_venta), stock_actual: String(p.stock_actual), vendedor_id: String(p.vendedor_id ?? ''), categoria_id: String(p.categoria_id ?? ''), codigo_barras: p.codigo_barras ?? '' })
+    setForm({ nombre: p.nombre, precio_costo: p.precio_costo != null ? String(p.precio_costo) : '', precio_venta: String(p.precio_venta), stock_actual: String(p.stock_actual), vendedor_id: String(p.vendedor_id ?? ''), categoria_id: String(p.categoria_id ?? ''), codigo_barras: p.codigo_barras ?? '' })
   }
 
   const eliminar = async (id: number) => {
@@ -116,20 +118,48 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
     cargar()
   }
 
+  const exportarInventario = async () => {
+    const XLSX = await import('xlsx')
+    const filas = productos.map(p => ({
+      'Código de Barra': p.codigo_barras || '',
+      'Nombre del Producto': p.nombre,
+      'Categoría': p.categoria?.nombre ?? '',
+      'Vendedor': p.vendedor?.nombre ?? '',
+      'Precio de Costo': p.precio_costo ?? '',
+      'Precio de Venta': p.precio_venta,
+      'Stock Actual': p.stock_actual,
+    }))
+    const ws = XLSX.utils.json_to_sheet(filas)
+    ws['!cols'] = [{ wch: 18 }, { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 12 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventario')
+    const nombreTienda = (usuario?.establecimiento?.nombre ?? 'tienda').toLowerCase().replace(/[^a-z0-9]+/g, '_')
+    const fecha = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `inventario_${nombreTienda}_${fecha}.xlsx`)
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-gray-200 bg-white p-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">{editando ? '✏️ Editar producto' : '➕ Nuevo producto'}</h2>
-          <button onClick={() => setMostrarImportador(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 transition-colors">
-            📊 Importar desde Excel
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={exportarInventario}
+              className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors">
+              📥 Exportar Inventario
+            </button>
+            <button onClick={() => setMostrarImportador(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 transition-colors">
+              📊 Importar desde Excel
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <input placeholder="Nombre del producto *" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
           <input placeholder="Código de barras" value={form.codigo_barras} onChange={e => setForm(f => ({ ...f, codigo_barras: e.target.value }))}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+          <input placeholder="Precio de costo" type="number" value={form.precio_costo} onChange={e => setForm(f => ({ ...f, precio_costo: e.target.value }))}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
           <input placeholder="Precio de venta *" type="number" value={form.precio_venta} onChange={e => setForm(f => ({ ...f, precio_venta: e.target.value }))}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
