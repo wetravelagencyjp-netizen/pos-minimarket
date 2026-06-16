@@ -349,6 +349,37 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const { grupos, total, totalItems, metodoPago, setMetodoPago, agregar, cambiarCantidad, eliminar, vaciar, procesarVenta,
     descuentosItem, setDescuentoItem, descuentoGlobal, setDescuentoGlobal, subtotalSinDescuento, descuentoTotalAplicado } = useCarrito(establecimientoId)
 
+  const [cajaAbierta, setCajaAbierta]           = useState<boolean | null>(null)
+  const [montoInicialCaja, setMontoInicialCaja] = useState('')
+  const [abriendoCaja, setAbriendoCaja]         = useState(false)
+
+  const verificarCaja = useCallback(async () => {
+    const { data } = await supabase
+      .from('cajas')
+      .select('id')
+      .eq('establecimiento_id', establecimientoId)
+      .eq('estado', 'abierta')
+      .limit(1)
+      .maybeSingle()
+    setCajaAbierta(!!data)
+  }, [establecimientoId])
+
+  useEffect(() => { verificarCaja() }, [verificarCaja])
+
+  const abrirCajaDesdePOS = async () => {
+    if (!montoInicialCaja) return
+    setAbriendoCaja(true)
+    await supabase.from('cajas').insert({
+      establecimiento_id: establecimientoId,
+      usuario_id: usuario?.id,
+      monto_inicial: parseFloat(montoInicialCaja),
+      estado: 'abierta',
+    })
+    setMontoInicialCaja('')
+    setAbriendoCaja(false)
+    verificarCaja()
+  }
+
   const mostrarToast = useCallback((t: Toast) => setToast(t), [])
   const focusSearch  = useCallback(() => setTimeout(() => searchRef.current?.focus(), 100), [])
 
@@ -536,7 +567,13 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
           <p className="text-xs text-gray-400">{vendedores.length} vendedores</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-medium text-green-700">Abierta</span>
+          {cajaAbierta === null ? (
+            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-500">Verificando…</span>
+          ) : cajaAbierta ? (
+            <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-medium text-green-700">Abierta</span>
+          ) : (
+            <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-[11px] font-medium text-red-700">Cerrada</span>
+          )}
           {usuario?.rol !== 'cajero' && <button onClick={() => router.push('/dashboard')} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-500 hover:bg-gray-50">📊 Dashboard</button>}
           <button onClick={() => router.push('/caja')} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-500 hover:bg-gray-50">🏦 Caja</button>
           {usuario?.rol !== 'cajero' && <button onClick={() => router.push('/admin')} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-500 hover:bg-gray-50">⚙️ Admin</button>}
@@ -545,6 +582,25 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
           <button onClick={logout} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-700">Salir</button>
         </div>
       </header>
+      {cajaAbierta === false && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl mx-4">
+            <div className="text-center mb-5">
+              <div className="text-4xl mb-2">🔒</div>
+              <h2 className="text-base font-semibold text-gray-900">Caja cerrada</h2>
+              <p className="text-xs text-gray-400 mt-1">Ingresa el fondo de caja inicial para empezar a cobrar</p>
+            </div>
+            <label className="text-xs font-medium text-gray-600 block mb-1">Fondo de caja inicial</label>
+            <input type="number" placeholder="0.00" value={montoInicialCaja}
+              onChange={e => setMontoInicialCaja(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-3 text-lg text-center outline-none focus:border-blue-400 mb-3" />
+            <button onClick={abrirCajaDesdePOS} disabled={abriendoCaja || !montoInicialCaja}
+              className="w-full rounded-xl bg-green-600 py-3 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50">
+              {abriendoCaja ? 'Abriendo…' : '✅ Abrir caja y empezar a vender'}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="grid flex-1 overflow-hidden" style={{ gridTemplateColumns: '1fr 360px' }}>
         <section className="flex flex-col overflow-hidden">
           <div className="border-b border-gray-100 bg-white px-4 py-3">
