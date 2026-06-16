@@ -344,6 +344,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const searchRef                       = useRef<HTMLInputElement>(null)
   const { usuario, logout }             = useAuth()
   const router                          = useRouter()
+  const modoMultivendedor               = (usuario?.establecimiento as any)?.modo_multivendedor ?? true
 
   const { productos, categorias, vendedores, loading, error, buscar, recargar } = useInventario(establecimientoId)
   const { grupos, total, totalItems, metodoPago, setMetodoPago, agregar, cambiarCantidad, eliminar, vaciar, procesarVenta,
@@ -626,7 +627,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
             {!loading && !error && productos.length === 0 && <div className="flex h-full flex-col items-center justify-center gap-2 text-gray-400"><span className="text-3xl">📭</span><p className="text-sm">Sin productos</p></div>}
             {!loading && !error && productos.length > 0 && (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                {productos.map(p => <ProductCard key={p.id} producto={p} onAgregar={handleAgregar} />)}
+                {productos.map(p => <ProductCard key={p.id} producto={p} onAgregar={handleAgregar} modoMultivendedor={modoMultivendedor} />)}
               </div>
             )}
           </div>
@@ -638,7 +639,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
           descuentosItem={descuentosItem} onDescuentoItem={setDescuentoItem}
           descuentoGlobal={descuentoGlobal} onDescuentoGlobal={setDescuentoGlobal}
           subtotalSinDescuento={subtotalSinDescuento} descuentoTotalAplicado={descuentoTotalAplicado}
-          onCotizar={generarCotizacion} />
+          onCotizar={generarCotizacion} modoMultivendedor={modoMultivendedor} />
       </div>
       {modalCliente && <ModalCliente total={total} onConfirmar={cobrarConFactura} onCancelar={() => setModalCliente(false)} establecimientoId={establecimientoId} />}
       {toast && <ToastSRI toast={toast} onClose={() => setToast(null)} />}

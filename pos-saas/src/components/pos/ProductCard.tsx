@@ -7,7 +7,7 @@ const VC: Record<number, { dot: string; label: string }> = {
   3: { dot: 'bg-amber-500', label: 'text-amber-700' },
 }
 
-export function ProductCard({ producto, onAgregar }: { producto: Producto; onAgregar: (p: Producto) => void }) {
+export function ProductCard({ producto, onAgregar, modoMultivendedor = true }: { producto: Producto; onAgregar: (p: Producto) => void; modoMultivendedor?: boolean }) {
   const vc = VC[producto.vendedor_id] ?? { dot: 'bg-gray-400', label: 'text-gray-500' }
   const sinStock = producto.stock_actual === 0
   const stockBajo = producto.stock_actual <= producto.stock_minimo && !sinStock
@@ -22,10 +22,12 @@ export function ProductCard({ producto, onAgregar }: { producto: Producto; onAgr
     >
       <span className="text-2xl leading-none">{producto.categoria?.icono ?? '📦'}</span>
       <span className="line-clamp-2 text-xs font-medium leading-tight text-gray-900">{producto.nombre}</span>
-      <span className={`flex items-center gap-1 text-[10px] ${vc.label}`}>
-        <span className={`inline-block h-1.5 w-1.5 rounded-full ${vc.dot}`} />
-        {producto.vendedor?.nombre ?? `Vendedor #${producto.vendedor_id}`}
-      </span>
+      {modoMultivendedor && (
+        <span className={`flex items-center gap-1 text-[10px] ${vc.label}`}>
+          <span className={`inline-block h-1.5 w-1.5 rounded-full ${vc.dot}`} />
+          {producto.vendedor?.nombre ?? `Vendedor #${producto.vendedor_id}`}
+        </span>
+      )}
       <div className="mt-auto flex items-center justify-between">
         <span className="text-sm font-semibold text-gray-900">${producto.precio_venta.toFixed(2)}</span>
         <span className={`text-[10px] ${stockBajo ? 'font-medium text-orange-500' : 'text-gray-400'}`}>
