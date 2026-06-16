@@ -489,7 +489,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
         total,
         detalles,
       })
-      if (error) throw error
+      if (error) throw new Error(error.message)
 
       imprimirCotizacion(grupos, subtotalSinDescuento, descuentoTotalAplicado, total, numero,
         usuario?.establecimiento?.nombre ?? 'POS Sistema', usuario?.establecimiento?.logo_url ?? null)
