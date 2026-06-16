@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-const fmt = (n: number) => `$${n.toFixed(2)}`
+const fmt = (n: number) => n < 0 ? `-$${Math.abs(n).toFixed(2)}` : `$${n.toFixed(2)}`
 const hoyStr = () => new Date().toISOString().slice(0, 10)
 
 const TIPOS_GASTO_LABEL: Record<string, string> = {
