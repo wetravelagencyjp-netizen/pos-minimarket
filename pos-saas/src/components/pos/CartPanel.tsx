@@ -135,7 +135,7 @@ export function CartPanel({
         {!empty && <button onClick={onVaciar} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Vaciar</button>}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {empty ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-gray-400">
             <span className="text-3xl">🛒</span><p className="text-sm">El carrito está vacío</p>
