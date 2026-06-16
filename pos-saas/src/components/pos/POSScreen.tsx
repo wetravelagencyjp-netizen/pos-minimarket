@@ -7,7 +7,7 @@ import { useInventario, useCarrito } from '@/hooks'
 import { ProductCard } from './ProductCard'
 import { CartPanel } from './CartPanel'
 import { diasRestantes } from '@/types'
-import type { Producto } from '@/types'
+import type { Producto, GrupoVendedor, MetodoPago } from '@/types'
 
 type ToastTipo = 'ok' | 'error' | 'factura'
 type Toast = { mensaje: string; tipo: ToastTipo; claveAcceso?: string; whatsapp?: { telefono: string; mensaje: string } }
