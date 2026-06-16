@@ -37,6 +37,7 @@ interface Props {
   descuentoTotalAplicado: number
   onCotizar: () => void
   modoMultivendedor?: boolean
+  onCerrarMobil?: () => void
 }
 
 function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: MetodoPago, comprobante: string, establecimiento: string, logoUrl?: string | null, efectivoRecibido?: number, vuelto?: number, modoMultivendedor: boolean = true) {
@@ -116,6 +117,7 @@ export function CartPanel({
   descuentosItem, onDescuentoItem, descuentoGlobal, onDescuentoGlobal,
   subtotalSinDescuento, descuentoTotalAplicado, onCotizar,
   modoMultivendedor = true,
+  onCerrarMobil,
 }: Props) {
   const empty = grupos.length === 0
   const { usuario } = useAuth()
@@ -158,9 +160,14 @@ export function CartPanel({
   }, [grupos, total, metodoPago, onCobrar, usuario, tipoDoc, montoRecibido, vuelto, enviarWhatsApp, telefonoWhatsApp])
 
   return (
-    <aside className="flex h-full flex-col overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-sm">
+    <aside className="flex h-full w-full flex-col overflow-y-auto bg-white md:rounded-2xl md:border md:border-slate-100 md:shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3.5">
         <div className="flex items-center gap-2">
+          {onCerrarMobil && (
+            <button onClick={onCerrarMobil} className="mr-1 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 md:hidden">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+          )}
           <h2 className="text-sm font-medium text-slate-800">Carrito</h2>
           {totalItems > 0 && <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[11px] font-medium text-white">{totalItems}</span>}
         </div>

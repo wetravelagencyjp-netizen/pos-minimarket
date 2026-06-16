@@ -134,7 +134,7 @@ function ToastSRI({ toast, onClose }: { toast: Toast; onClose: () => void }) {
 
   if (toast.tipo === 'factura' && toast.claveAcceso) {
     return (
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[420px] max-w-[95vw]">
+      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[420px] max-w-[95vw] md:bottom-6">
         <div className="rounded-2xl bg-slate-900 px-5 py-4 shadow-2xl ring-1 ring-white/10">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
@@ -172,7 +172,7 @@ function ToastSRI({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   }
 
   return (
-    <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-50 rounded-xl px-4 py-2.5 text-sm font-medium shadow-lg
+    <div className={`fixed bottom-20 left-1/2 -translate-x-1/2 z-50 rounded-xl px-4 py-2.5 text-sm font-medium shadow-lg md:bottom-5
       ${toast.tipo === 'ok' ? 'bg-slate-900 text-white' : 'bg-rose-600 text-white'}`}>
       <p>{toast.mensaje}</p>
       {toast.whatsapp && (
@@ -341,6 +341,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const [procesando, setProcesando]     = useState(false)
   const [tipoDoc, setTipoDoc]           = useState<TipoDocumento>('ticket')
   const [modalCliente, setModalCliente] = useState(false)
+  const [carritoMovilAbierto, setCarritoMovilAbierto] = useState(false)
   const [pagoInfo, setPagoInfo]         = useState<{ efectivoRecibido?: number; vuelto?: number; whatsappTelefono?: string }>({})
   const searchRef                       = useRef<HTMLInputElement>(null)
   const { usuario, logout }             = useAuth()
@@ -395,6 +396,10 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const handleSearch    = useCallback((q: string) => { setSearchQ(q); buscar(q, catActiva) }, [buscar, catActiva])
   const handleCategoria = useCallback((id: number | null) => { setCatActiva(id); buscar(searchQ, id) }, [buscar, searchQ])
 
+  const handleCamara = useCallback(() => {
+    mostrarToast({ mensaje: '📷 Próximamente: lector de código de barras con la cámara', tipo: 'ok' })
+  }, [mostrarToast])
+
   const cobrarConTicket = useCallback(async () => {
     setProcesando(true)
     const gruposSnapshot = [...grupos]
@@ -419,6 +424,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
         whatsapp = { telefono: pagoInfo.whatsappTelefono, mensaje: mensajeWA }
       }
       mostrarToast({ mensaje: `✓ ${res.comprobante} procesado`, tipo: 'ok', whatsapp })
+      setCarritoMovilAbierto(false)
       await recargar(); focusSearch()
     } else {
       mostrarToast({ mensaje: `Error: ${res.error}`, tipo: 'error' })
@@ -458,6 +464,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
       if (!sriRes.ok || !sriData.ok) throw new Error(sriData.error ?? 'Error generando factura')
 
       await recargar(); focusSearch()
+      setCarritoMovilAbierto(false)
 
       supabase.from('clientes').upsert({
         establecimiento_id: establecimientoId,
@@ -557,7 +564,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
           )}
         </div>
       )}
-      <header className="flex items-center justify-between border-b border-slate-100 bg-white px-5 py-3">
+      <header className="flex flex-col gap-2 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div>
           {usuario?.establecimiento?.logo_url ? (
             <img
@@ -568,9 +575,9 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
           ) : (
             <h1 className="text-sm font-semibold text-slate-800">Punto de venta</h1>
           )}
-          <p className="text-xs text-slate-400">{vendedores.length} vendedores</p>
+          <p className="hidden text-xs text-slate-400 sm:block">{vendedores.length} vendedores</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {cajaAbierta === null ? (
             <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-500">Verificando…</span>
           ) : cajaAbierta ? (
@@ -578,11 +585,11 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
           ) : (
             <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-medium text-rose-700">Cerrada</span>
           )}
-          {usuario?.rol !== 'cajero' && <button onClick={() => router.push('/dashboard')} className="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-50">📊 Dashboard</button>}
-          <button onClick={() => router.push('/caja')} className="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-50">🏦 Caja</button>
-          {usuario?.rol !== 'cajero' && <button onClick={() => router.push('/admin')} className="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-50">⚙️ Admin</button>}
-          {(usuario as any)?.es_superadmin && <button onClick={() => router.push('/superadmin')} className="rounded-xl border border-yellow-300 bg-yellow-50 px-2.5 py-1.5 text-xs text-yellow-700 hover:bg-yellow-100">⚡ Super</button>}
-          <span className="text-xs text-slate-500">{usuario?.nombre ?? 'Cajero'}</span>
+          {usuario?.rol !== 'cajero' && <button onClick={() => router.push('/dashboard')} className="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-50">📊 <span className="hidden sm:inline">Dashboard</span></button>}
+          <button onClick={() => router.push('/caja')} className="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-50">🏦 <span className="hidden sm:inline">Caja</span></button>
+          {usuario?.rol !== 'cajero' && <button onClick={() => router.push('/admin')} className="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-50">⚙️ <span className="hidden sm:inline">Admin</span></button>}
+          {(usuario as any)?.es_superadmin && <button onClick={() => router.push('/superadmin')} className="rounded-xl border border-yellow-300 bg-yellow-50 px-2.5 py-1.5 text-xs text-yellow-700 hover:bg-yellow-100">⚡ <span className="hidden sm:inline">Super</span></button>}
+          <span className="hidden text-xs text-slate-500 sm:inline">{usuario?.nombre ?? 'Cajero'}</span>
           <button onClick={logout} className="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-500 hover:text-slate-700">Salir</button>
         </div>
       </header>
@@ -605,14 +612,23 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
           </div>
         </div>
       )}
-      <div className="grid flex-1 gap-3 overflow-hidden bg-slate-50 p-3" style={{ gridTemplateColumns: '1fr 380px' }}>
-        <section className="flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+      <div className="grid flex-1 gap-0 overflow-hidden bg-slate-50 p-0 grid-cols-1 md:gap-3 md:p-3 md:grid-cols-[1fr_380px]">
+        <section className="flex flex-col overflow-hidden rounded-none border-0 shadow-none bg-white md:rounded-2xl md:border md:border-slate-100 md:shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input ref={searchRef} type="text" value={searchQ} onChange={e => handleSearch(e.target.value)}
-                placeholder="Buscar por nombre o código de barras…"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all focus:border-indigo-500 focus:bg-white" />
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input ref={searchRef} type="text" value={searchQ} onChange={e => handleSearch(e.target.value)}
+                  placeholder="Buscar por nombre o código de barras…"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all focus:border-indigo-500 focus:bg-white" />
+              </div>
+              <button type="button" onClick={handleCamara}
+                className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50/50 text-slate-500 transition-colors hover:bg-slate-100 hover:text-indigo-600">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z"/>
+                  <circle cx="12" cy="13.5" r="3.5"/>
+                </svg>
+              </button>
             </div>
           </div>
           <div className="flex gap-2 overflow-x-auto border-b border-slate-100 px-4 py-2">
@@ -635,7 +651,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
               ))}
             </div>
           )}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto p-4 pb-24 md:pb-4">
             {loading && <div className="flex h-full items-center justify-center"><div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>}
             {error && <div className="flex h-full flex-col items-center justify-center gap-2"><p className="text-sm text-rose-500">{error}</p><button onClick={recargar} className="text-xs text-indigo-600 underline">Reintentar</button></div>}
             {!loading && !error && productosFiltrados.length === 0 && <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400"><span className="text-3xl">📭</span><p className="text-sm">Sin productos</p></div>}
@@ -646,15 +662,31 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
             )}
           </div>
         </section>
-        <CartPanel grupos={grupos} total={total} totalItems={totalItems} metodoPago={metodoPago}
-          procesando={procesando} tipoDoc={tipoDoc} onTipoDoc={setTipoDoc}
-          onCambiarCantidad={cambiarCantidad} onEliminar={eliminar}
-          onVaciar={vaciar} onMetodoPago={setMetodoPago} onCobrar={handleCobrar}
-          descuentosItem={descuentosItem} onDescuentoItem={setDescuentoItem}
-          descuentoGlobal={descuentoGlobal} onDescuentoGlobal={setDescuentoGlobal}
-          subtotalSinDescuento={subtotalSinDescuento} descuentoTotalAplicado={descuentoTotalAplicado}
-          onCotizar={generarCotizacion} modoMultivendedor={modoMultivendedor} />
+        <div className={`fixed inset-0 z-40 bg-slate-50 md:static md:z-auto md:bg-transparent ${carritoMovilAbierto ? 'flex' : 'hidden'} md:flex`}>
+          <CartPanel grupos={grupos} total={total} totalItems={totalItems} metodoPago={metodoPago}
+            procesando={procesando} tipoDoc={tipoDoc} onTipoDoc={setTipoDoc}
+            onCambiarCantidad={cambiarCantidad} onEliminar={eliminar}
+            onVaciar={vaciar} onMetodoPago={setMetodoPago} onCobrar={handleCobrar}
+            descuentosItem={descuentosItem} onDescuentoItem={setDescuentoItem}
+            descuentoGlobal={descuentoGlobal} onDescuentoGlobal={setDescuentoGlobal}
+            subtotalSinDescuento={subtotalSinDescuento} descuentoTotalAplicado={descuentoTotalAplicado}
+            onCotizar={generarCotizacion} modoMultivendedor={modoMultivendedor}
+            onCerrarMobil={() => setCarritoMovilAbierto(false)} />
+        </div>
       </div>
+      {totalItems > 0 && !carritoMovilAbierto && (
+        <button onClick={() => setCarritoMovilAbierto(true)}
+          className="fixed bottom-4 left-4 right-4 z-30 flex items-center justify-between rounded-2xl bg-emerald-500 px-5 py-4 text-white shadow-lg transition-transform active:scale-[0.98] md:hidden">
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/>
+              <path d="M2.5 3h2.2l2.4 12.2a2 2 0 002 1.6h8.3a2 2 0 002-1.6L21 8H6.5"/>
+            </svg>
+            Ver Carrito ({totalItems} {totalItems === 1 ? 'ítem' : 'ítems'})
+          </span>
+          <span className="text-sm font-bold">${total.toFixed(2)}</span>
+        </button>
+      )}
       {modalCliente && <ModalCliente total={total} onConfirmar={cobrarConFactura} onCancelar={() => setModalCliente(false)} establecimientoId={establecimientoId} />}
       {toast && <ToastSRI toast={toast} onClose={() => setToast(null)} />}
     </div>
