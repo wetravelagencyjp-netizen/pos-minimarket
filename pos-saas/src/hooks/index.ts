@@ -92,7 +92,7 @@ export function useCarrito(establecimientoId: number) {
   const grupos = useMemo<GrupoVendedor[]>(() => {
     const map: Record<number, GrupoVendedor> = {}
     Object.values(items).forEach(item => {
-      const v = item.producto.vendedor; if (!v) return
+      const v = item.producto.vendedor ?? ({ id: 0, nombre: 'Sin vendedor' } as Vendedor)
       if (!map[v.id]) map[v.id] = { vendedor: v, items: [], subtotal: 0 }
       map[v.id].items.push(item)
       map[v.id].subtotal = +(map[v.id].subtotal + item.subtotal).toFixed(2)

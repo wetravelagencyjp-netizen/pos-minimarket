@@ -1,5 +1,5 @@
 'use client'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import type { GrupoVendedor, MetodoPago } from '@/types'
 
@@ -29,7 +29,7 @@ interface Props {
   onCobrar: () => void
 }
 
-function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: MetodoPago, comprobante: string, establecimiento: string, logoUrl?: string | null) {
+function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: MetodoPago, comprobante: string, establecimiento: string, logoUrl?: string | null, efectivoRecibido?: number, vuelto?: number) {
   const fecha = new Date().toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
   const metodoLabel: Record<MetodoPago, string> = {
     efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', mixto: 'Mixto'
@@ -74,6 +74,10 @@ function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: Meto
   ${lineasGrupos}
   <div class="linea"></div>
   <div class="total"><span>TOTAL</span><span>${fmt(total)}</span></div>
+  ${metodoPago === 'efectivo' && efectivoRecibido != null && vuelto != null ? `
+  <div class="info"><span>Efectivo Recibido:</span><span>${fmt(efectivoRecibido)}</span></div>
+  <div class="info"><span>Vuelto / Cambio:</span><span>${fmt(vuelto)}</span></div>
+  ` : ''}
   <div class="metodo">Pago: ${metodoLabel[metodoPago]}</div>
   <div class="linea"></div>
   <div class="pie">¡Gracias por su compra!<br>Vuelva pronto 😊</div>
@@ -94,6 +98,10 @@ export function CartPanel({
 }: Props) {
   const empty = grupos.length === 0
   const { usuario } = useAuth()
+  const [efectivoRecibido, setEfectivoRecibido] = useState('')
+  const montoRecibido = parseFloat(efectivoRecibido) || 0
+  const vuelto = +(montoRecibido - total).toFixed(2)
+  const faltaEfectivo = metodoPago === 'efectivo' && montoRecibido < total
 
   const handleCobrar = useCallback(async () => {
     const gruposSnapshot = [...grupos]
@@ -101,14 +109,17 @@ export function CartPanel({
     const metodoSnapshot = metodoPago
     const nombreEstab = usuario?.establecimiento?.nombre ?? 'POS Sistema'
     const logoUrl = usuario?.establecimiento?.logo_url ?? null
+    const efectivoSnapshot = montoRecibido
+    const vueltoSnapshot = vuelto
     await onCobrar()
     if (tipoDoc === 'ticket') {
       setTimeout(() => {
         const comprobante = `001-001-${String(Date.now()).slice(-7)}`
-        imprimirTicket(gruposSnapshot, totalSnapshot, metodoSnapshot, comprobante, nombreEstab, logoUrl)
+        imprimirTicket(gruposSnapshot, totalSnapshot, metodoSnapshot, comprobante, nombreEstab, logoUrl, efectivoSnapshot, vueltoSnapshot)
       }, 500)
     }
-  }, [grupos, total, metodoPago, onCobrar, usuario, tipoDoc])
+    setEfectivoRecibido('')
+  }, [grupos, total, metodoPago, onCobrar, usuario, tipoDoc, montoRecibido, vuelto])
 
   return (
     <aside className="flex h-full flex-col border-l border-gray-100 bg-white">
@@ -186,9 +197,30 @@ export function CartPanel({
             </button>
           ))}
         </div>
-        <button onClick={handleCobrar} disabled={empty || procesando}
+        {metodoPago === 'efectivo' && !empty && (
+          <div className="space-y-1.5 rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <label className="text-xs font-medium text-gray-600">Paga con:</label>
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={efectivoRecibido}
+              onChange={e => setEfectivoRecibido(e.target.value)}
+              placeholder="0.00"
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400"
+            />
+            <div className="flex items-baseline justify-between pt-1">
+              <span className="text-xs font-medium text-gray-500">{vuelto < 0 ? 'Falta' : 'Vuelto'}</span>
+              <span className={`text-2xl font-bold ${vuelto < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                {fmt(Math.abs(vuelto))}
+              </span>
+            </div>
+          </div>
+        )}
+        <button onClick={handleCobrar} disabled={empty || procesando || faltaEfectivo}
           className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all
-            ${empty || procesando ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+            ${empty || procesando || faltaEfectivo ? 'cursor-not-allowed bg-gray-100 text-gray-400'
               : tipoDoc === 'factura' ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98]'
               : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'}`}>
           {procesando
