@@ -35,14 +35,15 @@ interface Props {
   subtotalSinDescuento: number
   descuentoTotalAplicado: number
   onCotizar: () => void
+  modoMultivendedor?: boolean
 }
 
-function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: MetodoPago, comprobante: string, establecimiento: string, logoUrl?: string | null, efectivoRecibido?: number, vuelto?: number) {
+function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: MetodoPago, comprobante: string, establecimiento: string, logoUrl?: string | null, efectivoRecibido?: number, vuelto?: number, modoMultivendedor: boolean = true) {
   const fecha = new Date().toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
   const metodoLabel: Record<MetodoPago, string> = {
     efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', mixto: 'Mixto'
   }
-  const lineasGrupos = grupos.map(({ vendedor, items, subtotal }) => `
+  const lineasGrupos = modoMultivendedor ? grupos.map(({ vendedor, items, subtotal }) => `
     <div class="seccion">
       <div class="vendedor">— ${vendedor.nombre} —</div>
       ${items.map(({ producto, cantidad, subtotal: sub }) => `
@@ -56,7 +57,15 @@ function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: Meto
       `).join('')}
       <div class="subtotal"><span>Subtotal ${vendedor.nombre}</span><span>${fmt(subtotal)}</span></div>
     </div>
-  `).join('<div class="separador"></div>')
+  `).join('<div class="separador"></div>') : grupos.flatMap(g => g.items).map(({ producto, cantidad, subtotal: sub }) => `
+    <div class="item">
+      <div class="item-nombre">${producto.nombre}</div>
+      <div class="item-detalle">
+        <span>${cantidad} x ${fmt(producto.precio_venta)}</span>
+        <span>${fmt(sub)}</span>
+      </div>
+    </div>
+  `).join('')
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ticket ${comprobante}</title>
   <style>
@@ -105,6 +114,7 @@ export function CartPanel({
   onCambiarCantidad, onEliminar, onVaciar, onMetodoPago, onCobrar,
   descuentosItem, onDescuentoItem, descuentoGlobal, onDescuentoGlobal,
   subtotalSinDescuento, descuentoTotalAplicado, onCotizar,
+  modoMultivendedor = true,
 }: Props) {
   const empty = grupos.length === 0
   const { usuario } = useAuth()
@@ -134,7 +144,7 @@ export function CartPanel({
     if (tipoDoc === 'ticket') {
       setTimeout(() => {
         const comprobante = `001-001-${String(Date.now()).slice(-7)}`
-        imprimirTicket(gruposSnapshot, totalSnapshot, metodoSnapshot, comprobante, nombreEstab, logoUrl, efectivoSnapshot, vueltoSnapshot)
+        imprimirTicket(gruposSnapshot, totalSnapshot, metodoSnapshot, comprobante, nombreEstab, logoUrl, efectivoSnapshot, vueltoSnapshot, modoMultivendedor)
       }, 500)
     }
     setEfectivoRecibido('')
@@ -160,14 +170,16 @@ export function CartPanel({
           <div className="py-2">
             {grupos.map(({ vendedor, items, subtotal }) => (
               <div key={vendedor.id}>
-                <div className="flex items-center gap-2 px-4 py-1.5">
-                  <div className="h-px flex-1 bg-gray-100" />
-                  <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                    <span className={`h-1.5 w-1.5 rounded-full ${DOT[vendedor.id] ?? 'bg-gray-400'}`} />
-                    {vendedor.nombre}
-                  </span>
-                  <div className="h-px flex-1 bg-gray-100" />
-                </div>
+                {modoMultivendedor && (
+                  <div className="flex items-center gap-2 px-4 py-1.5">
+                    <div className="h-px flex-1 bg-gray-100" />
+                    <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                      <span className={`h-1.5 w-1.5 rounded-full ${DOT[vendedor.id] ?? 'bg-gray-400'}`} />
+                      {vendedor.nombre}
+                    </span>
+                    <div className="h-px flex-1 bg-gray-100" />
+                  </div>
+                )}
                 {items.map((it: any) => {
                   const { producto, cantidad, subtotal: sub, descuento } = it
                   const dcto = descuentosItem[producto.id]
@@ -212,10 +224,12 @@ export function CartPanel({
                     </div>
                   )
                 })}
-                <div className="flex justify-between px-4 pb-1 pt-0.5">
-                  <span className="text-[11px] text-gray-400">Subtotal {vendedor.nombre}</span>
-                  <span className="text-[11px] font-medium text-gray-600">{fmt(subtotal)}</span>
-                </div>
+                {modoMultivendedor && (
+                  <div className="flex justify-between px-4 pb-1 pt-0.5">
+                    <span className="text-[11px] text-gray-400">Subtotal {vendedor.nombre}</span>
+                    <span className="text-[11px] font-medium text-gray-600">{fmt(subtotal)}</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
