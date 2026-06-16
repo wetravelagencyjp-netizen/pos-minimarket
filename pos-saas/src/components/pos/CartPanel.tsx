@@ -26,7 +26,7 @@ interface Props {
   onEliminar: (id: number) => void
   onVaciar: () => void
   onMetodoPago: (m: MetodoPago) => void
-  onCobrar: () => void
+  onCobrar: (efectivoRecibido?: number, vuelto?: number, whatsappTelefono?: string) => void
 }
 
 function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: MetodoPago, comprobante: string, establecimiento: string, logoUrl?: string | null, efectivoRecibido?: number, vuelto?: number) {
@@ -102,6 +102,8 @@ export function CartPanel({
   const montoRecibido = parseFloat(efectivoRecibido) || 0
   const vuelto = +(montoRecibido - total).toFixed(2)
   const faltaEfectivo = metodoPago === 'efectivo' && montoRecibido < total
+  const [enviarWhatsApp, setEnviarWhatsApp] = useState(false)
+  const [telefonoWhatsApp, setTelefonoWhatsApp] = useState('+593 ')
 
   const handleCobrar = useCallback(async () => {
     const gruposSnapshot = [...grupos]
@@ -111,7 +113,8 @@ export function CartPanel({
     const logoUrl = usuario?.establecimiento?.logo_url ?? null
     const efectivoSnapshot = montoRecibido
     const vueltoSnapshot = vuelto
-    await onCobrar()
+    const whatsappSnapshot = tipoDoc === 'ticket' && enviarWhatsApp ? telefonoWhatsApp : undefined
+    await onCobrar(efectivoSnapshot, vueltoSnapshot, whatsappSnapshot)
     if (tipoDoc === 'ticket') {
       setTimeout(() => {
         const comprobante = `001-001-${String(Date.now()).slice(-7)}`
@@ -119,7 +122,8 @@ export function CartPanel({
       }, 500)
     }
     setEfectivoRecibido('')
-  }, [grupos, total, metodoPago, onCobrar, usuario, tipoDoc, montoRecibido, vuelto])
+    setEnviarWhatsApp(false)
+  }, [grupos, total, metodoPago, onCobrar, usuario, tipoDoc, montoRecibido, vuelto, enviarWhatsApp, telefonoWhatsApp])
 
   return (
     <aside className="flex h-full flex-col border-l border-gray-100 bg-white">
@@ -216,6 +220,21 @@ export function CartPanel({
                 {fmt(Math.abs(vuelto))}
               </span>
             </div>
+          </div>
+        )}
+        {tipoDoc === 'ticket' && !empty && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2.5">
+              <input type="checkbox" id="wa-ticket" checked={enviarWhatsApp}
+                onChange={e => setEnviarWhatsApp(e.target.checked)}
+                className="rounded border-gray-300" />
+              <label htmlFor="wa-ticket" className="text-xs text-emerald-700 flex-1">📱 El cliente desea recibir su recibo por WhatsApp</label>
+            </div>
+            {enviarWhatsApp && (
+              <input type="tel" value={telefonoWhatsApp} onChange={e => setTelefonoWhatsApp(e.target.value)}
+                placeholder="+593 99 999 9999"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400" />
+            )}
           </div>
         )}
         <button onClick={handleCobrar} disabled={empty || procesando || faltaEfectivo}

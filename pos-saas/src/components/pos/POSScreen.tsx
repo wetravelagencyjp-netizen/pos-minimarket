@@ -10,8 +10,50 @@ import { diasRestantes } from '@/types'
 import type { Producto } from '@/types'
 
 type ToastTipo = 'ok' | 'error' | 'factura'
-type Toast = { mensaje: string; tipo: ToastTipo; claveAcceso?: string }
+type Toast = { mensaje: string; tipo: ToastTipo; claveAcceso?: string; whatsapp?: { telefono: string; mensaje: string } }
 type TipoDocumento = 'ticket' | 'factura'
+
+function construirMensajeWhatsApp(data: {
+  clienteNombre: string
+  nombreNegocio: string
+  comprobante: string
+  fecha: string
+  grupos: GrupoVendedor[]
+  total: number
+  metodoPago: MetodoPago
+  efectivoRecibido?: number
+  vuelto?: number
+  claveAcceso?: string
+}) {
+  const fmt = (n: number) => `$${n.toFixed(2)}`
+  const metodoLabel: Record<MetodoPago, string> = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', mixto: 'Mixto' }
+  const lineasProductos = data.grupos.flatMap(g =>
+    g.items.map(i => `• ${i.producto.nombre} x${i.cantidad} - ${fmt(i.subtotal)}`)
+  ).join('\n')
+
+  let mensaje = `¡Hola ${data.clienteNombre || ''}! 👋\n\n`
+  mensaje += `Gracias por tu compra en *${data.nombreNegocio}*\n\n`
+  mensaje += `🧾 Comprobante: ${data.comprobante}\n`
+  mensaje += `📅 Fecha: ${data.fecha}\n\n`
+  mensaje += `*Detalle de tu compra:*\n${lineasProductos}\n\n`
+  mensaje += `*TOTAL: ${fmt(data.total)}*\n`
+  mensaje += `Pago: ${metodoLabel[data.metodoPago]}\n`
+  if (data.metodoPago === 'efectivo' && data.efectivoRecibido != null && data.vuelto != null) {
+    mensaje += `Recibido: ${fmt(data.efectivoRecibido)}\n`
+    mensaje += `Vuelto: ${fmt(data.vuelto)}\n`
+  }
+  if (data.claveAcceso) {
+    mensaje += `\nPuedes consultar tu factura legal con la clave de acceso:\n${data.claveAcceso}\n\n`
+  }
+  mensaje += `¡Vuelve pronto! 😊`
+  return mensaje
+}
+
+function abrirWhatsApp(telefono: string, mensaje: string) {
+  const tel = telefono.replace(/[^\d+]/g, '')
+  const url = `https://web.whatsapp.com/send?phone=${encodeURIComponent(tel)}&text=${encodeURIComponent(mensaje)}`
+  window.open(url, '_blank')
+}
 
 interface ClienteFactura {
   identificacion: string
@@ -20,11 +62,12 @@ interface ClienteFactura {
   direccion: string
   email: string
   telefono: string
+  enviarWhatsApp: boolean
 }
-
 function ToastSRI({ toast, onClose }: { toast: Toast; onClose: () => void }) {
+
   useEffect(() => {
-    const t = setTimeout(onClose, toast.tipo === 'factura' ? 6000 : 2800)
+    const t = setTimeout(onClose, toast.tipo === 'factura' || toast.whatsapp ? 6000 : 2800)
     return () => clearTimeout(t)
   }, [toast, onClose])
 
@@ -54,6 +97,14 @@ function ToastSRI({ toast, onClose }: { toast: Toast; onClose: () => void }) {
             <p className="text-[10px] font-medium uppercase tracking-widest text-gray-500 mb-1">Clave de acceso</p>
             <p className="font-mono text-[11px] text-emerald-400 break-all leading-relaxed">{toast.claveAcceso}</p>
           </div>
+          {toast.whatsapp && (
+            <button
+              onClick={() => abrirWhatsApp(toast.whatsapp!.telefono, toast.whatsapp!.mensaje)}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-emerald-600 active:scale-[0.98] transition-all">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm0 1.67c4.55 0 8.25 3.7 8.25 8.24 0 4.55-3.7 8.25-8.25 8.25-1.5 0-2.97-.4-4.25-1.16l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 0 1-1.25-4.38c0-4.55 3.7-8.24 8.24-8.24z"/></svg>
+              Enviar Recibo por WhatsApp
+            </button>
+          )}
         </div>
       </div>
     )
@@ -62,7 +113,15 @@ function ToastSRI({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   return (
     <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-50 rounded-xl px-4 py-2.5 text-sm font-medium shadow-lg
       ${toast.tipo === 'ok' ? 'bg-gray-900 text-white' : 'bg-red-600 text-white'}`}>
-      {toast.mensaje}
+      <p>{toast.mensaje}</p>
+      {toast.whatsapp && (
+        <button
+          onClick={() => abrirWhatsApp(toast.whatsapp!.telefono, toast.whatsapp!.mensaje)}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-600 transition-colors">
+          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm0 1.67c4.55 0 8.25 3.7 8.25 8.24 0 4.55-3.7 8.25-8.25 8.25-1.5 0-2.97-.4-4.25-1.16l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 0 1-1.25-4.38c0-4.55 3.7-8.24 8.24-8.24z"/></svg>
+          Enviar Recibo por WhatsApp
+        </button>
+      )}
     </div>
   )
 }
@@ -74,7 +133,7 @@ function ModalCliente({ onConfirmar, onCancelar, total }: {
 }) {
   const [form, setForm] = useState<ClienteFactura>({
     identificacion: '', tipo_identificacion: 'cedula',
-    razon_social: '', direccion: 'Ecuador', email: '', telefono: '',
+    razon_social: '', direccion: 'Ecuador', email: '', telefono: '+593 ', enviarWhatsApp: false,
   })
   const [errores, setErrores] = useState<Partial<Record<keyof ClienteFactura, string>>>({})
   const inputRef = useRef<HTMLInputElement>(null)
@@ -158,11 +217,17 @@ function ModalCliente({ onConfirmar, onCancelar, total }: {
                 className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-400" />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Teléfono <span className="text-gray-400 font-normal">(opcional)</span></label>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Teléfono / WhatsApp <span className="text-gray-400 font-normal">(opcional)</span></label>
               <input type="tel" value={form.telefono} onChange={e => set('telefono', e.target.value)}
-                placeholder="0999999999"
+                placeholder="+593 99 999 9999"
                 className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-400" />
             </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2.5">
+            <input type="checkbox" id="wa-factura" checked={form.enviarWhatsApp}
+              onChange={e => setForm(prev => ({ ...prev, enviarWhatsApp: e.target.checked }))}
+              className="rounded border-gray-300" />
+            <label htmlFor="wa-factura" className="text-xs text-emerald-700 flex-1">📱 El cliente desea recibir su factura por WhatsApp</label>
           </div>
         </div>
         <div className="border-t border-gray-100 px-6 py-4 flex gap-2">
@@ -184,6 +249,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const [procesando, setProcesando]     = useState(false)
   const [tipoDoc, setTipoDoc]           = useState<TipoDocumento>('ticket')
   const [modalCliente, setModalCliente] = useState(false)
+  const [pagoInfo, setPagoInfo]         = useState<{ efectivoRecibido?: number; vuelto?: number; whatsappTelefono?: string }>({})
   const searchRef                       = useRef<HTMLInputElement>(null)
   const { usuario, logout }             = useAuth()
   const router                          = useRouter()
@@ -204,15 +270,33 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
 
   const cobrarConTicket = useCallback(async () => {
     setProcesando(true)
+    const gruposSnapshot = [...grupos]
+    const totalSnapshot = total
+    const metodoSnapshot = metodoPago
     const res = await procesarVenta()
     setProcesando(false)
     if (res.ok) {
-      mostrarToast({ mensaje: `✓ ${res.comprobante} procesado`, tipo: 'ok' })
+      let whatsapp: Toast['whatsapp']
+      if (pagoInfo.whatsappTelefono?.trim()) {
+        const mensajeWA = construirMensajeWhatsApp({
+          clienteNombre: '',
+          nombreNegocio: usuario?.establecimiento?.nombre ?? 'Nuestra tienda',
+          comprobante: res.comprobante ?? '',
+          fecha: new Date().toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' }),
+          grupos: gruposSnapshot,
+          total: totalSnapshot,
+          metodoPago: metodoSnapshot,
+          efectivoRecibido: pagoInfo.efectivoRecibido,
+          vuelto: pagoInfo.vuelto,
+        })
+        whatsapp = { telefono: pagoInfo.whatsappTelefono, mensaje: mensajeWA }
+      }
+      mostrarToast({ mensaje: `✓ ${res.comprobante} procesado`, tipo: 'ok', whatsapp })
       await recargar(); focusSearch()
     } else {
       mostrarToast({ mensaje: `Error: ${res.error}`, tipo: 'error' })
     }
-  }, [procesarVenta, recargar, mostrarToast, focusSearch])
+  }, [procesarVenta, recargar, mostrarToast, focusSearch, grupos, total, metodoPago, usuario, pagoInfo])
 
   const cobrarConFactura = useCallback(async (cliente: ClienteFactura) => {
     setModalCliente(false)
@@ -246,15 +330,35 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
       if (!sriRes.ok || !sriData.ok) throw new Error(sriData.error ?? 'Error generando factura')
 
       await recargar(); focusSearch()
-      mostrarToast({ tipo: 'factura', mensaje: 'Factura generada', claveAcceso: sriData.claveAcceso })
+
+      const mensajeWA = construirMensajeWhatsApp({
+        clienteNombre: cliente.razon_social,
+        nombreNegocio: usuario?.establecimiento?.nombre ?? 'Nuestra tienda',
+        comprobante: (resVenta as any).comprobante ?? '',
+        fecha: new Date().toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' }),
+        grupos,
+        total,
+        metodoPago,
+        efectivoRecibido: pagoInfo.efectivoRecibido,
+        vuelto: pagoInfo.vuelto,
+        claveAcceso: sriData.claveAcceso,
+      })
+
+      mostrarToast({
+        tipo: 'factura',
+        mensaje: 'Factura generada',
+        claveAcceso: sriData.claveAcceso,
+        whatsapp: cliente.enviarWhatsApp && cliente.telefono?.trim() ? { telefono: cliente.telefono, mensaje: mensajeWA } : undefined,
+      })
     } catch (e) {
       mostrarToast({ tipo: 'error', mensaje: `Error: ${e instanceof Error ? e.message : 'Error desconocido'}` })
     } finally {
       setProcesando(false)
     }
-  }, [procesarVenta, grupos, establecimientoId, recargar, mostrarToast, focusSearch])
+  }, [procesarVenta, grupos, establecimientoId, recargar, mostrarToast, focusSearch, usuario, total, metodoPago, pagoInfo])
 
-  const handleCobrar = useCallback(async () => {
+  const handleCobrar = useCallback(async (efectivoRecibido?: number, vuelto?: number, whatsappTelefono?: string) => {
+    setPagoInfo({ efectivoRecibido, vuelto, whatsappTelefono })
     if (tipoDoc === 'factura') setModalCliente(true)
     else await cobrarConTicket()
   }, [tipoDoc, cobrarConTicket])
