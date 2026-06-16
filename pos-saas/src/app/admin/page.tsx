@@ -54,7 +54,7 @@ export default function AdminPage() {
   )
 }
 
-// ─── PRODUCTOS ────────────────────────────────────────────
+// ─── PRODUCTOS (con importador Excel) ──────────────────────
 function SeccionProductos({ establecimientoId }: { establecimientoId: number }) {
   const [productos, setProductos] = useState<any[]>([])
   const [vendedores, setVendedores] = useState<any[]>([])
@@ -63,6 +63,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
   const [form, setForm] = useState({ nombre: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '' })
   const [editando, setEditando] = useState<number | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [mostrarImportador, setMostrarImportador] = useState(false)
 
   const cargar = useCallback(async () => {
     setLoading(true)
@@ -118,7 +119,13 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-gray-200 bg-white p-5">
-        <h2 className="mb-4 text-sm font-semibold text-gray-900">{editando ? '✏️ Editar producto' : '➕ Nuevo producto'}</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">{editando ? '✏️ Editar producto' : '➕ Nuevo producto'}</h2>
+          <button onClick={() => setMostrarImportador(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 transition-colors">
+            📊 Importar desde Excel
+          </button>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <input placeholder="Nombre del producto *" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
@@ -181,11 +188,265 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
           </table>
         )}
       </div>
+
+      {mostrarImportador && (
+        <ImportadorExcel
+          establecimientoId={establecimientoId}
+          vendedores={vendedores}
+          categorias={categorias}
+          onCerrar={() => setMostrarImportador(false)}
+          onImportado={() => { setMostrarImportador(false); cargar() }}
+        />
+      )}
     </div>
   )
+}// ─── IMPORTADOR EXCEL ──────────────────────────────────────
+type FilaImportada = {
+  nombre: string
+  precio_venta: number | null
+  stock_actual: number
+  categoria_nombre: string
+  codigo_barras: string
+  vendedor_nombre: string
+  error?: string
 }
 
-// ─── VENDEDORES ────────────────────────────────────────────
+function ImportadorExcel({
+  establecimientoId, vendedores, categorias, onCerrar, onImportado,
+}: {
+  establecimientoId: number
+  vendedores: any[]
+  categorias: any[]
+  onCerrar: () => void
+  onImportado: () => void
+}) {
+  const [filas, setFilas] = useState<FilaImportada[]>([])
+  const [archivoNombre, setArchivoNombre] = useState('')
+  const [procesando, setProcesando] = useState(false)
+  const [importando, setImportando] = useState(false)
+  const [resultado, setResultado] = useState<{ ok: number; errores: number } | null>(null)
+  const [crearCategoriasFaltantes, setCrearCategoriasFaltantes] = useState(true)
+
+  const descargarPlantilla = () => {
+    import('xlsx').then(XLSX => {
+      const datos = [
+        { nombre: 'Coca Cola 600ml', precio_venta: 0.75, stock_actual: 100, categoria: 'Bebidas y Licores', codigo_barras: '7891234567890', vendedor: '' },
+        { nombre: 'Pan de molde', precio_venta: 1.5, stock_actual: 50, categoria: 'Panadería', codigo_barras: '', vendedor: '' },
+      ]
+      const ws = XLSX.utils.json_to_sheet(datos)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Productos')
+      XLSX.writeFile(wb, 'plantilla_productos.xlsx')
+    })
+  }
+
+  const handleArchivo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setArchivoNombre(file.name)
+    setProcesando(true)
+    setResultado(null)
+
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      try {
+        const XLSX = await import('xlsx')
+        const data = ev.target?.result
+        const wb = XLSX.read(data, { type: 'binary' })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' })
+
+        const parsed: FilaImportada[] = rows.map(row => {
+          const nombre = String(row.nombre ?? row.Nombre ?? '').trim()
+          const precioRaw = row.precio_venta ?? row.precio ?? row.Precio ?? row['Precio de venta']
+          const precio = precioRaw !== '' && precioRaw !== undefined ? parseFloat(String(precioRaw).replace(',', '.')) : null
+          const stockRaw = row.stock_actual ?? row.stock ?? row.Stock ?? 0
+          const stock = parseInt(String(stockRaw)) || 0
+          const categoria_nombre = String(row.categoria ?? row.Categoria ?? row['Categoría'] ?? '').trim()
+          const codigo_barras = String(row.codigo_barras ?? row['código de barras'] ?? row['Código de barras'] ?? '').trim()
+          const vendedor_nombre = String(row.vendedor ?? row.Vendedor ?? '').trim()
+
+          let error: string | undefined
+          if (!nombre) error = 'Falta el nombre'
+          else if (precio === null || isNaN(precio) || precio <= 0) error = 'Precio inválido'
+
+          return { nombre, precio_venta: precio, stock_actual: stock, categoria_nombre, codigo_barras, vendedor_nombre, error }
+        }).filter(f => f.nombre || f.precio_venta !== null)
+
+        setFilas(parsed)
+      } catch {
+        setFilas([])
+        setResultado({ ok: 0, errores: 1 })
+      }
+      setProcesando(false)
+    }
+    reader.readAsBinaryString(file)
+  }
+
+  const filasValidas = filas.filter(f => !f.error)
+  const filasConError = filas.filter(f => f.error)
+
+  const confirmarImportacion = async () => {
+    setImportando(true)
+    let ok = 0
+    let errores = filasConError.length
+
+    const catMap = new Map(categorias.map(c => [c.nombre.toLowerCase(), c.id]))
+    const venMap = new Map(vendedores.map(v => [v.nombre.toLowerCase(), v.id]))
+
+    if (crearCategoriasFaltantes) {
+      const nombresFaltantes = Array.from(new Set(
+        filasValidas
+          .map(f => f.categoria_nombre)
+          .filter(n => n && !catMap.has(n.toLowerCase()))
+      ))
+      for (const nombre of nombresFaltantes) {
+        const { data } = await supabase.from('categorias')
+          .insert({ nombre, establecimiento_id: establecimientoId, icono: '📦' })
+          .select().single()
+        if (data) catMap.set(nombre.toLowerCase(), data.id)
+      }
+    }
+
+    const registros = filasValidas.map(f => ({
+      establecimiento_id: establecimientoId,
+      nombre: f.nombre,
+      precio_venta: f.precio_venta,
+      stock_actual: f.stock_actual,
+      codigo_barras: f.codigo_barras || null,
+      categoria_id: f.categoria_nombre ? catMap.get(f.categoria_nombre.toLowerCase()) ?? null : null,
+      vendedor_id: f.vendedor_nombre ? venMap.get(f.vendedor_nombre.toLowerCase()) ?? null : null,
+    }))
+
+    if (registros.length > 0) {
+      const { error } = await supabase.from('productos').insert(registros)
+      if (error) { errores += registros.length } else { ok += registros.length }
+    }
+
+    setResultado({ ok, errores })
+    setImportando(false)
+    setTimeout(() => onImportado(), 1500)
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4">
+          <h2 className="text-base font-semibold text-gray-900">📊 Importar productos desde Excel</h2>
+          <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+
+          {filas.length === 0 && (
+            <>
+              <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-8 text-center">
+                <div className="text-3xl mb-3">📁</div>
+                <p className="text-sm text-gray-600 mb-1">Sube tu archivo de productos</p>
+                <p className="text-xs text-gray-400 mb-4">Formatos aceptados: .xlsx, .xls, .csv</p>
+                <input type="file" accept=".xlsx,.xls,.csv" onChange={handleArchivo} className="hidden" id="excel-file" />
+                <label htmlFor="excel-file"
+                  className="cursor-pointer rounded-lg bg-white border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 shadow-sm transition-colors">
+                  {procesando ? '🔄 Leyendo archivo…' : '📁 Seleccionar archivo'}
+                </label>
+              </div>
+
+              <div className="rounded-lg bg-blue-50 border border-blue-100 px-4 py-3 text-xs text-blue-700 space-y-1.5">
+                <p className="font-medium">📋 Columnas que reconoce el sistema:</p>
+                <p><strong>nombre</strong> (obligatorio) · <strong>precio_venta</strong> (obligatorio) · stock_actual · categoria · codigo_barras · vendedor</p>
+                <button onClick={descargarPlantilla} className="mt-2 text-blue-600 underline hover:text-blue-800">
+                  ⬇️ Descargar plantilla de ejemplo
+                </button>
+              </div>
+            </>
+          )}
+
+          {filas.length > 0 && !resultado && (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{archivoNombre}</p>
+                  <p className="text-xs text-gray-400">{filas.length} filas encontradas</p>
+                </div>
+                <div className="flex gap-3 text-xs">
+                  <span className="rounded-full bg-green-100 text-green-700 px-2.5 py-1 font-medium">✓ {filasValidas.length} listas</span>
+                  {filasConError.length > 0 && (
+                    <span className="rounded-full bg-red-100 text-red-700 px-2.5 py-1 font-medium">✗ {filasConError.length} con error</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5">
+                <input type="checkbox" id="crear-cats" checked={crearCategoriasFaltantes}
+                  onChange={e => setCrearCategoriasFaltantes(e.target.checked)}
+                  className="rounded border-gray-300" />
+                <label htmlFor="crear-cats" className="text-xs text-gray-600">
+                  Crear automáticamente las categorías que no existan todavía
+                </label>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 overflow-hidden max-h-72 overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Nombre</th>
+                      <th className="px-3 py-2 text-right">Precio</th>
+                      <th className="px-3 py-2 text-right">Stock</th>
+                      <th className="px-3 py-2 text-left">Categoría</th>
+                      <th className="px-3 py-2 text-center">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filas.map((f, i) => (
+                      <tr key={i} className={`border-b border-gray-50 ${f.error ? 'bg-red-50' : ''}`}>
+                        <td className="px-3 py-2 font-medium text-gray-900">{f.nombre || '—'}</td>
+                        <td className="px-3 py-2 text-right">{f.precio_venta !== null ? `$${f.precio_venta.toFixed(2)}` : '—'}</td>
+                        <td className="px-3 py-2 text-right">{f.stock_actual}</td>
+                        <td className="px-3 py-2 text-gray-500">{f.categoria_nombre || '—'}</td>
+                        <td className="px-3 py-2 text-center">
+                          {f.error ? (
+                            <span className="text-red-600 text-[11px]">{f.error}</span>
+                          ) : (
+                            <span className="text-green-600 text-[11px]">✓ OK</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex gap-2">
+                <button onClick={() => setFilas([])}
+                  className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">
+                  Subir otro archivo
+                </button>
+                <button onClick={confirmarImportacion} disabled={importando || filasValidas.length === 0}
+                  className="flex-1 rounded-xl bg-green-600 py-2.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50">
+                  {importando ? 'Importando…' : `✅ Importar ${filasValidas.length} productos`}
+                </button>
+              </div>
+            </>
+          )}
+
+          {resultado && (
+            <div className="text-center py-6">
+              <div className="text-4xl mb-3">🎉</div>
+              <p className="text-sm font-medium text-gray-900">
+                {resultado.ok} productos importados correctamente
+              </p>
+              {resultado.errores > 0 && (
+                <p className="text-xs text-red-500 mt-1">{resultado.errores} filas con errores fueron omitidas</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}// ─── VENDEDORES ────────────────────────────────────────────
 function SeccionVendedores({ establecimientoId }: { establecimientoId: number }) {
   const [vendedores, setVendedores] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
