@@ -65,14 +65,16 @@ function calcularImpuestos(detalles: any[], porcentajeIva: number = 15) {
   let subtotalIva = 0
 
   detalles.forEach(d => {
-    const subtotal = d.precio_unitario * d.cantidad
+    const precioConIva = d.precio_unitario * d.cantidad
     if (d.tiene_iva) {
-      subtotalIva += subtotal
+      subtotalIva += precioConIva / (1 + porcentajeIva / 100)
     } else {
-      subtotal0 += subtotal
+      subtotal0 += precioConIva
     }
   })
 
+  subtotal0 = +subtotal0.toFixed(2)
+  subtotalIva = +subtotalIva.toFixed(2)
   const iva = +(subtotalIva * (porcentajeIva / 100)).toFixed(2)
   const total = +(subtotal0 + subtotalIva + iva).toFixed(2)
 
