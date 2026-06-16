@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import LogoUploader from '@/components/LogoUploader'
 
 type Seccion = 'comprobantes' | 'credenciales' | 'clientes'
 
@@ -170,6 +171,7 @@ function SeccionComprobantes({ establecimientoId }: { establecimientoId: number 
 // ─── CREDENCIALES SRI ─────────────────────────────────────────
 function SeccionCredenciales({ establecimientoId }: { establecimientoId: number }) {
   const [credenciales, setCredenciales] = useState<any>(null)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [probando, setProbando] = useState(false)
@@ -188,6 +190,9 @@ function SeccionCredenciales({ establecimientoId }: { establecimientoId: number 
     setLoading(true)
     const { data } = await supabase.from('sri_credenciales')
       .select('*').eq('establecimiento_id', establecimientoId).maybeSingle()
+    const { data: estab } = await supabase.from('establecimientos')
+      .select('logo_url').eq('id', establecimientoId).maybeSingle()
+    setLogoUrl(estab?.logo_url ?? null)
     if (data) {
       setCredenciales(data)
       setArchivoNombre(data.certificado_nombre ?? '')
@@ -313,6 +318,11 @@ function SeccionCredenciales({ establecimientoId }: { establecimientoId: number 
             {form.tipo_emision === 'produccion' ? '🟢 Producción' : '🟡 Pruebas'}
           </span>
         </div>
+        <LogoUploader
+          establecimientoId={establecimientoId}
+          currentLogoUrl={logoUrl}
+          onUploaded={(url) => setLogoUrl(url)}
+        />
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-700 mb-1">RUC del emisor *</label>

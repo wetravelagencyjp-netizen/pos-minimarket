@@ -274,8 +274,16 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
         </div>
       )}
       <header className="flex items-center justify-between border-b border-gray-100 bg-white px-5 py-3">
-        <div>
-          <h1 className="text-sm font-semibold text-gray-900">Punto de venta</h1>
+<div>
+          {usuario?.establecimiento?.logo_url ? (
+            <img
+              src={usuario.establecimiento.logo_url}
+              alt="Logo del negocio"
+              className="h-8 max-w-[160px] object-contain"
+            />
+          ) : (
+            <h1 className="text-sm font-semibold text-gray-900">Punto de venta</h1>
+          )}
           <p className="text-xs text-gray-400">{vendedores.length} vendedores</p>
         </div>
         <div className="flex items-center gap-2">

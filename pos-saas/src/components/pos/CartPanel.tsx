@@ -29,7 +29,7 @@ interface Props {
   onCobrar: () => void
 }
 
-function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: MetodoPago, comprobante: string, establecimiento: string) {
+function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: MetodoPago, comprobante: string, establecimiento: string, logoUrl?: string | null) {
   const fecha = new Date().toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
   const metodoLabel: Record<MetodoPago, string> = {
     efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', mixto: 'Mixto'
@@ -63,7 +63,10 @@ function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: Meto
     .metodo{text-align:center;font-size:10px;margin-top:4px} .pie{text-align:center;font-size:9px;margin-top:8px;color:#555} .seccion{margin:4px 0}
     @media print{body{width:80mm}@page{size:80mm auto;margin:0}}
   </style></head><body>
-  <div class="cabecera"><h1>🛒 ${establecimiento}</h1><p>Sistema Multivendedor</p></div>
+  <div cla<div class="cabecera">
+    ${logoUrl ? `<img src="${logoUrl}" alt="${establecimiento}" style="max-height:50px;max-width:60mm;margin:0 auto 4px;display:block" />` : `<h1>🛒 ${establecimiento}</h1>`}
+    <p>Sistema Multivendedor</p>
+  </div>
   <div class="linea"></div>
   <div class="info"><span>Fecha:</span><span>${fecha}</span></div>
   <div class="info"><span>Comprobante:</span><span>${comprobante}</span></div>
@@ -97,11 +100,12 @@ export function CartPanel({
     const totalSnapshot = total
     const metodoSnapshot = metodoPago
     const nombreEstab = usuario?.establecimiento?.nombre ?? 'POS Sistema'
+    const logoUrl = usuario?.establecimiento?.logo_url ?? null
     await onCobrar()
     if (tipoDoc === 'ticket') {
       setTimeout(() => {
         const comprobante = `001-001-${String(Date.now()).slice(-7)}`
-        imprimirTicket(gruposSnapshot, totalSnapshot, metodoSnapshot, comprobante, nombreEstab)
+        imprimirTicket(gruposSnapshot, totalSnapshot, metodoSnapshot, comprobante, nombreEstab, logoUrl)
       }, 500)
     }
   }, [grupos, total, metodoPago, onCobrar, usuario, tipoDoc])
