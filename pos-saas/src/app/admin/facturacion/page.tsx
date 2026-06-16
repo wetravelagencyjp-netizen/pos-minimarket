@@ -67,7 +67,7 @@ function SeccionComprobantes({ establecimientoId }: { establecimientoId: number 
     setLoading(true)
     let query = supabase.from('sri_comprobantes').select('*')
       .eq('establecimiento_id', establecimientoId)
-      .order('created_at', { ascending: false })
+      .order('fecha_emision', { ascending: false })
     if (filtroEstado !== 'TODOS') query = query.eq('estado', filtroEstado)
     const { data } = await query
     setComprobantes(data ?? [])
