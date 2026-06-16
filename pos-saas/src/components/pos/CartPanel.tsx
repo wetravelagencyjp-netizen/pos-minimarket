@@ -126,7 +126,7 @@ export function CartPanel({
   }, [grupos, total, metodoPago, onCobrar, usuario, tipoDoc, montoRecibido, vuelto, enviarWhatsApp, telefonoWhatsApp])
 
   return (
-    <aside className="flex h-full flex-col border-l border-gray-100 bg-white">
+    <aside className="flex h-full flex-col overflow-y-auto border-l border-gray-100 bg-white">
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-medium text-gray-900">Carrito</h2>
