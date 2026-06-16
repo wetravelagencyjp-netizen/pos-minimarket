@@ -10,6 +10,9 @@ const hoyStr = () => new Date().toISOString().slice(0, 10)
 const TIPOS_GASTO_LABEL: Record<string, string> = {
   inventario: '📦 Inventario', servicios: '🔧 Servicios', arriendo: '🏠 Arriendo', otro: '📋 Otro',
 }
+const TIPOS_GASTO_PLANO: Record<string, string> = {
+  inventario: 'Inventario', servicios: 'Servicios', arriendo: 'Arriendo', otro: 'Otro',
+}
 
 function primerDiaMes(offsetMeses = 0) {
   const d = new Date()
@@ -20,6 +23,102 @@ function ultimoDiaMes(offsetMeses = 0) {
   const d = new Date()
   d.setMonth(d.getMonth() + offsetMeses + 1, 0)
   return d.toISOString().slice(0, 10)
+}
+
+interface DatosReporte {
+  establecimiento: string
+  fechaInicio: string
+  fechaFin: string
+  ingresosTotales: number
+  costoVentas: number
+  gastosOperativos: number
+  utilidadNeta: number
+  margenCosto: number
+  gastosPorTipo: Record<string, number>
+}
+
+function imprimirReporteFinanciero(d: DatosReporte) {
+  const fmtFecha = (s: string) => new Date(s + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' })
+  const generado = new Date().toLocaleString('es-EC', { dateStyle: 'long', timeStyle: 'short' })
+
+  const filasGastos = Object.entries(d.gastosPorTipo).map(([tipo, monto]) => `
+    <tr><td>${TIPOS_GASTO_PLANO[tipo] ?? tipo}</td><td class="num">${fmt(monto)}</td></tr>
+  `).join('')
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Reporte P&amp;G</title>
+  <style>
+    * { margin:0;padding:0;box-sizing:border-box }
+    body { font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;padding:30px;max-width:700px;margin:0 auto }
+    h1 { font-size:20px;margin-bottom:2px }
+    .subt { font-size:13px;color:#666;margin-bottom:20px }
+    .periodo { font-size:13px;color:#444;margin-bottom:24px;padding-bottom:12px;border-bottom:2px solid #1a1a1a }
+    table { width:100%;border-collapse:collapse;margin-bottom:24px }
+    th, td { padding:8px 4px;text-align:left;font-size:13px }
+    th { border-bottom:2px solid #1a1a1a;font-size:11px;text-transform:uppercase;color:#666 }
+    td.num, th.num { text-align:right }
+    .fila-total td { border-top:2px solid #1a1a1a;font-weight:bold;font-size:15px;padding-top:10px }
+    .positivo { color:#15803d } .negativo { color:#b91c1c }
+    .nota { font-size:11px;color:#888;margin-top:6px }
+    .pie { font-size:10px;color:#999;margin-top:30px;border-top:1px solid #ddd;padding-top:10px }
+    @media print { body{padding:15mm} }
+  </style></head><body>
+  <h1>${d.establecimiento}</h1>
+  <p class="subt">Reporte de Pérdidas y Ganancias</p>
+  <p class="periodo">Período: ${fmtFecha(d.fechaInicio)} — ${fmtFecha(d.fechaFin)}</p>
+
+  <table>
+    <tr><th>Concepto</th><th class="num">Monto</th></tr>
+    <tr><td>Ingresos Totales</td><td class="num">${fmt(d.ingresosTotales)}</td></tr>
+    <tr><td>Costo de Ventas (estimado, ${d.margenCosto}% sobre ventas)</td><td class="num">−${fmt(d.costoVentas)}</td></tr>
+    <tr><td>Gastos Operativos</td><td class="num">−${fmt(d.gastosOperativos)}</td></tr>
+    <tr class="fila-total"><td>Utilidad Neta</td><td class="num ${d.utilidadNeta >= 0 ? 'positivo' : 'negativo'}">${fmt(d.utilidadNeta)}</td></tr>
+  </table>
+
+  ${Object.keys(d.gastosPorTipo).length > 0 ? `
+  <table>
+    <tr><th>Gastos por tipo</th><th class="num">Monto</th></tr>
+    ${filasGastos}
+  </table>
+  ` : ''}
+
+  <p class="nota">El Costo de Ventas es una estimación basada en un margen configurado, no en costos reales por producto.</p>
+  <div class="pie">Generado el ${generado}</div>
+  </body></html>`
+
+  const ventana = window.open('', '_blank', 'width=850,height=900')
+  if (!ventana) return
+  ventana.document.write(html)
+  ventana.document.close()
+  ventana.focus()
+  setTimeout(() => { ventana.print() }, 300)
+}
+
+function exportarCSV(d: DatosReporte) {
+  const filas: string[] = []
+  filas.push(`Reporte de Perdidas y Ganancias - ${d.establecimiento}`)
+  filas.push(`Periodo,${d.fechaInicio} a ${d.fechaFin}`)
+  filas.push('')
+  filas.push('Concepto,Monto')
+  filas.push(`Ingresos Totales,${d.ingresosTotales.toFixed(2)}`)
+  filas.push(`Costo de Ventas (estimado ${d.margenCosto}%),-${d.costoVentas.toFixed(2)}`)
+  filas.push(`Gastos Operativos,-${d.gastosOperativos.toFixed(2)}`)
+  filas.push(`Utilidad Neta,${d.utilidadNeta.toFixed(2)}`)
+  filas.push('')
+  filas.push('Gastos por tipo,Monto')
+  Object.entries(d.gastosPorTipo).forEach(([tipo, monto]) => {
+    filas.push(`${TIPOS_GASTO_PLANO[tipo] ?? tipo},${monto.toFixed(2)}`)
+  })
+
+  const csv = filas.join('\n')
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `reporte-financiero-${d.fechaInicio}-a-${d.fechaFin}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 export default function FinanzasPage() {
@@ -84,6 +183,11 @@ export default function FinanzasPage() {
 
   const setPreset = (inicio: string, fin: string) => { setFechaInicio(inicio); setFechaFin(fin) }
 
+  const datosReporte: DatosReporte = {
+    establecimiento: usuario?.establecimiento?.nombre ?? 'Mi Negocio',
+    fechaInicio, fechaFin, ingresosTotales, costoVentas, gastosOperativos, utilidadNeta, margenCosto, gastosPorTipo,
+  }
+
   return (
     <div className="flex h-screen flex-col bg-gray-50">
       <header className="flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4">
@@ -144,6 +248,17 @@ export default function FinanzasPage() {
                 <p className={`text-xs ${utilidadNeta >= 0 ? 'text-green-600' : 'text-red-700'}`}>Utilidad Neta</p>
                 <p className={`text-2xl font-semibold mt-1 ${utilidadNeta >= 0 ? 'text-green-800' : 'text-red-800'}`}>{fmt(utilidadNeta)}</p>
               </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => imprimirReporteFinanciero(datosReporte)}
+                className="flex-1 rounded-xl border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                🖨️ Exportar a PDF
+              </button>
+              <button onClick={() => exportarCSV(datosReporte)}
+                className="flex-1 rounded-xl border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                📊 Exportar a Excel (CSV)
+              </button>
             </div>
 
             <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-2">
