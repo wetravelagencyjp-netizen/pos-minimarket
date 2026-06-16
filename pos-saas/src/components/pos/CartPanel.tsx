@@ -12,6 +12,7 @@ const METODOS: { value: MetodoPago; label: string; icon: string }[] = [
 ]
 const DOT: Record<number, string> = { 1: 'bg-blue-500', 2: 'bg-green-500', 3: 'bg-amber-500' }
 const fmt = (n: number) => `$${n.toFixed(2)}`
+const BILLETES = [1, 5, 10, 20]
 
 type TipoDocumento = 'ticket' | 'factura'
 
@@ -80,7 +81,7 @@ function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: Meto
     .metodo{text-align:center;font-size:10px;margin-top:4px} .pie{text-align:center;font-size:9px;margin-top:8px;color:#555} .seccion{margin:4px 0}
     @media print{body{width:80mm}@page{size:80mm auto;margin:0}}
   </style></head><body>
-  <div cla<div class="cabecera">
+  <div class="cabecera">
     ${logoUrl ? `<img src="${logoUrl}" alt="${establecimiento}" style="max-height:50px;max-width:60mm;margin:0 auto 4px;display:block" />` : `<h1>🛒 ${establecimiento}</h1>`}
     <p>Sistema Multivendedor</p>
   </div>
@@ -130,6 +131,11 @@ export function CartPanel({
   const faltaEfectivo = metodoPago === 'efectivo' && montoRecibido < total
   const [enviarWhatsApp, setEnviarWhatsApp] = useState(false)
   const [telefonoWhatsApp, setTelefonoWhatsApp] = useState('+593 ')
+
+  const agregarBillete = (valor: number) => {
+    const actual = parseFloat(efectivoRecibido) || 0
+    setEfectivoRecibido((actual + valor).toFixed(2))
+  }
 
   const handleCobrar = useCallback(async () => {
     const gruposSnapshot = [...grupos]
@@ -288,7 +294,12 @@ export function CartPanel({
         </div>
         {metodoPago === 'efectivo' && !empty && (
           <div className="space-y-1.5 rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <label className="text-xs font-medium text-gray-600">Paga con:</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-gray-600">Paga con:</label>
+              {efectivoRecibido && (
+                <button onClick={() => setEfectivoRecibido('')} className="text-[11px] text-gray-400 hover:text-red-500 transition-colors">Limpiar</button>
+              )}
+            </div>
             <input
               type="number"
               inputMode="decimal"
@@ -299,6 +310,14 @@ export function CartPanel({
               placeholder="0.00"
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400"
             />
+            <div className="flex gap-1.5">
+              {BILLETES.map(billete => (
+                <button key={billete} type="button" onClick={() => agregarBillete(billete)}
+                  className="flex-1 rounded-lg border border-gray-200 bg-white py-1.5 text-xs font-medium text-gray-600 transition-all hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 active:scale-95">
+                  +${billete}
+                </button>
+              ))}
+            </div>
             <div className="flex items-baseline justify-between pt-1">
               <span className="text-xs font-medium text-gray-500">{vuelto < 0 ? 'Falta' : 'Vuelto'}</span>
               <span className={`text-2xl font-bold ${vuelto < 0 ? 'text-red-500' : 'text-emerald-600'}`}>

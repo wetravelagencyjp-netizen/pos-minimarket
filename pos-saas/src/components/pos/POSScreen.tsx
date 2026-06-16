@@ -335,6 +335,7 @@ function ModalCliente({ onConfirmar, onCancelar, total, establecimientoId }: {
 
 export function POSScreen({ establecimientoId }: { establecimientoId: number }) {
   const [catActiva, setCatActiva]       = useState<number | null>(null)
+  const [vendedorActivo, setVendedorActivo] = useState<number | null>(null)
   const [searchQ, setSearchQ]           = useState('')
   const [toast, setToast]               = useState<Toast | null>(null)
   const [procesando, setProcesando]     = useState(false)
@@ -349,6 +350,8 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const { productos, categorias, vendedores, loading, error, buscar, recargar } = useInventario(establecimientoId)
   const { grupos, total, totalItems, metodoPago, setMetodoPago, agregar, cambiarCantidad, eliminar, vaciar, procesarVenta,
     descuentosItem, setDescuentoItem, descuentoGlobal, setDescuentoGlobal, subtotalSinDescuento, descuentoTotalAplicado } = useCarrito(establecimientoId)
+
+  const productosFiltrados = vendedorActivo ? productos.filter(p => p.vendedor_id === vendedorActivo) : productos
 
   const [cajaAbierta, setCajaAbierta]           = useState<boolean | null>(null)
   const [montoInicialCaja, setMontoInicialCaja] = useState('')
@@ -555,7 +558,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
         </div>
       )}
       <header className="flex items-center justify-between border-b border-gray-100 bg-white px-5 py-3">
-<div>
+        <div>
           {usuario?.establecimiento?.logo_url ? (
             <img
               src={usuario.establecimiento.logo_url}
@@ -621,13 +624,24 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
               </button>
             ))}
           </div>
+          {modoMultivendedor && vendedores.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto border-b border-gray-100 bg-white px-4 py-2">
+              <button onClick={() => setVendedorActivo(null)} className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors ${vendedorActivo === null ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Todas las vendedoras</button>
+              {vendedores.map(v => (
+                <button key={v.id} onClick={() => setVendedorActivo(v.id)}
+                  className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors ${vendedorActivo === v.id ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  {v.nombre}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex-1 overflow-y-auto p-4">
             {loading && <div className="flex h-full items-center justify-center"><div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" /></div>}
             {error && <div className="flex h-full flex-col items-center justify-center gap-2"><p className="text-sm text-red-500">{error}</p><button onClick={recargar} className="text-xs text-blue-600 underline">Reintentar</button></div>}
-            {!loading && !error && productos.length === 0 && <div className="flex h-full flex-col items-center justify-center gap-2 text-gray-400"><span className="text-3xl">📭</span><p className="text-sm">Sin productos</p></div>}
-            {!loading && !error && productos.length > 0 && (
+            {!loading && !error && productosFiltrados.length === 0 && <div className="flex h-full flex-col items-center justify-center gap-2 text-gray-400"><span className="text-3xl">📭</span><p className="text-sm">Sin productos</p></div>}
+            {!loading && !error && productosFiltrados.length > 0 && (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                {productos.map(p => <ProductCard key={p.id} producto={p} onAgregar={handleAgregar} modoMultivendedor={modoMultivendedor} />)}
+                {productosFiltrados.map(p => <ProductCard key={p.id} producto={p} onAgregar={handleAgregar} modoMultivendedor={modoMultivendedor} />)}
               </div>
             )}
           </div>
