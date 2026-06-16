@@ -2,6 +2,7 @@
 import { useCallback, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import type { GrupoVendedor, MetodoPago } from '@/types'
+import type { Descuento, TipoDescuento } from '@/hooks'
 
 const METODOS: { value: MetodoPago; label: string; icon: string }[] = [
   { value: 'efectivo',      label: 'Efectivo',      icon: '💵' },
@@ -27,6 +28,13 @@ interface Props {
   onVaciar: () => void
   onMetodoPago: (m: MetodoPago) => void
   onCobrar: (efectivoRecibido?: number, vuelto?: number, whatsappTelefono?: string) => void
+  descuentosItem: Record<number, Descuento>
+  onDescuentoItem: (id: number, descuento: Descuento | null) => void
+  descuentoGlobal: Descuento
+  onDescuentoGlobal: (descuento: Descuento) => void
+  subtotalSinDescuento: number
+  descuentoTotalAplicado: number
+  onCotizar: () => void
 }
 
 function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: MetodoPago, comprobante: string, establecimiento: string, logoUrl?: string | null, efectivoRecibido?: number, vuelto?: number) {
@@ -94,10 +102,18 @@ function imprimirTicket(grupos: GrupoVendedor[], total: number, metodoPago: Meto
 export function CartPanel({
   grupos, total, totalItems, metodoPago, procesando,
   tipoDoc, onTipoDoc,
-  onCambiarCantidad, onEliminar, onVaciar, onMetodoPago, onCobrar
+  onCambiarCantidad, onEliminar, onVaciar, onMetodoPago, onCobrar,
+  descuentosItem, onDescuentoItem, descuentoGlobal, onDescuentoGlobal,
+  subtotalSinDescuento, descuentoTotalAplicado, onCotizar,
 }: Props) {
   const empty = grupos.length === 0
   const { usuario } = useAuth()
+  const [descuentosAbiertos, setDescuentosAbiertos] = useState<Set<number>>(new Set())
+  const toggleDescuento = (id: number) => setDescuentosAbiertos(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
   const [efectivoRecibido, setEfectivoRecibido] = useState('')
   const montoRecibido = parseFloat(efectivoRecibido) || 0
   const vuelto = +(montoRecibido - total).toFixed(2)
@@ -152,22 +168,50 @@ export function CartPanel({
                   </span>
                   <div className="h-px flex-1 bg-gray-100" />
                 </div>
-                {items.map(({ producto, cantidad, subtotal: sub }) => (
-                  <div key={producto.id} className="group flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-colors">
-                    <span className="text-lg">{producto.categoria?.icono ?? '📦'}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-gray-900">{producto.nombre}</p>
-                      <p className="text-[11px] text-gray-400">{fmt(producto.precio_venta)} c/u</p>
+                {items.map((it: any) => {
+                  const { producto, cantidad, subtotal: sub, descuento } = it
+                  const dcto = descuentosItem[producto.id]
+                  const abierto = descuentosAbiertos.has(producto.id)
+                  return (
+                    <div key={producto.id} className="group px-4 py-2 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-lg">{producto.categoria?.icono ?? '📦'}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-medium text-gray-900">{producto.nombre}</p>
+                          <p className="text-[11px] text-gray-400">{fmt(producto.precio_venta)} c/u</p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => onCambiarCantidad(producto.id, -1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-200 text-xs hover:bg-gray-100">−</button>
+                          <span className="min-w-[18px] text-center text-xs font-medium text-gray-900">{cantidad}</span>
+                          <button onClick={() => onCambiarCantidad(producto.id, 1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-200 text-xs hover:bg-gray-100">+</button>
+                        </div>
+                        <button onClick={() => toggleDescuento(producto.id)}
+                          className={`rounded-full px-1.5 py-0.5 text-[10px] ${dcto ? 'bg-amber-100 text-amber-700' : 'text-gray-300 hover:text-gray-500'}`}>
+                          🏷️
+                        </button>
+                        <span className="min-w-[52px] text-right text-xs font-medium text-gray-900">{fmt(sub)}</span>
+                        <button onClick={() => onEliminar(producto.id)} className="ml-1 text-gray-200 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all">✕</button>
+                      </div>
+                      {descuento > 0 && (
+                        <p className="pr-7 text-right text-[10px] text-amber-600">− {fmt(descuento)} descuento</p>
+                      )}
+                      {abierto && (
+                        <div className="mt-1.5 flex items-center gap-1.5 pl-7">
+                          <select value={dcto?.tipo ?? 'porcentaje'}
+                            onChange={e => onDescuentoItem(producto.id, { tipo: e.target.value as TipoDescuento, valor: dcto?.valor ?? 0 })}
+                            className="rounded border border-gray-200 px-1 py-1 text-[11px]">
+                            <option value="porcentaje">%</option>
+                            <option value="fijo">$</option>
+                          </select>
+                          <input type="number" min="0" step="0.01" value={dcto?.valor ?? ''}
+                            onChange={e => onDescuentoItem(producto.id, { tipo: dcto?.tipo ?? 'porcentaje', valor: parseFloat(e.target.value) || 0 })}
+                            placeholder="0"
+                            className="w-20 rounded border border-gray-200 px-2 py-1 text-[11px] outline-none focus:border-amber-400" />
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => onCambiarCantidad(producto.id, -1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-200 text-xs hover:bg-gray-100">−</button>
-                      <span className="min-w-[18px] text-center text-xs font-medium text-gray-900">{cantidad}</span>
-                      <button onClick={() => onCambiarCantidad(producto.id, 1)} className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-200 text-xs hover:bg-gray-100">+</button>
-                    </div>
-                    <span className="min-w-[52px] text-right text-xs font-medium text-gray-900">{fmt(sub)}</span>
-                    <button onClick={() => onEliminar(producto.id)} className="ml-1 text-gray-200 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all">✕</button>
-                  </div>
-                ))}
+                  )
+                })}
                 <div className="flex justify-between px-4 pb-1 pt-0.5">
                   <span className="text-[11px] text-gray-400">Subtotal {vendedor.nombre}</span>
                   <span className="text-[11px] font-medium text-gray-600">{fmt(subtotal)}</span>
@@ -179,6 +223,33 @@ export function CartPanel({
       </div>
 
       <div className="border-t border-gray-100 px-4 pt-3 pb-4 space-y-3">
+        {!empty && (
+          <div className="space-y-1.5 rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span>Subtotal</span>
+              <span>{fmt(subtotalSinDescuento)}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="flex-1 text-xs text-gray-500">Descuento global</span>
+              <select value={descuentoGlobal.tipo}
+                onChange={e => onDescuentoGlobal({ tipo: e.target.value as TipoDescuento, valor: descuentoGlobal.valor })}
+                className="rounded border border-gray-200 px-1 py-1 text-xs">
+                <option value="porcentaje">%</option>
+                <option value="fijo">$</option>
+              </select>
+              <input type="number" min="0" step="0.01" value={descuentoGlobal.valor || ''}
+                onChange={e => onDescuentoGlobal({ tipo: descuentoGlobal.tipo, valor: parseFloat(e.target.value) || 0 })}
+                placeholder="0"
+                className="w-20 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:border-amber-400" />
+            </div>
+            {descuentoTotalAplicado > 0 && (
+              <div className="flex items-center justify-between text-xs font-medium text-amber-600">
+                <span>Descuento total</span>
+                <span>− {fmt(descuentoTotalAplicado)}</span>
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex items-baseline justify-between">
           <span className="text-sm font-medium text-gray-700">Total a pagar</span>
           <span className="text-2xl font-semibold text-gray-900">{fmt(total)}</span>
@@ -237,15 +308,21 @@ export function CartPanel({
             )}
           </div>
         )}
-        <button onClick={handleCobrar} disabled={empty || procesando || faltaEfectivo}
-          className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all
-            ${empty || procesando || faltaEfectivo ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-              : tipoDoc === 'factura' ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98]'
-              : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'}`}>
-          {procesando
-            ? <><svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Procesando…</>
-            : tipoDoc === 'factura' ? <>📄 Facturar {!empty && fmt(total)}</> : <>🧾 Cobrar {!empty && fmt(total)}</>}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={onCotizar} disabled={empty || procesando}
+            className="flex-1 rounded-xl border border-amber-300 bg-amber-50 py-3 text-sm font-medium text-amber-700 transition-all hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40">
+            📝 Cotización
+          </button>
+          <button onClick={handleCobrar} disabled={empty || procesando || faltaEfectivo}
+            className={`flex-[2] flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all
+              ${empty || procesando || faltaEfectivo ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                : tipoDoc === 'factura' ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98]'
+                : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'}`}>
+            {procesando
+              ? <><svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Procesando…</>
+              : tipoDoc === 'factura' ? <>📄 Facturar {!empty && fmt(total)}</> : <>🧾 Cobrar {!empty && fmt(total)}</>}
+          </button>
+        </div>
         {tipoDoc === 'factura' && !empty && (
           <p className="text-center text-[11px] text-emerald-600">Se pedirán los datos del cliente para la factura electrónica</p>
         )}

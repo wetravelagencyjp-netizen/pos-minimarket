@@ -58,9 +58,14 @@ export function useInventario(establecimientoId: number) {
   return { productos, categorias, vendedores, loading, error, buscar, recargar: cargar }
 }
 
+export type TipoDescuento = 'porcentaje' | 'fijo'
+export interface Descuento { tipo: TipoDescuento; valor: number }
+
 export function useCarrito(establecimientoId: number) {
   const [items, setItems]           = useState<Record<number, ItemCarrito>>({})
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('efectivo')
+  const [descuentosItem, setDescuentosItem] = useState<Record<number, Descuento>>({})
+  const [descuentoGlobal, setDescuentoGlobalState] = useState<Descuento>({ tipo: 'porcentaje', valor: 0 })
 
   const agregar = useCallback((producto: Producto) => {
     setItems(prev => {
@@ -82,23 +87,64 @@ export function useCarrito(establecimientoId: number) {
 
   const eliminar = useCallback((id: number) => {
     setItems(prev => { const { [id]: _, ...rest } = prev; return rest })
+    setDescuentosItem(prev => { const { [id]: _, ...rest } = prev; return rest })
   }, [])
 
-  const vaciar = useCallback(() => setItems({}), [])
+  const vaciar = useCallback(() => {
+    setItems({})
+    setDescuentosItem({})
+    setDescuentoGlobalState({ tipo: 'porcentaje', valor: 0 })
+  }, [])
 
-  const total      = useMemo(() => +Object.values(items).reduce((s, i) => s + i.subtotal, 0).toFixed(2), [items])
-  const totalItems = useMemo(() => Object.values(items).reduce((s, i) => s + i.cantidad, 0), [items])
+  const setDescuentoItem = useCallback((id: number, descuento: Descuento | null) => {
+    setDescuentosItem(prev => {
+      if (!descuento || descuento.valor <= 0) { const { [id]: _, ...rest } = prev; return rest }
+      return { ...prev, [id]: descuento }
+    })
+  }, [])
+
+  const setDescuentoGlobal = useCallback((descuento: Descuento) => setDescuentoGlobalState(descuento), [])
+
+  // Aplica el descuento de cada producto y luego prorratea el descuento global entre todos
+  const itemsConDescuento = useMemo(() => {
+    const base = Object.values(items).map(item => {
+      const original = +(item.producto.precio_venta * item.cantidad).toFixed(2)
+      const d = descuentosItem[item.producto.id]
+      const descuentoItem = !d ? 0
+        : d.tipo === 'porcentaje' ? +(original * d.valor / 100).toFixed(2)
+        : Math.min(d.valor, original)
+      const trasItem = +(original - descuentoItem).toFixed(2)
+      return { item, original, descuentoItem, trasItem }
+    })
+    const sumaTrasItem = +base.reduce((s, x) => s + x.trasItem, 0).toFixed(2)
+    const descuentoGlobalMonto = sumaTrasItem <= 0 ? 0
+      : descuentoGlobal.tipo === 'porcentaje' ? +(sumaTrasItem * descuentoGlobal.valor / 100).toFixed(2)
+      : Math.min(descuentoGlobal.valor, sumaTrasItem)
+
+    return base.map(x => {
+      const proporcion = sumaTrasItem > 0 ? x.trasItem / sumaTrasItem : 0
+      const globalProrrateado = +(descuentoGlobalMonto * proporcion).toFixed(2)
+      const descuento = +(x.descuentoItem + globalProrrateado).toFixed(2)
+      const subtotal = +(x.original - descuento).toFixed(2)
+      return { ...x.item, original: x.original, descuento, subtotal }
+    })
+  }, [items, descuentosItem, descuentoGlobal])
+
+  const subtotalSinDescuento   = useMemo(() => +itemsConDescuento.reduce((s, i) => s + i.original, 0).toFixed(2), [itemsConDescuento])
+  const total                  = useMemo(() => +itemsConDescuento.reduce((s, i) => s + i.subtotal, 0).toFixed(2), [itemsConDescuento])
+  const descuentoTotalAplicado = useMemo(() => +(subtotalSinDescuento - total).toFixed(2), [subtotalSinDescuento, total])
+  const totalItems             = useMemo(() => Object.values(items).reduce((s, i) => s + i.cantidad, 0), [items])
 
   const grupos = useMemo<GrupoVendedor[]>(() => {
     const map: Record<number, GrupoVendedor> = {}
-    Object.values(items).forEach(item => {
+    itemsConDescuento.forEach(item => {
       const v = item.producto.vendedor ?? ({ id: 0, nombre: 'Sin vendedor' } as Vendedor)
       if (!map[v.id]) map[v.id] = { vendedor: v, items: [], subtotal: 0 }
       map[v.id].items.push(item)
       map[v.id].subtotal = +(map[v.id].subtotal + item.subtotal).toFixed(2)
     })
     return Object.values(map)
-  }, [items])
+  }, [itemsConDescuento])
 
   const procesarVenta = useCallback(async () => {
     if (!Object.keys(items).length) return { ok: false, error: 'Carrito vacío' }
@@ -115,12 +161,14 @@ export function useCarrito(establecimientoId: number) {
         numero_comprobante: comprobante,
         total,
         metodo_pago: metodoPago,
-        detalles: Object.values(items).map(i => ({
+        detalles: itemsConDescuento.map(i => ({
           producto_id:     i.producto.id,
           vendedor_id:     i.producto.vendedor_id,
           cantidad:        i.cantidad,
           precio_unitario: i.producto.precio_venta,
+          descuento:       i.descuento,
         })),
+        descuento_total: descuentoTotalAplicado,
       } as never)
 
       if (error) throw error
@@ -134,7 +182,12 @@ export function useCarrito(establecimientoId: number) {
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : 'Error al procesar' }
     }
-  }, [items, total, metodoPago, establecimientoId, vaciar])
+  }, [items, itemsConDescuento, total, descuentoTotalAplicado, metodoPago, establecimientoId, vaciar])
 
-  return { items, grupos, total, totalItems, metodoPago, setMetodoPago, agregar, cambiarCantidad, eliminar, vaciar, procesarVenta }
+  return {
+    items, grupos, total, totalItems, metodoPago, setMetodoPago,
+    agregar, cambiarCantidad, eliminar, vaciar, procesarVenta,
+    descuentosItem, setDescuentoItem, descuentoGlobal, setDescuentoGlobal,
+    subtotalSinDescuento, descuentoTotalAplicado,
+  }
 }

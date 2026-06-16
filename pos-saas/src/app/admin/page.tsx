@@ -768,6 +768,7 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
   const [ventasPorVendedor, setVentasPorVendedor] = useState<any[]>([])
   const [topProductos, setTopProductos] = useState<any[]>([])
   const [ventasPorDia, setVentasPorDia] = useState<any[]>([])
+  const [ventasLista, setVentasLista] = useState<any[]>([])
 
   const getFechaInicio = useCallback(() => {
     const hoy = new Date()
@@ -791,6 +792,7 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
     const d = detalle.data ?? []
     setTotalVentas(v.reduce((s, x) => s + x.total, 0))
     setNumVentas(v.length)
+    setVentasLista([...v].sort((a, b) => new Date(b.fecha_venta).getTime() - new Date(a.fecha_venta).getTime()))
     const porVendedor: Record<string, { nombre: string; total: number; cantidad: number }> = {}
     d.forEach(item => {
       const nombre = item.vendedor?.nombre ?? 'Sin vendedor'
@@ -928,6 +930,45 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
                 </div>
               )}
             </div>
+          </div>
+          <div className="rounded-2xl border border-gray-200 bg-white">
+            <div className="border-b border-gray-100 px-5 py-3">
+              <h2 className="text-sm font-semibold text-gray-900">📋 Ventas del período ({ventasLista.length})</h2>
+            </div>
+            {ventasLista.length === 0 ? <div className="p-5 text-sm text-gray-400">Sin ventas en este período</div> : (
+              <table className="w-full text-sm">
+                <thead className="border-b border-gray-100 text-xs text-gray-400">
+                  <tr>
+                    <th className="px-5 py-3 text-left">Comprobante</th>
+                    <th className="px-5 py-3 text-left">Fecha</th>
+                    <th className="px-5 py-3 text-left">Pago</th>
+                    <th className="px-5 py-3 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ventasLista.map(venta => {
+                    const tieneDescuento = (venta.descuento_total ?? 0) > 0
+                    return (
+                      <tr key={venta.id} className={`border-b border-gray-50 hover:bg-gray-50 ${tieneDescuento ? 'bg-orange-50' : ''}`}>
+                        <td className={`px-5 py-3 font-mono text-xs ${tieneDescuento ? 'font-bold text-orange-600' : 'text-gray-600'}`}>
+                          {venta.numero_comprobante}
+                        </td>
+                        <td className={`px-5 py-3 text-xs ${tieneDescuento ? 'font-bold text-orange-600' : 'text-gray-500'}`}>
+                          {new Date(venta.fecha_venta).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })}
+                        </td>
+                        <td className={`px-5 py-3 text-xs capitalize ${tieneDescuento ? 'font-bold text-orange-600' : 'text-gray-500'}`}>
+                          {venta.metodo_pago}
+                        </td>
+                        <td className={`px-5 py-3 text-right ${tieneDescuento ? 'font-bold text-orange-600' : 'font-medium text-gray-900'}`}>
+                          {fmt(venta.total)}
+                          {tieneDescuento && <span className="ml-1.5 text-[10px]">(− {fmt(venta.descuento_total)})</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </>
       )}

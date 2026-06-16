@@ -63,22 +63,27 @@ function formatearNumero(estab: string, punto: string, secuencial: string): stri
 function calcularImpuestos(detalles: any[], porcentajeIva: number = 15) {
   let subtotal0 = 0
   let subtotalIva = 0
+  let descuentoTotal = 0
 
   detalles.forEach(d => {
-    const precioConIva = d.precio_unitario * d.cantidad
+    const descuento = d.descuento ?? 0
+    const precioConIva = (d.precio_unitario * d.cantidad) - descuento
     if (d.tiene_iva) {
       subtotalIva += precioConIva / (1 + porcentajeIva / 100)
+      descuentoTotal += descuento / (1 + porcentajeIva / 100)
     } else {
       subtotal0 += precioConIva
+      descuentoTotal += descuento
     }
   })
 
   subtotal0 = +subtotal0.toFixed(2)
   subtotalIva = +subtotalIva.toFixed(2)
+  descuentoTotal = +descuentoTotal.toFixed(2)
   const iva = +(subtotalIva * (porcentajeIva / 100)).toFixed(2)
   const total = +(subtotal0 + subtotalIva + iva).toFixed(2)
 
-  return { subtotal0, subtotalIva, iva, total, porcentajeIva }
+  return { subtotal0, subtotalIva, iva, total, porcentajeIva, descuentoTotal }
 }
 
 // ─── CÓDIGO SRI POR TARIFA (Tabla 17, ficha técnica) ─────
@@ -114,10 +119,14 @@ function generarXML(params: {
 
   // Detalles de productos
   const xmlDetalles = detalles.map((d, i) => {
+    const descuento = d.descuento ?? 0
     const precioSinIva = d.tiene_iva
       ? +(d.precio_unitario / (1 + impuestos.porcentajeIva / 100)).toFixed(6)
       : d.precio_unitario
-    const subtotalSinIva = +(precioSinIva * d.cantidad).toFixed(2)
+    const descuentoSinIva = d.tiene_iva
+      ? +(descuento / (1 + impuestos.porcentajeIva / 100)).toFixed(2)
+      : descuento
+    const subtotalSinIva = +((precioSinIva * d.cantidad) - descuentoSinIva).toFixed(2)
     const valorIva = d.tiene_iva ? +(subtotalSinIva * (impuestos.porcentajeIva / 100)).toFixed(2) : 0
     const codigoIva = d.tiene_iva ? codigoPorcentajeIva(impuestos.porcentajeIva) : '0'
     const tarifaIva = d.tiene_iva ? impuestos.porcentajeIva : 0
@@ -128,7 +137,7 @@ function generarXML(params: {
             <descripcion><![CDATA[${d.nombre}]]></descripcion>
             <cantidad>${d.cantidad}.000000</cantidad>
             <precioUnitario>${precioSinIva.toFixed(6)}</precioUnitario>
-            <descuento>0.00</descuento>
+            <descuento>${descuentoSinIva.toFixed(2)}</descuento>
             <precioTotalSinImpuesto>${subtotalSinIva.toFixed(2)}</precioTotalSinImpuesto>
             <impuestos>
                 <impuesto>
@@ -190,7 +199,7 @@ function generarXML(params: {
         <identificacionComprador>${cliente.identificacion}</identificacionComprador>
         <direccionComprador><![CDATA[${cliente.direccion || 'S/N'}]]></direccionComprador>
         <totalSinImpuestos>${(impuestos.subtotal0 + impuestos.subtotalIva).toFixed(2)}</totalSinImpuestos>
-        <totalDescuento>0.00</totalDescuento>
+        <totalDescuento>${impuestos.descuentoTotal.toFixed(2)}</totalDescuento>
         <totalConImpuestos>${xmlImpuestosResumen}
         </totalConImpuestos>
         <propina>0.00</propina>

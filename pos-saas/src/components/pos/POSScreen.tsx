@@ -56,6 +56,66 @@ function abrirWhatsApp(telefono: string, mensaje: string) {
   window.open(url, '_blank')
 }
 
+function imprimirCotizacion(grupos: GrupoVendedor[], subtotal: number, descuentoTotal: number, total: number, numero: string, establecimiento: string, logoUrl?: string | null) {
+  const fecha = new Date().toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
+  const fmt = (n: number) => `$${n.toFixed(2)}`
+  const validoHasta = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString('es-EC')
+
+  const lineasGrupos = grupos.map(({ vendedor, items }: any) => `
+    <div class="seccion">
+      <div class="vendedor">— ${vendedor.nombre} —</div>
+      ${items.map(({ producto, cantidad, subtotal: sub, descuento }: any) => `
+        <div class="item">
+          <div class="item-nombre">${producto.nombre}</div>
+          <div class="item-detalle">
+            <span>${cantidad} x ${fmt(producto.precio_venta)}</span>
+            <span>${fmt(sub)}</span>
+          </div>
+          ${descuento > 0 ? `<div class="item-descuento">Descuento aplicado: −${fmt(descuento)}</div>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `).join('<div class="separador"></div>')
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cotización ${numero}</title>
+  <style>
+    * { margin:0;padding:0;box-sizing:border-box }
+    body { font-family:'Courier New',monospace;font-size:11px;width:80mm;max-width:80mm;padding:4mm;color:#000 }
+    .cabecera{text-align:center;margin-bottom:6px} .cabecera h1{font-size:13px;font-weight:bold} .cabecera p{font-size:10px;font-weight:bold}
+    .linea{border-top:1px dashed #000;margin:6px 0} .info{display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px}
+    .vendedor{text-align:center;font-weight:bold;font-size:10px;margin:6px 0 4px} .item{margin-bottom:4px} .item-nombre{font-size:11px}
+    .item-detalle{display:flex;justify-content:space-between;font-size:10px;color:#333}
+    .item-descuento{font-size:9px;color:#b45309;font-style:italic}
+    .separador{border-top:1px dotted #999;margin:6px 0} .total{display:flex;justify-content:space-between;font-size:14px;font-weight:bold;margin-top:6px}
+    .pie{text-align:center;font-size:9px;margin-top:8px;color:#555} .seccion{margin:4px 0}
+    .aviso{text-align:center;font-size:9px;margin-top:8px;border-top:1px dashed #000;padding-top:6px;font-weight:bold}
+    @media print{body{width:80mm}@page{size:80mm auto;margin:0}}
+  </style></head><body>
+  <div class="cabecera">
+    ${logoUrl ? `<img src="${logoUrl}" alt="${establecimiento}" style="max-height:50px;max-width:60mm;margin:0 auto 4px;display:block" />` : `<h1>${establecimiento}</h1>`}
+    <p>COTIZACIÓN / PROFORMA</p>
+  </div>
+  <div class="linea"></div>
+  <div class="info"><span>Fecha:</span><span>${fecha}</span></div>
+  <div class="info"><span>N°:</span><span>${numero}</span></div>
+  <div class="linea"></div>
+  ${lineasGrupos}
+  <div class="linea"></div>
+  <div class="info"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+  ${descuentoTotal > 0 ? `<div class="info"><span>Descuento aplicado</span><span>−${fmt(descuentoTotal)}</span></div>` : ''}
+  <div class="total"><span>TOTAL</span><span>${fmt(total)}</span></div>
+  <div class="aviso">Este documento no tiene validez tributaria.<br>Válido por 15 días (hasta ${validoHasta}).</div>
+  <div class="pie">¡Gracias por su interés!</div>
+  </body></html>`
+
+  const ventana = window.open('', '_blank', 'width=320,height=600')
+  if (!ventana) return
+  ventana.document.write(html)
+  ventana.document.close()
+  ventana.focus()
+  setTimeout(() => { ventana.print(); ventana.close() }, 300)
+}
+
 interface ClienteFactura {
   identificacion: string
   tipo_identificacion: 'cedula' | 'ruc' | 'pasaporte' | 'consumidor_final'
@@ -286,7 +346,8 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const router                          = useRouter()
 
   const { productos, categorias, vendedores, loading, error, buscar, recargar } = useInventario(establecimientoId)
-  const { grupos, total, totalItems, metodoPago, setMetodoPago, agregar, cambiarCantidad, eliminar, vaciar, procesarVenta } = useCarrito(establecimientoId)
+  const { grupos, total, totalItems, metodoPago, setMetodoPago, agregar, cambiarCantidad, eliminar, vaciar, procesarVenta,
+    descuentosItem, setDescuentoItem, descuentoGlobal, setDescuentoGlobal, subtotalSinDescuento, descuentoTotalAplicado } = useCarrito(establecimientoId)
 
   const mostrarToast = useCallback((t: Toast) => setToast(t), [])
   const focusSearch  = useCallback(() => setTimeout(() => searchRef.current?.focus(), 100), [])
@@ -336,11 +397,12 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
       const resVenta = await procesarVenta()
       if (!resVenta.ok) throw new Error(resVenta.error ?? 'Error al procesar venta')
 
-      const detallesXML = grupos.flatMap(g =>
-        g.items.map(item => ({
+      const detallesXML = grupos.flatMap((g: any) =>
+        g.items.map((item: any) => ({
           nombre: item.producto.nombre,
           cantidad: item.cantidad,
           precio_unitario: item.producto.precio_venta,
+          descuento: item.descuento ?? 0,
           tiene_iva: (item.producto as any).tiene_iva ?? true,
           codigo_barras: item.producto.codigo_barras ?? undefined,
         }))
@@ -399,6 +461,46 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
       setProcesando(false)
     }
   }, [procesarVenta, grupos, establecimientoId, recargar, mostrarToast, focusSearch, usuario, total, metodoPago, pagoInfo])
+
+  const generarCotizacion = useCallback(async () => {
+    if (grupos.length === 0) return
+    setProcesando(true)
+    try {
+      const { data: last } = await supabase.from('cotizaciones')
+        .select('numero').eq('establecimiento_id', establecimientoId)
+        .order('id', { ascending: false }).limit(1).maybeSingle()
+      const siguiente = last ? parseInt((last as any).numero?.split('-')[2] ?? '0') + 1 : 1
+      const numero = `COT-001-${String(siguiente).padStart(7, '0')}`
+
+      const detalles = grupos.flatMap((g: any) => g.items.map((i: any) => ({
+        producto_id: i.producto.id,
+        nombre: i.producto.nombre,
+        cantidad: i.cantidad,
+        precio_unitario: i.producto.precio_venta,
+        descuento: i.descuento,
+        subtotal: i.subtotal,
+      })))
+
+      const { error } = await supabase.from('cotizaciones').insert({
+        establecimiento_id: establecimientoId,
+        numero,
+        subtotal: subtotalSinDescuento,
+        descuento_total: descuentoTotalAplicado,
+        total,
+        detalles,
+      })
+      if (error) throw error
+
+      imprimirCotizacion(grupos, subtotalSinDescuento, descuentoTotalAplicado, total, numero,
+        usuario?.establecimiento?.nombre ?? 'POS Sistema', usuario?.establecimiento?.logo_url ?? null)
+
+      mostrarToast({ mensaje: `📝 Cotización ${numero} generada`, tipo: 'ok' })
+    } catch (e) {
+      mostrarToast({ tipo: 'error', mensaje: `Error: ${e instanceof Error ? e.message : 'Error desconocido'}` })
+    } finally {
+      setProcesando(false)
+    }
+  }, [grupos, total, subtotalSinDescuento, descuentoTotalAplicado, establecimientoId, usuario, mostrarToast])
 
   const handleCobrar = useCallback(async (efectivoRecibido?: number, vuelto?: number, whatsappTelefono?: string) => {
     setPagoInfo({ efectivoRecibido, vuelto, whatsappTelefono })
@@ -476,7 +578,11 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
         <CartPanel grupos={grupos} total={total} totalItems={totalItems} metodoPago={metodoPago}
           procesando={procesando} tipoDoc={tipoDoc} onTipoDoc={setTipoDoc}
           onCambiarCantidad={cambiarCantidad} onEliminar={eliminar}
-          onVaciar={vaciar} onMetodoPago={setMetodoPago} onCobrar={handleCobrar} />
+          onVaciar={vaciar} onMetodoPago={setMetodoPago} onCobrar={handleCobrar}
+          descuentosItem={descuentosItem} onDescuentoItem={setDescuentoItem}
+          descuentoGlobal={descuentoGlobal} onDescuentoGlobal={setDescuentoGlobal}
+          subtotalSinDescuento={subtotalSinDescuento} descuentoTotalAplicado={descuentoTotalAplicado}
+          onCotizar={generarCotizacion} />
       </div>
       {modalCliente && <ModalCliente total={total} onConfirmar={cobrarConFactura} onCancelar={() => setModalCliente(false)} establecimientoId={establecimientoId} />}
       {toast && <ToastSRI toast={toast} onClose={() => setToast(null)} />}
