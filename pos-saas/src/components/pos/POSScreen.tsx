@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useInventario, useCarrito } from '@/hooks'
+import { supabase } from '@/lib/supabase'
 import { ProductCard } from './ProductCard'
 import { CartPanel } from './CartPanel'
 import { diasRestantes } from '@/types'
@@ -126,19 +127,47 @@ function ToastSRI({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   )
 }
 
-function ModalCliente({ onConfirmar, onCancelar, total }: {
+function ModalCliente({ onConfirmar, onCancelar, total, establecimientoId }: {
   onConfirmar: (cliente: ClienteFactura) => void
   onCancelar: () => void
   total: number
+  establecimientoId: number
 }) {
   const [form, setForm] = useState<ClienteFactura>({
     identificacion: '', tipo_identificacion: 'cedula',
     razon_social: '', direccion: 'Ecuador', email: '', telefono: '+593 ', enviarWhatsApp: false,
   })
   const [errores, setErrores] = useState<Partial<Record<keyof ClienteFactura, string>>>({})
+  const [clienteEncontrado, setClienteEncontrado] = useState<boolean | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { inputRef.current?.focus() }, [])
+
+  useEffect(() => {
+    const len = form.tipo_identificacion === 'cedula' ? 10 : form.tipo_identificacion === 'ruc' ? 13 : null
+    if (!len || form.identificacion.length !== len) { setClienteEncontrado(null); return }
+    let activo = true
+    supabase.from('clientes').select('*')
+      .eq('establecimiento_id', establecimientoId)
+      .eq('identificacion', form.identificacion)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!activo) return
+        if (data) {
+          setForm(prev => ({
+            ...prev,
+            razon_social: data.razon_social ?? prev.razon_social,
+            direccion: data.direccion || prev.direccion,
+            email: data.email ?? prev.email,
+            telefono: data.telefono || prev.telefono,
+          }))
+          setClienteEncontrado(true)
+        } else {
+          setClienteEncontrado(false)
+        }
+      })
+    return () => { activo = false }
+  }, [form.identificacion, form.tipo_identificacion, establecimientoId])
 
   const validar = () => {
     const e: typeof errores = {}
@@ -193,6 +222,8 @@ function ModalCliente({ onConfirmar, onCancelar, total }: {
               className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors
                 ${errores.identificacion ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-blue-400 bg-gray-50'}`} />
             {errores.identificacion && <p className="text-[11px] text-red-500 mt-1">{errores.identificacion}</p>}
+            {clienteEncontrado === true && <p className="text-[11px] text-emerald-600 mt-1">✓ Cliente encontrado — datos autocompletados</p>}
+            {clienteEncontrado === false && <p className="text-[11px] text-gray-400 mt-1">Cliente nuevo</p>}
           </div>
           <div>
             <label className="text-xs font-medium text-gray-600 block mb-1">Nombre / Razón social</label>
@@ -331,6 +362,18 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
 
       await recargar(); focusSearch()
 
+      supabase.from('clientes').upsert({
+        establecimiento_id: establecimientoId,
+        identificacion: cliente.identificacion,
+        tipo_identificacion: cliente.tipo_identificacion,
+        razon_social: cliente.razon_social,
+        direccion: cliente.direccion,
+        email: cliente.email,
+        telefono: cliente.telefono,
+      }, { onConflict: 'establecimiento_id,identificacion' }).then(({ error }) => {
+        if (error) console.error('Error guardando cliente:', error)
+      })
+
       const mensajeWA = construirMensajeWhatsApp({
         clienteNombre: cliente.razon_social,
         nombreNegocio: usuario?.establecimiento?.nombre ?? 'Nuestra tienda',
@@ -435,7 +478,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
           onCambiarCantidad={cambiarCantidad} onEliminar={eliminar}
           onVaciar={vaciar} onMetodoPago={setMetodoPago} onCobrar={handleCobrar} />
       </div>
-      {modalCliente && <ModalCliente total={total} onConfirmar={cobrarConFactura} onCancelar={() => setModalCliente(false)} />}
+      {modalCliente && <ModalCliente total={total} onConfirmar={cobrarConFactura} onCancelar={() => setModalCliente(false)} establecimientoId={establecimientoId} />}
       {toast && <ToastSRI toast={toast} onClose={() => setToast(null)} />}
     </div>
   )
