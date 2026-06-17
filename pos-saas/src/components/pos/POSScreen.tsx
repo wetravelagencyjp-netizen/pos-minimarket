@@ -612,8 +612,8 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
           </div>
         </div>
       )}
-      <div className="grid flex-1 gap-0 overflow-hidden bg-slate-50 p-0 grid-cols-1 md:gap-3 md:p-3 md:grid-cols-[1fr_380px]">
-        <section className="flex flex-col overflow-hidden rounded-none border-0 shadow-none bg-white md:rounded-2xl md:border md:border-slate-100 md:shadow-sm">
+      <div className="grid flex-1 gap-0 overflow-hidden bg-slate-50 p-0 grid-cols-1 md:grid-rows-[1fr] md:gap-3 md:p-3 md:grid-cols-[1fr_380px]">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-none border-0 shadow-none bg-white md:rounded-2xl md:border md:border-slate-100 md:shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
@@ -662,7 +662,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
             )}
           </div>
         </section>
-        <div className={`fixed inset-0 z-40 flex-col bg-slate-50 md:static md:z-auto md:h-full md:bg-transparent ${carritoMovilAbierto ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`fixed inset-0 z-40 flex-col bg-slate-50 md:static md:z-auto md:h-full md:min-h-0 md:bg-transparent ${carritoMovilAbierto ? 'flex' : 'hidden'} md:flex`}>
           <CartPanel grupos={grupos} total={total} totalItems={totalItems} metodoPago={metodoPago}
             procesando={procesando} tipoDoc={tipoDoc} onTipoDoc={setTipoDoc}
             onCambiarCantidad={cambiarCantidad} onEliminar={eliminar}
