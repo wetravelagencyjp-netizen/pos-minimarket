@@ -695,7 +695,10 @@ function ModalNuevoLote({
       </div>
     </div>
   )
-}}// ─── VENDEDORES ────────────────────────────────────────────
+)
+}
+
+// ─── VENDEDORES ────────────────────────────────────────────
 function SeccionVendedores({ establecimientoId }: { establecimientoId: number }) {
   const [vendedores, setVendedores] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
