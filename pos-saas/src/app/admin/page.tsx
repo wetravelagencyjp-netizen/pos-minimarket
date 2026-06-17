@@ -576,6 +576,8 @@ function ImportadorExcel({
       </div>
     </div>
   )
+}
+
 // ─── NUEVO LOTE (recibir mercancía) ────────────────────────
 function ModalNuevoLote({
   producto, establecimientoId, onCerrar, onGuardado,
