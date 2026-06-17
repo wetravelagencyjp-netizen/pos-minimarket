@@ -146,7 +146,7 @@ export function useCarrito(establecimientoId: number) {
     return Object.values(map)
   }, [itemsConDescuento])
 
-  const procesarVenta = useCallback(async () => {
+  const procesarVenta = useCallback(async (clienteId?: number | null) => {
     if (!Object.keys(items).length) return { ok: false, error: 'Carrito vacío' }
     try {
       const { data: last } = await supabase.from('ventas')
@@ -169,6 +169,7 @@ export function useCarrito(establecimientoId: number) {
           descuento:       i.descuento,
         })),
         descuento_total: descuentoTotalAplicado,
+        cliente_id: clienteId ?? null,
       } as never)
 
       if (error) throw error
