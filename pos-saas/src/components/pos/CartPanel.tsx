@@ -166,7 +166,7 @@ export function CartPanel({
   }, [grupos, total, metodoPago, onCobrar, usuario, tipoDoc, montoRecibido, vuelto, enviarWhatsApp, telefonoWhatsApp])
 
   return (
-    <aside className="flex h-full w-full flex-col overflow-y-auto bg-white md:rounded-2xl md:border md:border-slate-100 md:shadow-sm">
+    <aside className="flex h-full w-full flex-col bg-white md:rounded-2xl md:border md:border-slate-100 md:shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3.5">
         <div className="flex items-center gap-2">
           {onCerrarMobil && (
@@ -182,7 +182,7 @@ export function CartPanel({
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         {empty ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
+          <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-400">
             <span className="text-3xl">🛒</span><p className="text-sm">El carrito está vacío</p>
           </div>
         ) : (
@@ -253,127 +253,130 @@ export function CartPanel({
             ))}
           </div>
         )}
+
+        <div className="border-t border-slate-100 px-4 pt-3 pb-4 space-y-3">
+          {!empty && (
+            <div className="space-y-1.5 rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>Subtotal</span>
+                <span>{fmt(subtotalSinDescuento)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="flex-1 text-xs text-slate-500">Descuento global</span>
+                <select value={descuentoGlobal.tipo}
+                  onChange={e => onDescuentoGlobal({ tipo: e.target.value as TipoDescuento, valor: descuentoGlobal.valor })}
+                  className="rounded border border-slate-200 px-1 py-1 text-xs">
+                  <option value="porcentaje">%</option>
+                  <option value="fijo">$</option>
+                </select>
+                <input type="number" min="0" step="0.01" value={descuentoGlobal.valor || ''}
+                  onChange={e => onDescuentoGlobal({ tipo: descuentoGlobal.tipo, valor: parseFloat(e.target.value) || 0 })}
+                  placeholder="0"
+                  className="w-20 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-amber-400" />
+              </div>
+              {descuentoTotalAplicado > 0 && (
+                <div className="flex items-center justify-between text-xs font-medium text-amber-600">
+                  <span>Descuento total</span>
+                  <span>− {fmt(descuentoTotalAplicado)}</span>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="flex gap-1 rounded-xl bg-slate-100 p-0.5">
+            {(['ticket', 'factura'] as const).map(tipo => (
+              <button key={tipo} onClick={() => onTipoDoc(tipo)}
+                className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-all
+                  ${tipoDoc === tipo ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                {tipo === 'ticket' ? '🧾 Ticket' : '📄 Factura e.'}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {METODOS.map(({ value, label, icon }) => (
+              <button key={value} onClick={() => onMetodoPago(value)}
+                className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-medium transition-all
+                  ${metodoPago === value ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                {icon} {label}
+              </button>
+            ))}
+          </div>
+          {metodoPago === 'efectivo' && !empty && (
+            <div className="space-y-1.5 rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-slate-600">Paga con:</label>
+                {efectivoRecibido && (
+                  <button onClick={() => setEfectivoRecibido('')} className="text-[11px] text-slate-400 hover:text-rose-500 transition-colors">Limpiar</button>
+                )}
+              </div>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={efectivoRecibido}
+                onChange={e => setEfectivoRecibido(e.target.value)}
+                placeholder="0.00"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all"
+              />
+              <div className="flex gap-1.5">
+                {BILLETES.map(billete => (
+                  <button key={billete} type="button" onClick={() => agregarBillete(billete)}
+                    className="flex-1 rounded-xl border border-slate-200 bg-white py-1.5 text-xs font-medium text-slate-600 transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 active:scale-95">
+                    +${billete}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-baseline justify-between pt-1">
+                <span className="text-xs font-medium text-slate-500">{vuelto < 0 ? 'Falta' : 'Vuelto'}</span>
+                <span className={`text-2xl font-bold ${vuelto < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {fmt(Math.abs(vuelto))}
+                </span>
+              </div>
+            </div>
+          )}
+          {metodoPago === 'fiado' && !empty && (
+            <div className="space-y-1.5 rounded-xl border border-slate-100 bg-slate-50 p-3">
+              {clienteFiado ? (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-800">{clienteFiado.razon_social}</p>
+                    <p className="text-[11px] text-slate-500">
+                      Debe {fmt(clienteFiado.saldo_pendiente)} de {fmt(clienteFiado.limite_credito)} de límite
+                    </p>
+                  </div>
+                  <button onClick={onAbrirSelectorCliente} className="shrink-0 text-xs text-indigo-600 hover:text-indigo-700">Cambiar</button>
+                </div>
+              ) : (
+                <button onClick={onAbrirSelectorCliente}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-medium text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors">
+                  👤 Seleccionar cliente
+                </button>
+              )}
+            </div>
+          )}
+          {tipoDoc === 'ticket' && !empty && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5">
+                <input type="checkbox" id="wa-ticket" checked={enviarWhatsApp}
+                  onChange={e => setEnviarWhatsApp(e.target.checked)}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                <label htmlFor="wa-ticket" className="text-xs text-emerald-700 flex-1">📱 El cliente desea recibir su recibo por WhatsApp</label>
+              </div>
+              {enviarWhatsApp && (
+                <input type="tel" value={telefonoWhatsApp} onChange={e => setTelefonoWhatsApp(e.target.value)}
+                  placeholder="+593 99 999 9999"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all" />
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="border-t border-slate-100 px-4 pt-3 pb-4 space-y-3">
-        {!empty && (
-          <div className="space-y-1.5 rounded-xl border border-slate-100 bg-slate-50 p-3">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>Subtotal</span>
-              <span>{fmt(subtotalSinDescuento)}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="flex-1 text-xs text-slate-500">Descuento global</span>
-              <select value={descuentoGlobal.tipo}
-                onChange={e => onDescuentoGlobal({ tipo: e.target.value as TipoDescuento, valor: descuentoGlobal.valor })}
-                className="rounded border border-slate-200 px-1 py-1 text-xs">
-                <option value="porcentaje">%</option>
-                <option value="fijo">$</option>
-              </select>
-              <input type="number" min="0" step="0.01" value={descuentoGlobal.valor || ''}
-                onChange={e => onDescuentoGlobal({ tipo: descuentoGlobal.tipo, valor: parseFloat(e.target.value) || 0 })}
-                placeholder="0"
-                className="w-20 rounded border border-slate-200 px-2 py-1 text-xs outline-none focus:border-amber-400" />
-            </div>
-            {descuentoTotalAplicado > 0 && (
-              <div className="flex items-center justify-between text-xs font-medium text-amber-600">
-                <span>Descuento total</span>
-                <span>− {fmt(descuentoTotalAplicado)}</span>
-              </div>
-            )}
-          </div>
-        )}
+      <div className="border-t border-slate-100 bg-white px-4 py-3 space-y-2">
         <div className="flex items-baseline justify-between">
           <span className="text-sm font-medium text-slate-700">Total a pagar</span>
           <span className="text-2xl font-semibold text-slate-800">{fmt(total)}</span>
         </div>
-        <div className="flex gap-1 rounded-xl bg-slate-100 p-0.5">
-          {(['ticket', 'factura'] as const).map(tipo => (
-            <button key={tipo} onClick={() => onTipoDoc(tipo)}
-              className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-all
-                ${tipoDoc === tipo ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-              {tipo === 'ticket' ? '🧾 Ticket' : '📄 Factura e.'}
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
-          {METODOS.map(({ value, label, icon }) => (
-            <button key={value} onClick={() => onMetodoPago(value)}
-              className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-medium transition-all
-                ${metodoPago === value ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-              {icon} {label}
-            </button>
-          ))}
-        </div>
-        {metodoPago === 'efectivo' && !empty && (
-          <div className="space-y-1.5 rounded-xl border border-slate-100 bg-slate-50 p-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-slate-600">Paga con:</label>
-              {efectivoRecibido && (
-                <button onClick={() => setEfectivoRecibido('')} className="text-[11px] text-slate-400 hover:text-rose-500 transition-colors">Limpiar</button>
-              )}
-            </div>
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.01"
-              value={efectivoRecibido}
-              onChange={e => setEfectivoRecibido(e.target.value)}
-              placeholder="0.00"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all"
-            />
-            <div className="flex gap-1.5">
-              {BILLETES.map(billete => (
-                <button key={billete} type="button" onClick={() => agregarBillete(billete)}
-                  className="flex-1 rounded-xl border border-slate-200 bg-white py-1.5 text-xs font-medium text-slate-600 transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 active:scale-95">
-                  +${billete}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-baseline justify-between pt-1">
-              <span className="text-xs font-medium text-slate-500">{vuelto < 0 ? 'Falta' : 'Vuelto'}</span>
-              <span className={`text-2xl font-bold ${vuelto < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                {fmt(Math.abs(vuelto))}
-              </span>
-            </div>
-          </div>
-        )}
-        {metodoPago === 'fiado' && !empty && (
-          <div className="space-y-1.5 rounded-xl border border-slate-100 bg-slate-50 p-3">
-            {clienteFiado ? (
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-800">{clienteFiado.razon_social}</p>
-                  <p className="text-[11px] text-slate-500">
-                    Debe {fmt(clienteFiado.saldo_pendiente)} de {fmt(clienteFiado.limite_credito)} de límite
-                  </p>
-                </div>
-                <button onClick={onAbrirSelectorCliente} className="shrink-0 text-xs text-indigo-600 hover:text-indigo-700">Cambiar</button>
-              </div>
-            ) : (
-              <button onClick={onAbrirSelectorCliente}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-medium text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors">
-                👤 Seleccionar cliente
-              </button>
-            )}
-          </div>
-        )}
-        {tipoDoc === 'ticket' && !empty && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5">
-              <input type="checkbox" id="wa-ticket" checked={enviarWhatsApp}
-                onChange={e => setEnviarWhatsApp(e.target.checked)}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-              <label htmlFor="wa-ticket" className="text-xs text-emerald-700 flex-1">📱 El cliente desea recibir su recibo por WhatsApp</label>
-            </div>
-            {enviarWhatsApp && (
-              <input type="tel" value={telefonoWhatsApp} onChange={e => setTelefonoWhatsApp(e.target.value)}
-                placeholder="+593 99 999 9999"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all" />
-            )}
-          </div>
-        )}
         <div className="flex gap-2">
           <button onClick={onCotizar} disabled={empty || procesando}
             className={`flex-1 rounded-xl py-3 text-sm font-medium transition-all
