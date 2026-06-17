@@ -695,7 +695,6 @@ function ModalNuevoLote({
       </div>
     </div>
   )
-)
 }
 
 // ─── VENDEDORES ────────────────────────────────────────────
