@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase'
 const fmt = (n: number) => `$${n.toFixed(2)}`
 
 export default function SuperAdminPage() {
-  const { usuario, logout } = useAuth()
+  const { usuario, logout, loading: authLoading } = useAuth()
   const router = useRouter()
   const [seccion, setSeccion] = useState<'tiendas' | 'usuarios' | 'nueva_tienda'>('tiendas')
   const [establecimientos, setEstablecimientos] = useState<any[]>([])
@@ -22,9 +22,13 @@ export default function SuperAdminPage() {
   const [mensaje, setMensaje] = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
   const [mensajeTienda, setMensajeTienda] = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
 
+  const esSuperadmin = !!(usuario as any)?.es_superadmin
+
   useEffect(() => {
-    if (usuario && !(usuario as any).es_superadmin) router.push('/pos')
-  }, [usuario, router])
+    if (authLoading) return
+    if (!usuario) { router.push('/login'); return }
+    if (!esSuperadmin) router.push('/pos')
+  }, [usuario, authLoading, esSuperadmin, router])
 
   const cargar = useCallback(async () => {
     setLoading(true)
@@ -52,7 +56,9 @@ export default function SuperAdminPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { cargar() }, [cargar])
+  useEffect(() => {
+    if (esSuperadmin) cargar()
+  }, [cargar, esSuperadmin])
 
   const cambiarEstado = async (id: number, estado: string) => {
     setGuardando(id)
@@ -140,6 +146,14 @@ export default function SuperAdminPage() {
   }
 
   const rolLabel: Record<string, string> = { admin: '👔 Admin', cajero: '🧾 Cajero' }
+
+  if (authLoading || !usuario || !esSuperadmin) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-900">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen flex-col bg-gray-900">
