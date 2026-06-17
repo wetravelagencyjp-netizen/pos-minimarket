@@ -75,23 +75,33 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
   const [guardando, setGuardando] = useState(false)
   const [mostrarImportador, setMostrarImportador] = useState(false)
   const [subiendoImagen, setSubiendoImagen] = useState(false)
+  const [loteParaProducto, setLoteParaProducto] = useState<any | null>(null)
+  const [margenDefecto, setMargenDefecto] = useState('')
+  const [guardandoMargen, setGuardandoMargen] = useState(false)
 
   const cargar = useCallback(async () => {
     setLoading(true)
-    const [p, v, c] = await Promise.all([
+    const [p, v, c, e] = await Promise.all([
       supabase.from('productos').select('*, vendedor:vendedores(nombre), categoria:categorias(nombre)').eq('establecimiento_id', establecimientoId).order('nombre'),
       supabase.from('vendedores').select('*').eq('establecimiento_id', establecimientoId),
       supabase.from('categorias').select('*').eq('establecimiento_id', establecimientoId),
+      supabase.from('establecimientos').select('margen_costo_estimado').eq('id', establecimientoId).single(),
     ])
     setProductos(p.data ?? [])
     setVendedores(v.data ?? [])
     setCategorias(c.data ?? [])
+    setMargenDefecto(e.data?.margen_costo_estimado != null ? String(e.data.margen_costo_estimado) : '')
     setLoading(false)
   }, [establecimientoId])
 
   useEffect(() => { cargar() }, [cargar])
 
   const limpiarForm = () => setForm({ nombre: '', precio_costo: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '', imagen_url: '', visible_en_catalogo: true })
+  const guardarMargen = async () => {
+    setGuardandoMargen(true)
+    await supabase.from('establecimientos').update({ margen_costo_estimado: parseFloat(margenDefecto) || 0 }).eq('id', establecimientoId)
+    setGuardandoMargen(false)
+  }
 
   const subirImagen = async (file: File) => {
     setSubiendoImagen(true)
@@ -172,6 +182,23 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
 
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-3 text-sm font-semibold text-gray-900">⚙️ Margen de ganancia por defecto</h2>
+        <p className="mb-3 text-xs text-gray-500">Se usa para sugerir el precio de venta cuando recibes stock de un producto por primera vez.</p>
+        <div className="flex items-center gap-3">
+          <div className="relative max-w-[160px]">
+            <input type="number" value={margenDefecto} onChange={e => setMargenDefecto(e.target.value)}
+              placeholder="ej: 50"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 pr-7 text-sm outline-none focus:border-blue-400" />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+          </div>
+          <button onClick={guardarMargen} disabled={guardandoMargen}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+            {guardandoMargen ? 'Guardando…' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+
       <div className="rounded-2xl border border-gray-200 bg-white p-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">{editando ? '✏️ Editar producto' : '➕ Nuevo producto'}</h2>
@@ -272,6 +299,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
                   <td className="px-5 py-3 text-right">${p.precio_venta.toFixed(2)}</td>
                   <td className="px-5 py-3 text-right">{p.stock_actual}</td>
                   <td className="px-5 py-3 text-right">
+                    <button onClick={() => setLoteParaProducto(p)} className="mr-2 text-emerald-600 hover:text-emerald-700 text-xs">📦 Stock</button>
                     <button onClick={() => editar(p)} className="mr-2 text-blue-500 hover:text-blue-700 text-xs">Editar</button>
                     <button onClick={() => eliminar(p.id)} className="text-red-400 hover:text-red-600 text-xs">Eliminar</button>
                   </td>
@@ -289,6 +317,15 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
           categorias={categorias}
           onCerrar={() => setMostrarImportador(false)}
           onImportado={() => { setMostrarImportador(false); cargar() }}
+        />
+      )}
+
+      {loteParaProducto && (
+        <ModalNuevoLote
+          producto={loteParaProducto}
+          establecimientoId={establecimientoId}
+          onCerrar={() => setLoteParaProducto(null)}
+          onGuardado={() => { setLoteParaProducto(null); cargar() }}
         />
       )}
     </div>
@@ -539,7 +576,124 @@ function ImportadorExcel({
       </div>
     </div>
   )
-}// ─── VENDEDORES ────────────────────────────────────────────
+// ─── NUEVO LOTE (recibir mercancía) ────────────────────────
+function ModalNuevoLote({
+  producto, establecimientoId, onCerrar, onGuardado,
+}: {
+  producto: any
+  establecimientoId: number
+  onCerrar: () => void
+  onGuardado: () => void
+}) {
+  const [cantidad, setCantidad] = useState('')
+  const [precioCompra, setPrecioCompra] = useState('')
+  const [precioVenta, setPrecioVenta] = useState('')
+  const [sinHistorial, setSinHistorial] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+
+  useEffect(() => {
+    const costo = parseFloat(precioCompra)
+    if (!costo || costo <= 0) return
+
+    const sugerir = async () => {
+      const { data: ultimoLote } = await supabase
+        .from('lotes_productos')
+        .select('precio_compra, precio_venta_sugerido')
+        .eq('producto_id', producto.id)
+        .order('creado_en', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (ultimoLote && ultimoLote.precio_compra > 0) {
+        const markup = (ultimoLote.precio_venta_sugerido - ultimoLote.precio_compra) / ultimoLote.precio_compra
+        setPrecioVenta((costo * (1 + markup)).toFixed(2))
+        setSinHistorial(false)
+      } else {
+        const { data: estab } = await supabase
+          .from('establecimientos')
+          .select('margen_costo_estimado')
+          .eq('id', establecimientoId)
+          .single()
+        const margen = estab?.margen_costo_estimado ?? 0
+        setPrecioVenta((costo * (1 + margen / 100)).toFixed(2))
+        setSinHistorial(true)
+      }
+    }
+    sugerir()
+  }, [precioCompra, producto.id, establecimientoId])
+
+  const guardar = async () => {
+    const cant = parseInt(cantidad)
+    const costo = parseFloat(precioCompra)
+    const venta = parseFloat(precioVenta)
+    if (!cant || cant <= 0 || !costo || !venta) return
+    setGuardando(true)
+
+    const { data: sucursal } = await supabase
+      .from('sucursales')
+      .select('id')
+      .eq('establecimiento_id', establecimientoId)
+      .limit(1)
+      .maybeSingle()
+
+    if (!sucursal) {
+      alert('Falta crear una sucursal para este establecimiento')
+      setGuardando(false)
+      return
+    }
+
+    await supabase.from('lotes_productos').insert({
+      producto_id: producto.id,
+      sucursal_id: sucursal.id,
+      precio_compra: costo,
+      precio_venta_sugerido: venta,
+      stock_lote: cant,
+      margen_ganancia: +(((venta - costo) / costo) * 100).toFixed(2),
+    })
+
+    await supabase.from('productos').update({
+      stock_actual: producto.stock_actual + cant,
+      precio_costo: costo,
+      precio_venta: venta,
+    }).eq('id', producto.id)
+
+    setGuardando(false)
+    onGuardado()
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">📦 Recibir stock — {producto.nombre}</h2>
+          <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+
+        <input placeholder="Cantidad recibida *" type="number" value={cantidad} onChange={e => setCantidad(e.target.value)}
+          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+
+        <input placeholder="Precio de costo de este lote *" type="number" value={precioCompra} onChange={e => setPrecioCompra(e.target.value)}
+          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+
+        <div>
+          <input placeholder="Precio de venta sugerido" type="number" value={precioVenta} onChange={e => setPrecioVenta(e.target.value)}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+          {sinHistorial && precioVenta && (
+            <p className="mt-1 text-[11px] text-amber-600">Sugerido con el margen por defecto del establecimiento — puedes ajustarlo.</p>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={onCerrar} className="flex-1 rounded-lg border border-gray-200 py-2 text-sm text-gray-500 hover:bg-gray-50">Cancelar</button>
+          <button onClick={guardar} disabled={guardando}
+            className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+            {guardando ? 'Guardando…' : 'Registrar lote'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}}// ─── VENDEDORES ────────────────────────────────────────────
 function SeccionVendedores({ establecimientoId }: { establecimientoId: number }) {
   const [vendedores, setVendedores] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
