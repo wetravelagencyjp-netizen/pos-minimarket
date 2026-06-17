@@ -61,6 +61,7 @@ export interface Venta {
   numero_comprobante: string
   total: number
   metodo_pago: MetodoPago
+  cliente_id: number | null
   fecha_venta: string
 }
 
@@ -74,7 +75,31 @@ export interface DetalleVenta {
   subtotal: number
 }
 
-export type MetodoPago = 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto'
+export type MetodoPago = 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto' | 'fiado'
+
+export interface Cliente {
+  id: number
+  establecimiento_id: number
+  identificacion: string
+  tipo_identificacion: 'cedula' | 'ruc' | 'pasaporte' | 'consumidor_final'
+  razon_social: string
+  direccion: string | null
+  email: string | null
+  telefono: string | null
+  limite_credito: number
+  saldo_pendiente: number
+}
+
+export interface AbonoCliente {
+  id: number
+  establecimiento_id: number
+  cliente_id: number
+  monto: number
+  metodo_pago: string | null
+  nota: string | null
+  usuario_id: string | null
+  fecha: string
+}
 
 export interface ItemCarrito {
   producto: Producto
