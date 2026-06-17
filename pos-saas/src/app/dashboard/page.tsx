@@ -67,7 +67,7 @@ const Icon = {
 }
 
 export default function DashboardPage() {
-  const { usuario, logout } = useAuth()
+  const { usuario, logout, loading: authLoading } = useAuth()
   const router = useRouter()
   const [periodo, setPeriodo] = useState<'hoy' | 'semana' | 'mes'>('hoy')
   const [metricas, setMetricas] = useState({ totalVentas: 0, numVentas: 0, ticketPromedio: 0 })
@@ -77,6 +77,12 @@ export default function DashboardPage() {
   const [stockBajo, setStockBajo] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const estabId = usuario?.establecimiento_id ?? 1
+
+  useEffect(() => {
+    if (!authLoading && !usuario) {
+      router.push('/login')
+    }
+  }, [authLoading, usuario, router])
 
   const getFechaInicio = useCallback(() => {
     const hoy = new Date()
@@ -129,10 +135,20 @@ export default function DashboardPage() {
     setLoading(false)
   }, [estabId, getFechaInicio])
 
-  useEffect(() => { cargar() }, [cargar])
+  useEffect(() => {
+    if (usuario) cargar()
+  }, [cargar, usuario])
 
   const metodoLabel: Record<string, string> = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', mixto: 'Mixto' }
   const metodoColor: Record<string, string> = { efectivo: 'bg-emerald-400', tarjeta: 'bg-indigo-400', transferencia: 'bg-sky-400', mixto: 'bg-violet-400' }
+
+  if (authLoading || !usuario) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen flex-col bg-slate-50">
