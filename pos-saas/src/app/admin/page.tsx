@@ -70,10 +70,11 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
   const [vendedores, setVendedores] = useState<any[]>([])
   const [categorias, setCategorias] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ nombre: '', precio_costo: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '' })
+  const [form, setForm] = useState({ nombre: '', precio_costo: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '', imagen_url: '', visible_en_catalogo: true })
   const [editando, setEditando] = useState<number | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [mostrarImportador, setMostrarImportador] = useState(false)
+  const [subiendoImagen, setSubiendoImagen] = useState(false)
 
   const cargar = useCallback(async () => {
     setLoading(true)
@@ -90,7 +91,27 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
 
   useEffect(() => { cargar() }, [cargar])
 
-  const limpiarForm = () => setForm({ nombre: '', precio_costo: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '' })
+  const limpiarForm = () => setForm({ nombre: '', precio_costo: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '', imagen_url: '', visible_en_catalogo: true })
+
+  const subirImagen = async (file: File) => {
+    setSubiendoImagen(true)
+    const ext = file.name.split('.').pop()
+    const nombreArchivo = `${establecimientoId}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('productos').upload(nombreArchivo, file)
+    if (error) {
+      alert('Error subiendo la foto: ' + error.message)
+      setSubiendoImagen(false)
+      return
+    }
+    const { data } = supabase.storage.from('productos').getPublicUrl(nombreArchivo)
+    setForm(f => ({ ...f, imagen_url: data.publicUrl }))
+    setSubiendoImagen(false)
+  }
+
+  const handleArchivoImagen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) subirImagen(file)
+  }
 
   const guardar = async () => {
     if (!form.nombre || !form.precio_venta) return
@@ -104,6 +125,8 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
       vendedor_id: form.vendedor_id ? parseInt(form.vendedor_id) : null,
       categoria_id: form.categoria_id ? parseInt(form.categoria_id) : null,
       codigo_barras: form.codigo_barras || null,
+      imagen_url: form.imagen_url || null,
+      visible_en_catalogo: form.visible_en_catalogo,
     }
     if (editando) {
       await supabase.from('productos').update(datos).eq('id', editando)
@@ -118,7 +141,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
 
   const editar = (p: any) => {
     setEditando(p.id)
-    setForm({ nombre: p.nombre, precio_costo: p.precio_costo != null ? String(p.precio_costo) : '', precio_venta: String(p.precio_venta), stock_actual: String(p.stock_actual), vendedor_id: String(p.vendedor_id ?? ''), categoria_id: String(p.categoria_id ?? ''), codigo_barras: p.codigo_barras ?? '' })
+    setForm({ nombre: p.nombre, precio_costo: p.precio_costo != null ? String(p.precio_costo) : '', precio_venta: String(p.precio_venta), stock_actual: String(p.stock_actual), vendedor_id: String(p.vendedor_id ?? ''), categoria_id: String(p.categoria_id ?? ''), codigo_barras: p.codigo_barras ?? '', imagen_url: p.imagen_url ?? '', visible_en_catalogo: p.visible_en_catalogo ?? true })
   }
 
   const eliminar = async (id: number) => {
@@ -163,27 +186,48 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <input placeholder="Nombre del producto *" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
-          <input placeholder="Código de barras" value={form.codigo_barras} onChange={e => setForm(f => ({ ...f, codigo_barras: e.target.value }))}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
-          <input placeholder="Precio de costo" type="number" value={form.precio_costo} onChange={e => setForm(f => ({ ...f, precio_costo: e.target.value }))}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
-          <input placeholder="Precio de venta *" type="number" value={form.precio_venta} onChange={e => setForm(f => ({ ...f, precio_venta: e.target.value }))}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
-          <input placeholder="Stock actual" type="number" value={form.stock_actual} onChange={e => setForm(f => ({ ...f, stock_actual: e.target.value }))}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
-          <select value={form.vendedor_id} onChange={e => setForm(f => ({ ...f, vendedor_id: e.target.value }))}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400">
-            <option value="">— Seleccionar vendedor —</option>
-            {vendedores.map(v => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-          </select>
-          <select value={form.categoria_id} onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value }))}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400">
-            <option value="">— Seleccionar categoría —</option>
-            {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-          </select>
+        <div className="flex gap-4">
+          <div className="flex shrink-0 flex-col items-center gap-2">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+              {form.imagen_url ? (
+                <img src={form.imagen_url} alt="Foto del producto" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-2xl text-gray-300">📦</span>
+              )}
+            </div>
+            <input type="file" accept="image/*" onChange={handleArchivoImagen} className="hidden" id="imagen-producto" />
+            <label htmlFor="imagen-producto"
+              className="cursor-pointer rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] text-gray-600 hover:bg-gray-50 transition-colors">
+              {subiendoImagen ? 'Subiendo…' : form.imagen_url ? 'Cambiar foto' : '📷 Subir foto'}
+            </label>
+          </div>
+          <div className="grid flex-1 grid-cols-2 gap-3">
+            <input placeholder="Nombre del producto *" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+            <input placeholder="Código de barras" value={form.codigo_barras} onChange={e => setForm(f => ({ ...f, codigo_barras: e.target.value }))}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+            <input placeholder="Precio de costo" type="number" value={form.precio_costo} onChange={e => setForm(f => ({ ...f, precio_costo: e.target.value }))}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+            <input placeholder="Precio de venta *" type="number" value={form.precio_venta} onChange={e => setForm(f => ({ ...f, precio_venta: e.target.value }))}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+            <input placeholder="Stock actual" type="number" value={form.stock_actual} onChange={e => setForm(f => ({ ...f, stock_actual: e.target.value }))}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+            <select value={form.vendedor_id} onChange={e => setForm(f => ({ ...f, vendedor_id: e.target.value }))}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400">
+              <option value="">— Seleccionar vendedor —</option>
+              {vendedores.map(v => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+            </select>
+            <select value={form.categoria_id} onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value }))}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400">
+              <option value="">— Seleccionar categoría —</option>
+              {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+            </select>
+            <label className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600">
+              <input type="checkbox" checked={form.visible_en_catalogo} onChange={e => setForm(f => ({ ...f, visible_en_catalogo: e.target.checked }))}
+                className="rounded border-gray-300" />
+              🛍️ Mostrar en catálogo web
+            </label>
+          </div>
         </div>
         <div className="mt-3 flex gap-2">
           <button onClick={guardar} disabled={guardando}
@@ -201,6 +245,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
           <table className="w-full text-sm">
             <thead className="border-b border-gray-100 text-xs text-gray-400">
               <tr>
+                <th className="px-5 py-3 text-left">Foto</th>
                 <th className="px-5 py-3 text-left">Nombre</th>
                 <th className="px-5 py-3 text-left">Vendedor</th>
                 <th className="px-5 py-3 text-left">Categoría</th>
@@ -212,6 +257,15 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
             <tbody>
               {productos.map(p => (
                 <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-5 py-3">
+                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+                      {p.imagen_url ? (
+                        <img src={p.imagen_url} alt={p.nombre} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-base">{p.categoria?.icono ?? '📦'}</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-5 py-3 font-medium text-gray-900">{p.nombre}</td>
                   <td className="px-5 py-3 text-gray-500">{p.vendedor?.nombre ?? '—'}</td>
                   <td className="px-5 py-3 text-gray-500">{p.categoria?.nombre ?? '—'}</td>
