@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { ProductCard } from './ProductCard'
 import { CartPanel } from './CartPanel'
 import { diasRestantes } from '@/types'
-import type { Producto, GrupoVendedor, MetodoPago } from '@/types'
+import type { Producto, GrupoVendedor, MetodoPago, Cliente } from '@/types'
 
 type ToastTipo = 'ok' | 'error' | 'factura'
 type Toast = { mensaje: string; tipo: ToastTipo; claveAcceso?: string; whatsapp?: { telefono: string; mensaje: string } }
@@ -27,7 +27,7 @@ function construirMensajeWhatsApp(data: {
   claveAcceso?: string
 }) {
   const fmt = (n: number) => `$${n.toFixed(2)}`
-  const metodoLabel: Record<MetodoPago, string> = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', mixto: 'Mixto' }
+  const metodoLabel: Record<MetodoPago, string> = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', mixto: 'Mixto', fiado: 'Crédito' }
   const lineasProductos = data.grupos.flatMap(g =>
     g.items.map(i => `• ${i.producto.nombre} x${i.cantidad} - ${fmt(i.subtotal)}`)
   ).join('\n')
@@ -333,6 +333,78 @@ function ModalCliente({ onConfirmar, onCancelar, total, establecimientoId }: {
   )
 }
 
+function ModalSeleccionarCliente({ onSeleccionar, onCancelar, establecimientoId }: {
+  onSeleccionar: (cliente: Cliente) => void
+  onCancelar: () => void
+  establecimientoId: number
+}) {
+  const [busqueda, setBusqueda] = useState('')
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [buscando, setBuscando] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  useEffect(() => {
+    if (busqueda.trim().length < 2) { setClientes([]); return }
+    let activo = true
+    setBuscando(true)
+    supabase.from('clientes')
+      .select('*')
+      .eq('establecimiento_id', establecimientoId)
+      .or(`razon_social.ilike.%${busqueda}%,identificacion.ilike.%${busqueda}%`)
+      .order('razon_social')
+      .limit(10)
+      .then(({ data }) => {
+        if (!activo) return
+        setClientes((data as Cliente[]) ?? [])
+        setBuscando(false)
+      })
+    return () => { activo = false }
+  }, [busqueda, establecimientoId])
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl mx-4">
+        <div className="border-b border-slate-100 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-slate-800">Seleccionar cliente para crédito</h2>
+            <button onClick={onCancelar} className="text-slate-400 hover:text-slate-600">
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+        <div className="px-6 py-4">
+          <input ref={inputRef} type="text" value={busqueda} onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar por nombre o cédula/RUC…"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none transition-all focus:border-indigo-500 focus:bg-white" />
+          <div className="mt-3 max-h-72 overflow-y-auto space-y-1.5">
+            {buscando && <p className="text-center text-xs text-slate-400 py-4">Buscando…</p>}
+            {!buscando && busqueda.trim().length >= 2 && clientes.length === 0 && (
+              <p className="text-center text-xs text-slate-400 py-4">No se encontraron clientes registrados con ese nombre o identificación. Pide al Admin que lo registre en Estado de Cuenta.</p>
+            )}
+            {busqueda.trim().length < 2 && (
+              <p className="text-center text-xs text-slate-400 py-4">Escribe al menos 2 letras para buscar.</p>
+            )}
+            {clientes.map(c => (
+              <button key={c.id} onClick={() => onSeleccionar(c)}
+                className="w-full rounded-xl border border-slate-100 px-3 py-2.5 text-left hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
+                <p className="text-sm font-medium text-slate-800">{c.razon_social}</p>
+                <p className="text-[11px] text-slate-400">{c.identificacion}</p>
+                <p className="text-[11px] mt-0.5">
+                  <span className="text-slate-500">Debe: </span>
+                  <span className={c.saldo_pendiente > 0 ? 'font-medium text-rose-600' : 'text-emerald-600'}>${c.saldo_pendiente.toFixed(2)}</span>
+                  <span className="text-slate-400"> / límite ${c.limite_credito.toFixed(2)}</span>
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function POSScreen({ establecimientoId }: { establecimientoId: number }) {
   const [catActiva, setCatActiva]       = useState<number | null>(null)
   const [vendedorActivo, setVendedorActivo] = useState<number | null>(null)
@@ -342,6 +414,8 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const [tipoDoc, setTipoDoc]           = useState<TipoDocumento>('ticket')
   const [modalCliente, setModalCliente] = useState(false)
   const [carritoMovilAbierto, setCarritoMovilAbierto] = useState(false)
+  const [clienteFiado, setClienteFiado] = useState<Cliente | null>(null)
+  const [modalClienteFiado, setModalClienteFiado] = useState(false)
   const [pagoInfo, setPagoInfo]         = useState<{ efectivoRecibido?: number; vuelto?: number; whatsappTelefono?: string }>({})
   const searchRef                       = useRef<HTMLInputElement>(null)
   const { usuario, logout }             = useAuth()
@@ -405,7 +479,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
     const gruposSnapshot = [...grupos]
     const totalSnapshot = total
     const metodoSnapshot = metodoPago
-    const res = await procesarVenta()
+    const res = await procesarVenta(metodoPago === 'fiado' ? clienteFiado?.id : undefined)
     setProcesando(false)
     if (res.ok) {
       let whatsapp: Toast['whatsapp']
@@ -425,17 +499,18 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
       }
       mostrarToast({ mensaje: `✓ ${res.comprobante} procesado`, tipo: 'ok', whatsapp })
       setCarritoMovilAbierto(false)
+      setClienteFiado(null)
       await recargar(); focusSearch()
     } else {
       mostrarToast({ mensaje: `Error: ${res.error}`, tipo: 'error' })
     }
-  }, [procesarVenta, recargar, mostrarToast, focusSearch, grupos, total, metodoPago, usuario, pagoInfo])
+  }, [procesarVenta, recargar, mostrarToast, focusSearch, grupos, total, metodoPago, usuario, pagoInfo, clienteFiado])
 
   const cobrarConFactura = useCallback(async (cliente: ClienteFactura) => {
     setModalCliente(false)
     setProcesando(true)
     try {
-      const resVenta = await procesarVenta()
+      const resVenta = await procesarVenta(metodoPago === 'fiado' ? clienteFiado?.id : undefined)
       if (!resVenta.ok) throw new Error(resVenta.error ?? 'Error al procesar venta')
 
       const detallesXML = grupos.flatMap((g: any) =>
@@ -465,6 +540,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
 
       await recargar(); focusSearch()
       setCarritoMovilAbierto(false)
+      setClienteFiado(null)
 
       supabase.from('clientes').upsert({
         establecimiento_id: establecimientoId,
@@ -502,7 +578,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
     } finally {
       setProcesando(false)
     }
-  }, [procesarVenta, grupos, establecimientoId, recargar, mostrarToast, focusSearch, usuario, total, metodoPago, pagoInfo])
+  }, [procesarVenta, grupos, establecimientoId, recargar, mostrarToast, focusSearch, usuario, total, metodoPago, pagoInfo, clienteFiado])
 
   const generarCotizacion = useCallback(async () => {
     if (grupos.length === 0) return
@@ -545,10 +621,23 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   }, [grupos, total, subtotalSinDescuento, descuentoTotalAplicado, establecimientoId, usuario, mostrarToast])
 
   const handleCobrar = useCallback(async (efectivoRecibido?: number, vuelto?: number, whatsappTelefono?: string) => {
+    if (metodoPago === 'fiado') {
+      if (!clienteFiado) {
+        mostrarToast({ mensaje: 'Selecciona un cliente para la venta a crédito', tipo: 'error' })
+        return
+      }
+      if (clienteFiado.saldo_pendiente + total > clienteFiado.limite_credito) {
+        const continuar = window.confirm(
+          `${clienteFiado.razon_social} ya debe $${clienteFiado.saldo_pendiente.toFixed(2)} y su límite es $${clienteFiado.limite_credito.toFixed(2)}. ` +
+          `Con esta venta de $${total.toFixed(2)} quedaría debiendo $${(clienteFiado.saldo_pendiente + total).toFixed(2)}, por encima de su límite. ¿Deseas continuar igual?`
+        )
+        if (!continuar) return
+      }
+    }
     setPagoInfo({ efectivoRecibido, vuelto, whatsappTelefono })
     if (tipoDoc === 'factura') setModalCliente(true)
     else await cobrarConTicket()
-  }, [tipoDoc, cobrarConTicket])
+  }, [tipoDoc, cobrarConTicket, metodoPago, clienteFiado, total, mostrarToast])
 
   const diasSub = usuario?.establecimiento?.fecha_vencimiento
     ? diasRestantes(usuario.establecimiento.fecha_vencimiento as unknown as string) : null
@@ -666,12 +755,13 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
           <CartPanel grupos={grupos} total={total} totalItems={totalItems} metodoPago={metodoPago}
             procesando={procesando} tipoDoc={tipoDoc} onTipoDoc={setTipoDoc}
             onCambiarCantidad={cambiarCantidad} onEliminar={eliminar}
-            onVaciar={vaciar} onMetodoPago={setMetodoPago} onCobrar={handleCobrar}
+            onVaciar={() => { vaciar(); setClienteFiado(null) }} onMetodoPago={setMetodoPago} onCobrar={handleCobrar}
             descuentosItem={descuentosItem} onDescuentoItem={setDescuentoItem}
             descuentoGlobal={descuentoGlobal} onDescuentoGlobal={setDescuentoGlobal}
             subtotalSinDescuento={subtotalSinDescuento} descuentoTotalAplicado={descuentoTotalAplicado}
             onCotizar={generarCotizacion} modoMultivendedor={modoMultivendedor}
-            onCerrarMobil={() => setCarritoMovilAbierto(false)} />
+            onCerrarMobil={() => setCarritoMovilAbierto(false)}
+            clienteFiado={clienteFiado} onAbrirSelectorCliente={() => setModalClienteFiado(true)} />
         </div>
       </div>
       {totalItems > 0 && !carritoMovilAbierto && (
@@ -688,6 +778,13 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
         </button>
       )}
       {modalCliente && <ModalCliente total={total} onConfirmar={cobrarConFactura} onCancelar={() => setModalCliente(false)} establecimientoId={establecimientoId} />}
+      {modalClienteFiado && (
+        <ModalSeleccionarCliente
+          establecimientoId={establecimientoId}
+          onSeleccionar={c => { setClienteFiado(c); setModalClienteFiado(false) }}
+          onCancelar={() => setModalClienteFiado(false)}
+        />
+      )}
       {toast && <ToastSRI toast={toast} onClose={() => setToast(null)} />}
     </div>
   )
