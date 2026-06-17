@@ -33,39 +33,9 @@ export const viewport: Viewport = {
   themeColor: '#4f46e5',
 }
 
-const ERROR_CATCHER = `
-  function mostrarError(titulo, detalle) {
-    var box = document.createElement('div');
-    box.style.position = 'fixed';
-    box.style.inset = '0';
-    box.style.zIndex = '999999';
-    box.style.background = '#fff';
-    box.style.color = '#b91c1c';
-    box.style.padding = '20px';
-    box.style.fontFamily = 'monospace';
-    box.style.fontSize = '13px';
-    box.style.whiteSpace = 'pre-wrap';
-    box.style.overflow = 'auto';
-    box.textContent = titulo + '\\n\\n' + detalle;
-    document.body.appendChild(box);
-  }
-  window.addEventListener('error', function(e) {
-    mostrarError('ERROR: ' + e.message, (e.error && e.error.stack) ? e.error.stack : '(sin stack)');
-  });
-  window.addEventListener('unhandledrejection', function(e) {
-    var r = e.reason;
-    mostrarError('PROMISE ERROR: ' + (r && r.message ? r.message : String(r)), (r && r.stack) ? r.stack : '(sin stack)');
-  });
-`
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <head>
-        <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-        <script dangerouslySetInnerHTML={{ __html: 'if (window.eruda) { eruda.init(); }' }} />
-        <script dangerouslySetInnerHTML={{ __html: ERROR_CATCHER }} />
-      </head>
       <body className={inter.className}>
         <AuthProvider>
           {children}
