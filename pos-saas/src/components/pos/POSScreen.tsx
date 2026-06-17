@@ -662,7 +662,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
             )}
           </div>
         </section>
-        <div className={`fixed inset-0 z-40 bg-slate-50 md:static md:z-auto md:bg-transparent ${carritoMovilAbierto ? 'flex' : 'hidden'} md:flex`}>
+        <div className={`fixed inset-0 z-40 flex-col bg-slate-50 md:static md:z-auto md:h-full md:bg-transparent ${carritoMovilAbierto ? 'flex' : 'hidden'} md:flex`}>
           <CartPanel grupos={grupos} total={total} totalItems={totalItems} metodoPago={metodoPago}
             procesando={procesando} tipoDoc={tipoDoc} onTipoDoc={setTipoDoc}
             onCambiarCantidad={cambiarCantidad} onEliminar={eliminar}
