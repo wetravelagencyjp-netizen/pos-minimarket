@@ -15,6 +15,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const [searchQ, setSearchQ]     = useState('')
   const [toast, setToast]         = useState<Toast | null>(null)
   const [procesando, setProcesando] = useState(false)
+  const [avisoLote, setAvisoLote] = useState<{ nombre: string; precioAnterior: number; precioNuevo: number }[] | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { usuario, logout } = useAuth()
 
@@ -43,9 +44,20 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
     setProcesando(true)
     const res = await procesarVenta()
     setProcesando(false)
-    if (res.ok) { mostrarToast(`✓ ${res.comprobante} procesado`, 'ok'); await recargar() }
-    else mostrarToast(`Error: ${res.error}`, 'error')
-  }, [procesarVenta, recargar, mostrarToast])
+    if (res.ok) {
+      mostrarToast(`✓ ${res.comprobante} procesado`, 'ok')
+      await recargar()
+      if (res.cambiosPrecio && res.cambiosPrecio.length > 0) {
+        const avisos = res.cambiosPrecio.map(c => {
+          const nombreProducto = productos.find(p => p.id === c.producto_id)?.nombre ?? `Producto #${c.producto_id}`
+          return { nombre: nombreProducto, precioAnterior: c.precio_inicial, precioNuevo: c.precio_final }
+        })
+        setAvisoLote(avisos)
+      }
+    } else {
+      mostrarToast(`Error: ${res.error}`, 'error')
+    }
+  }, [procesarVenta, recargar, mostrarToast, productos])
 
   // Alerta de suscripción próxima a vencer (menos de 7 días)
   const diasSub = usuario?.establecimiento?.fecha_vencimiento
@@ -132,6 +144,35 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
         <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-lg transition-all
           ${toast.tipo === 'ok' ? 'bg-gray-900 text-white' : 'bg-red-600 text-white'}`}>
           {toast.mensaje}
+        </div>
+      )}
+
+      {avisoLote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-3xl border border-amber-200 bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Cambio de lote detectado</h3>
+                <p className="mt-0.5 text-xs text-slate-500">Los siguientes productos cambiaron de precio porque se agotó el lote anterior.</p>
+              </div>
+            </div>
+            <div className="space-y-2 mb-5">
+              {avisoLote.map((a, i) => (
+                <div key={i} className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2.5">
+                  <span className="text-xs font-medium text-slate-800 truncate max-w-[160px]">{a.nombre}</span>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-400 line-through">${a.precioAnterior.toFixed(2)}</span>
+                    <span className="font-semibold text-amber-700">${a.precioNuevo.toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setAvisoLote(null)}
+              className="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
+              Entendido
+            </button>
+          </div>
         </div>
       )}
     </div>
