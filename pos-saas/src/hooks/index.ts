@@ -31,10 +31,6 @@ export function useInventario(establecimientoId: number) {
       if (c.error) throw c.error
       if (v.error) throw v.error
 
-      if (p.error) throw p.error
-      if (c.error) throw c.error
-      if (v.error) throw v.error
-
       // Para cada producto, encontrar el lote más antiguo con stock (PEPS)
       const lotesData = lotes.data ?? []
       const loteActivoPorProducto: Record<number, { precio: number; stock: number; id_lote: number }> = {}
