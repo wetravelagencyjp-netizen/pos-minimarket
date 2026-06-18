@@ -135,7 +135,7 @@ export function CartPanel({
   const [efectivoRecibido, setEfectivoRecibido] = useState('')
   const montoRecibido = parseFloat(efectivoRecibido) || 0
   const vuelto = +(montoRecibido - total).toFixed(2)
-  const faltaEfectivo = metodoPago === 'efectivo' && montoRecibido < total
+  const faltaEfectivo = metodoPago === 'efectivo' && efectivoRecibido !== '' && montoRecibido < total
   const faltaCliente = metodoPago === 'fiado' && !clienteFiado
   const [enviarWhatsApp, setEnviarWhatsApp] = useState(false)
   const [telefonoWhatsApp, setTelefonoWhatsApp] = useState('+593 ')

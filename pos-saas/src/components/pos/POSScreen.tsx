@@ -410,7 +410,10 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const [vendedorActivo, setVendedorActivo] = useState<number | null>(null)
   const [searchQ, setSearchQ]           = useState('')
   const [toast, setToast]               = useState<Toast | null>(null)
-  const [procesando, setProcesando]     = useState(false)
+  const [procesando, setProcesando]     if (res.ok) {
+      let whatsapp: Toast['whatsapp']
+      if (pagoInfo.whatsappTelefono?.trim()) {
+  const [avisoLote, setAvisoLote]       = useState<{ nombre: string; precioAnterior: number; precioNuevo: number }[] | null>(null)
   const [tipoDoc, setTipoDoc]           = useState<TipoDocumento>('ticket')
   const [modalCliente, setModalCliente] = useState(false)
   const [carritoMovilAbierto, setCarritoMovilAbierto] = useState(false)
@@ -482,6 +485,13 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
     const res = await procesarVenta(metodoPago === 'fiado' ? clienteFiado?.id : undefined)
     setProcesando(false)
     if (res.ok) {
+      if (res.cambiosPrecio && res.cambiosPrecio.length > 0) {
+        setAvisoLote(res.cambiosPrecio.map(c => ({
+          nombre: productos.find(p => p.id === c.producto_id)?.nombre ?? `Producto #${c.producto_id}`,
+          precioAnterior: c.precio_inicial,
+          precioNuevo: c.precio_final,
+        })))
+      }
       let whatsapp: Toast['whatsapp']
       if (pagoInfo.whatsappTelefono?.trim()) {
         const mensajeWA = construirMensajeWhatsApp({
@@ -786,6 +796,35 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
         />
       )}
       {toast && <ToastSRI toast={toast} onClose={() => setToast(null)} />}
+
+      {avisoLote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-3xl border border-amber-200 bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Cambio de lote detectado</h3>
+                <p className="mt-0.5 text-xs text-slate-500">Estos productos cambiaron de precio al agotarse el lote anterior.</p>
+              </div>
+            </div>
+            <div className="space-y-2 mb-5">
+              {avisoLote.map((a, i) => (
+                <div key={i} className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2.5">
+                  <span className="text-xs font-medium text-slate-800 truncate max-w-[160px]">{a.nombre}</span>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-400 line-through">${a.precioAnterior.toFixed(2)}</span>
+                    <span className="font-semibold text-amber-700">${a.precioNuevo.toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setAvisoLote(null)}
+              className="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

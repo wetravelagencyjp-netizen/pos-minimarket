@@ -179,7 +179,10 @@ export function useCarrito(establecimientoId: number) {
         ? ventaData
         : (ventaData as any)?.id ?? null
 
-      return { ok: true, comprobante, venta_id }
+      const cambiosPrecio: { producto_id: number; precio_inicial: number; precio_final: number }[] =
+        (ventaData as any)?.cambios_precio ?? []
+
+      return { ok: true, comprobante, venta_id, cambiosPrecio }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : 'Error al procesar' }
     }
