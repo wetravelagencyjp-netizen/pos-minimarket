@@ -12,6 +12,9 @@ export interface Establecimiento {
   fecha_vencimiento: string   // formato ISO: "2025-12-31"
   url_pago: string | null
   creado_en: string
+  logo_url: string | null
+  modo_multivendedor: boolean
+  margen_costo_estimado: number | null
 }
 
 export interface Vendedor {
@@ -51,6 +54,7 @@ export interface Usuario {
   establecimiento_id: number
   nombre: string | null
   rol: 'admin' | 'cajero'
+  es_superadmin: boolean
   creado_en: string
   establecimiento?: Establecimiento
 }
