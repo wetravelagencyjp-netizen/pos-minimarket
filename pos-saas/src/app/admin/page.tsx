@@ -106,7 +106,9 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
   useEffect(() => {
     supabase.from('establecimientos').select('margen_costo_estimado').eq('id', establecimientoId).single()
       .then(({ data }) => setMargenDefecto(data?.margen_costo_estimado != null ? String(data.margen_costo_estimado) : ''))
-  }, [establecimientoId]) useEffect(() => { cargar() }, [cargar])
+  }, [establecimientoId])
+
+  useEffect(() => { cargar() }, [cargar])
 
   const limpiarForm = () => {
     setForm({ nombre: '', precio_costo: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '', imagen_url: '', visible_en_catalogo: true })
