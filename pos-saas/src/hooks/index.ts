@@ -15,19 +15,46 @@ export function useInventario(establecimientoId: number) {
   const cargar = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const [p, c, v] = await Promise.all([
+      const [p, c, v, lotes] = await Promise.all([
         supabase.from('productos')
           .select('*, vendedor:vendedores(*), categoria:categorias(*)')
           .eq('establecimiento_id', establecimientoId)
           .gt('stock_actual', 0).order('nombre'),
         supabase.from('categorias').select('*').eq('establecimiento_id', establecimientoId).order('nombre'),
         supabase.from('vendedores').select('*').eq('establecimiento_id', establecimientoId).order('nombre'),
+        supabase.from('lotes_productos')
+          .select('producto_id, precio_venta_sugerido, stock_lote, id_lote')
+          .gt('stock_lote', 0)
+          .order('creado_en', { ascending: true }),
       ])
       if (p.error) throw p.error
       if (c.error) throw c.error
       if (v.error) throw v.error
-      setTodos(p.data ?? [])
-      setProductos(p.data ?? [])
+
+      // Para cada producto, encontrar el lote más antiguo con stock (PEPS)
+      const lotesData = lotes.data ?? []
+      const loteActivoPorProducto: Record<number, { precio: number; stock: number; id_lote: number }> = {}
+      lotesData.forEach(l => {
+        if (!loteActivoPorProducto[l.producto_id]) {
+          loteActivoPorProducto[l.producto_id] = {
+            precio: l.precio_venta_sugerido,
+            stock: l.stock_lote,
+            id_lote: l.id_lote,
+          }
+        }
+      })
+
+      // Inyectar precio_lote_activo en cada producto
+      const productosConLote = (p.data ?? []).map(prod => ({
+        ...prod,
+        precio_venta: loteActivoPorProducto[prod.id]?.precio ?? prod.precio_venta,
+        stock_lote_activo: loteActivoPorProducto[prod.id]?.stock ?? prod.stock_actual,
+      }))
+      if (p.error) throw p.error
+      if (c.error) throw c.error
+      if (v.error) throw v.error
+      setTodos(productosConLote)
+      setProductos(productosConLote)
       setCategorias(c.data ?? [])
       setVendedores(v.data ?? [])
     } catch (e) {
@@ -67,10 +94,21 @@ export function useCarrito(establecimientoId: number) {
   const [descuentosItem, setDescuentosItem] = useState<Record<number, Descuento>>({})
   const [descuentoGlobal, setDescuentoGlobalState] = useState<Descuento>({ tipo: 'porcentaje', valor: 0 })
 
+  const [avisoStockLote, setAvisoStockLote] = useState<{ nombre: string; stockLote: number; precioActual: number; precioSiguiente: number } | null>(null)
+
   const agregar = useCallback((producto: Producto) => {
     setItems(prev => {
       const qty = (prev[producto.id]?.cantidad ?? 0) + 1
       if (qty > producto.stock_actual) return prev
+      const stockLote = (producto as any).stock_lote_activo ?? producto.stock_actual
+      if (qty === stockLote + 1) {
+        setAvisoStockLote({
+          nombre: producto.nombre,
+          stockLote,
+          precioActual: producto.precio_venta,
+          precioSiguiente: 0,
+        })
+      }
       return { ...prev, [producto.id]: { producto, cantidad: qty, subtotal: +(producto.precio_venta * qty).toFixed(2) } }
     })
   }, [])
@@ -193,5 +231,6 @@ export function useCarrito(establecimientoId: number) {
     agregar, cambiarCantidad, eliminar, vaciar, procesarVenta,
     descuentosItem, setDescuentoItem, descuentoGlobal, setDescuentoGlobal,
     subtotalSinDescuento, descuentoTotalAplicado,
+    avisoStockLote, setAvisoStockLote,
   }
 }
