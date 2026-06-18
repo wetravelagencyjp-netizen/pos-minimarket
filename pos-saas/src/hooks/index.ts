@@ -91,23 +91,70 @@ export function useCarrito(establecimientoId: number) {
   const [descuentosItem, setDescuentosItem] = useState<Record<number, Descuento>>({})
   const [descuentoGlobal, setDescuentoGlobalState] = useState<Descuento>({ tipo: 'porcentaje', valor: 0 })
 
-  const [avisoStockLote, setAvisoStockLote] = useState<{ nombre: string; stockLote: number; precioActual: number; precioSiguiente: number } | null>(null)
+  const [avisoStockLote, setAvisoStockLote] = useState<{
+    producto: Producto
+    stockLote: number
+    precioActual: number
+    precioSiguiente: number
+  } | null>(null)
 
   const agregar = useCallback((producto: Producto) => {
     setItems(prev => {
       const qty = (prev[producto.id]?.cantidad ?? 0) + 1
       if (qty > producto.stock_actual) return prev
       const stockLote = (producto as any).stock_lote_activo ?? producto.stock_actual
+
+      // Al intentar agregar la unidad que supera el lote activo, pausar y preguntar
       if (qty === stockLote + 1) {
+        const precioSiguiente = (producto as any).precio_venta_original ?? producto.precio_venta
         setAvisoStockLote({
-          nombre: producto.nombre,
+          producto,
           stockLote,
           precioActual: producto.precio_venta,
-          precioSiguiente: 0,
+          precioSiguiente,
         })
+        return prev // No agregar todavía — esperar decisión del cajero
       }
+
       return { ...prev, [producto.id]: { producto, cantidad: qty, subtotal: +(producto.precio_venta * qty).toFixed(2) } }
     })
+  }, [])
+
+  // Opción 1: vender solo las unidades del lote actual
+  const confirmarSoloLoteActual = useCallback((producto: Producto, stockLote: number) => {
+    setItems(prev => ({
+      ...prev,
+      [producto.id]: { producto, cantidad: stockLote, subtotal: +(producto.precio_venta * stockLote).toFixed(2) }
+    }))
+    setAvisoStockLote(null)
+  }, [])
+
+  // Opción 2: continuar al precio del siguiente lote
+  const confirmarPrecioNuevo = useCallback((producto: Producto, stockLote: number, precioNuevo: number) => {
+    const productoNuevoPrecio = { ...producto, precio_venta: precioNuevo }
+    setItems(prev => {
+      const cantActual = prev[producto.id]?.cantidad ?? stockLote
+      const nuevaCant = cantActual + 1
+      return {
+        ...prev,
+        [producto.id]: { producto: productoNuevoPrecio, cantidad: nuevaCant, subtotal: +(precioNuevo * nuevaCant).toFixed(2) }
+      }
+    })
+    setAvisoStockLote(null)
+  }, [])
+
+  // Opción 3: vender todo al precio del lote actual (diferencia queda en reporte)
+  const confirmarTodoAlPrecioActual = useCallback((producto: Producto, stockLote: number) => {
+    const nuevaCant = stockLote + 1
+    setItems(prev => ({
+      ...prev,
+      [producto.id]: {
+        producto,
+        cantidad: nuevaCant,
+        subtotal: +(producto.precio_venta * nuevaCant).toFixed(2),
+      }
+    }))
+    setAvisoStockLote(null)
   }, [])
 
   const cambiarCantidad = useCallback((id: number, delta: number) => {
@@ -229,5 +276,6 @@ export function useCarrito(establecimientoId: number) {
     descuentosItem, setDescuentoItem, descuentoGlobal, setDescuentoGlobal,
     subtotalSinDescuento, descuentoTotalAplicado,
     avisoStockLote, setAvisoStockLote,
+    confirmarSoloLoteActual, confirmarPrecioNuevo, confirmarTodoAlPrecioActual,
   }
 }

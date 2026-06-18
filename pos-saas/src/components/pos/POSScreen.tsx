@@ -426,7 +426,8 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const { productos, categorias, vendedores, loading, error, buscar, recargar } = useInventario(establecimientoId)
   const { grupos, total, totalItems, metodoPago, setMetodoPago, agregar, cambiarCantidad, eliminar, vaciar, procesarVenta,
     descuentosItem, setDescuentoItem, descuentoGlobal, setDescuentoGlobal, subtotalSinDescuento, descuentoTotalAplicado,
-    avisoStockLote, setAvisoStockLote } = useCarrito(establecimientoId)
+    avisoStockLote, setAvisoStockLote,
+    confirmarSoloLoteActual, confirmarPrecioNuevo, confirmarTodoAlPrecioActual } = useCarrito(establecimientoId)
 
   const productosFiltrados = vendedorActivo ? productos.filter(p => p.vendedor_id === vendedorActivo) : productos
 
@@ -816,7 +817,41 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
         </div>
       )}
 
-      {avisoLote && (
+      {avisoStockLote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-3xl border border-indigo-200 bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-start gap-3">
+              <span className="text-2xl">📦</span>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Lote por agotarse</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Solo quedan <span className="font-semibold text-slate-700">{avisoStockLote.stockLote} unidades</span> de <span className="font-semibold text-slate-700">{avisoStockLote.producto.nombre}</span> al precio de <span className="font-semibold text-indigo-600">${avisoStockLote.precioActual.toFixed(2)}</span>. El siguiente lote tiene un precio diferente.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <button
+                onClick={() => confirmarSoloLoteActual(avisoStockLote.producto, avisoStockLote.stockLote)}
+                className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-left text-sm transition-colors hover:bg-slate-50">
+                <p className="font-medium text-slate-800">Vender solo {avisoStockLote.stockLote} uds a ${avisoStockLote.precioActual.toFixed(2)}</p>
+                <p className="text-xs text-slate-400">Limitar al stock del lote actual</p>
+              </button>
+              <button
+                onClick={() => confirmarPrecioNuevo(avisoStockLote.producto, avisoStockLote.stockLote, avisoStockLote.precioSiguiente)}
+                className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-left text-sm transition-colors hover:bg-slate-50">
+                <p className="font-medium text-slate-800">Continuar al precio del siguiente lote</p>
+                <p className="text-xs text-slate-400">La unidad adicional se cobra al precio nuevo</p>
+              </button>
+              <button
+                onClick={() => confirmarTodoAlPrecioActual(avisoStockLote.producto, avisoStockLote.stockLote)}
+                className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-left text-sm transition-colors hover:bg-amber-100">
+                <p className="font-medium text-amber-800">Todo al precio actual ${avisoStockLote.precioActual.toFixed(2)}</p>
+                <p className="text-xs text-amber-600">La diferencia quedará registrada en el reporte</p>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}{avisoLote && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm rounded-3xl border border-amber-200 bg-white p-6 shadow-2xl">
             <div className="mb-4 flex items-start gap-3">
