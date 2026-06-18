@@ -79,6 +79,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
 
   const [modoPrecio, setModoPrecio] = useState<'manual' | 'margen'>('manual')
   const [margenProducto, setMargenProducto] = useState('')
+  const [margenDefecto, setMargenDefecto] = useState('')
 
   const cargar = useCallback(async () => {
     setLoading(true)
@@ -102,7 +103,10 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
     setForm(f => ({ ...f, precio_venta: (costo * (1 + margen / 100)).toFixed(2) }))
   }, [modoPrecio, form.precio_costo, margenProducto])
 
-  useEffect(() => { cargar() }, [cargar])
+  useEffect(() => {
+    supabase.from('establecimientos').select('margen_costo_estimado').eq('id', establecimientoId).single()
+      .then(({ data }) => setMargenDefecto(data?.margen_costo_estimado != null ? String(data.margen_costo_estimado) : ''))
+  }, [establecimientoId]) useEffect(() => { cargar() }, [cargar])
 
   const limpiarForm = () => {
     setForm({ nombre: '', precio_costo: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '', imagen_url: '', visible_en_catalogo: true })
