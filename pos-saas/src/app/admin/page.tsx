@@ -76,8 +76,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
   const [mostrarImportador, setMostrarImportador] = useState(false)
   const [subiendoImagen, setSubiendoImagen] = useState(false)
   const [loteParaProducto, setLoteParaProducto] = useState<any | null>(null)
-  const [margenDefecto, setMargenDefecto] = useState('')
-  const [guardandoMargen, setGuardandoMargen] = useState(false)
+
   const [modoPrecio, setModoPrecio] = useState<'manual' | 'margen'>('manual')
   const [margenProducto, setMargenProducto] = useState('')
 
@@ -94,10 +93,6 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
     setLoading(false)
   }, [establecimientoId])
 
-  useEffect(() => {
-    supabase.from('establecimientos').select('margen_costo_estimado').eq('id', establecimientoId).single()
-      .then(({ data }) => setMargenDefecto(data?.margen_costo_estimado != null ? String(data.margen_costo_estimado) : ''))
-  }, [establecimientoId])
 
   useEffect(() => {
     if (modoPrecio !== 'margen') return
@@ -113,12 +108,6 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
     setForm({ nombre: '', precio_costo: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '', imagen_url: '', visible_en_catalogo: true })
     setModoPrecio('manual')
     setMargenProducto('')
-  }
-  const guardarMargen = async () => {
-    setGuardandoMargen(true)
-    alert(`Guardando margen ${margenDefecto} en establecimiento ID: ${establecimientoId}`)
-    await supabase.from('establecimientos').update({ margen_costo_estimado: parseFloat(margenDefecto) || 0 }).eq('id', establecimientoId)
-    setGuardandoMargen(false)
   }
 
   const subirImagen = async (file: File) => {
@@ -201,23 +190,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50">
-        <h2 className="mb-1 text-sm font-semibold tracking-tight text-slate-900">⚙️ Margen de ganancia por defecto</h2>
-        <p className="mb-4 text-xs text-slate-500">Se usa para sugerir el precio de venta cuando recibes stock de un producto por primera vez.</p>
-        <div className="flex items-center gap-3">
-          <div className="relative max-w-[160px]">
-            <input type="number" value={margenDefecto} onChange={e => setMargenDefecto(e.target.value)}
-              placeholder="ej: 50"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 pr-7 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10" />
-            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
-          </div>
-          <button onClick={guardarMargen} disabled={guardandoMargen}
-            className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:shadow-none">
-            {guardandoMargen ? 'Guardando…' : 'Guardar'}
-          </button>
-        </div>
-      </div>
-
+      
       <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-sm font-semibold tracking-tight text-slate-900">{editando ? '✏️ Editar producto' : '➕ Nuevo producto'}</h2>
