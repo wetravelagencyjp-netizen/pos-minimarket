@@ -162,6 +162,21 @@ export function useCarrito(establecimientoId: number) {
     setAvisoStockLote(null)
   }, [])
 
+  // Opción 4: vender todo al precio del lote nuevo (incluye unidades del lote viejo)
+  const confirmarTodoAlPrecioNuevo = useCallback((producto: Producto, stockLote: number, precioNuevo: number) => {
+    const nuevaCant = stockLote + 1
+    const productoNuevoPrecio = { ...producto, precio_venta: precioNuevo }
+    setItems(prev => ({
+      ...prev,
+      [producto.id]: {
+        producto: productoNuevoPrecio,
+        cantidad: nuevaCant,
+        subtotal: +(precioNuevo * nuevaCant).toFixed(2),
+      }
+    }))
+    setAvisoStockLote(null)
+  }, [])
+
   const cambiarCantidad = useCallback((id: number, delta: number) => {
     setItems(prev => {
       const item = prev[id]; if (!item) return prev
@@ -281,6 +296,6 @@ export function useCarrito(establecimientoId: number) {
     descuentosItem, setDescuentoItem, descuentoGlobal, setDescuentoGlobal,
     subtotalSinDescuento, descuentoTotalAplicado,
     avisoStockLote, setAvisoStockLote,
-    confirmarSoloLoteActual, confirmarPrecioNuevo, confirmarTodoAlPrecioActual,
+    confirmarSoloLoteActual, confirmarPrecioNuevo, confirmarTodoAlPrecioActual, confirmarTodoAlPrecioNuevo,
   }
 }

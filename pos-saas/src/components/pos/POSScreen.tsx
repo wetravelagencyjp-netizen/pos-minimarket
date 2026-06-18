@@ -427,7 +427,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const { grupos, total, totalItems, metodoPago, setMetodoPago, agregar, cambiarCantidad, eliminar, vaciar, procesarVenta,
     descuentosItem, setDescuentoItem, descuentoGlobal, setDescuentoGlobal, subtotalSinDescuento, descuentoTotalAplicado,
     avisoStockLote, setAvisoStockLote,
-    confirmarSoloLoteActual, confirmarPrecioNuevo, confirmarTodoAlPrecioActual } = useCarrito(establecimientoId)
+    confirmarSoloLoteActual, confirmarPrecioNuevo, confirmarTodoAlPrecioActual, confirmarTodoAlPrecioNuevo } = useCarrito(establecimientoId)
 
   const productosFiltrados = vendedorActivo ? productos.filter(p => p.vendedor_id === vendedorActivo) : productos
 
@@ -834,8 +834,14 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
               <button
                 onClick={() => confirmarTodoAlPrecioActual(avisoStockLote.producto, avisoStockLote.stockLote)}
                 className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-left text-sm transition-colors hover:bg-amber-100">
-                <p className="font-medium text-amber-800">Todo al precio actual ${avisoStockLote.precioActual.toFixed(2)}</p>
+                <p className="font-medium text-amber-800">Respetar precio viejo ${avisoStockLote.precioActual.toFixed(2)} hasta agotar, luego ${avisoStockLote.precioSiguiente.toFixed(2)}</p>
                 <p className="text-xs text-amber-600">La diferencia quedará registrada en el reporte</p>
+              </button>
+              <button
+                onClick={() => confirmarTodoAlPrecioNuevo(avisoStockLote.producto, avisoStockLote.stockLote, avisoStockLote.precioSiguiente)}
+                className="w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-left text-sm transition-colors hover:bg-rose-100">
+                <p className="font-medium text-rose-800">Vender todo al precio nuevo ${avisoStockLote.precioSiguiente.toFixed(2)}</p>
+                <p className="text-xs text-rose-600">Incluye las unidades del lote anterior al precio nuevo</p>
               </button>
             </div>
           </div>
