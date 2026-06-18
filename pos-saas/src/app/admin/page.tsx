@@ -200,133 +200,134 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-gray-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">⚙️ Margen de ganancia por defecto</h2>
-        <p className="mb-3 text-xs text-gray-500">Se usa para sugerir el precio de venta cuando recibes stock de un producto por primera vez.</p>
+      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50">
+        <h2 className="mb-1 text-sm font-semibold tracking-tight text-slate-900">⚙️ Margen de ganancia por defecto</h2>
+        <p className="mb-4 text-xs text-slate-500">Se usa para sugerir el precio de venta cuando recibes stock de un producto por primera vez.</p>
         <div className="flex items-center gap-3">
           <div className="relative max-w-[160px]">
             <input type="number" value={margenDefecto} onChange={e => setMargenDefecto(e.target.value)}
               placeholder="ej: 50"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 pr-7 text-sm outline-none focus:border-blue-400" />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 pr-7 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10" />
+            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
           </div>
           <button onClick={guardarMargen} disabled={guardandoMargen}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+            className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:shadow-none">
             {guardandoMargen ? 'Guardando…' : 'Guardar'}
           </button>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">{editando ? '✏️ Editar producto' : '➕ Nuevo producto'}</h2>
+      <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-sm font-semibold tracking-tight text-slate-900">{editando ? '✏️ Editar producto' : '➕ Nuevo producto'}</h2>
           <div className="flex items-center gap-2">
             <button onClick={exportarInventario}
-              className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors">
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50">
               📥 Exportar Inventario
             </button>
             <button onClick={() => setMostrarImportador(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 transition-colors">
+              className="flex items-center gap-1.5 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-100">
               📊 Importar desde Excel
             </button>
           </div>
         </div>
         <div className="flex gap-4">
           <div className="flex shrink-0 flex-col items-center gap-2">
-            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
               {form.imagen_url ? (
                 <img src={form.imagen_url} alt="Foto del producto" className="h-full w-full object-cover" />
               ) : (
-                <span className="text-2xl text-gray-300">📦</span>
+                <span className="text-2xl text-slate-300">📦</span>
               )}
             </div>
             <input type="file" accept="image/*" onChange={handleArchivoImagen} className="hidden" id="imagen-producto" />
             <label htmlFor="imagen-producto"
-              className="cursor-pointer rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] text-gray-600 hover:bg-gray-50 transition-colors">
+              className="cursor-pointer rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600 transition-colors hover:bg-slate-50">
               {subiendoImagen ? 'Subiendo…' : form.imagen_url ? 'Cambiar foto' : '📷 Subir foto'}
             </label>
           </div>
           <div className="grid flex-1 grid-cols-2 gap-3">
             <input placeholder="Nombre del producto *" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+              className="rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10" />
             <input placeholder="Código de barras" value={form.codigo_barras} onChange={e => setForm(f => ({ ...f, codigo_barras: e.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+              className="rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10" />
             <input placeholder="Precio de costo" type="number" value={form.precio_costo} onChange={e => setForm(f => ({ ...f, precio_costo: e.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+              className="rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10" />
             <div>
-              <div className="mb-1 flex gap-1">
+              <div className="mb-1.5 flex gap-1">
                 <button type="button" onClick={() => setModoPrecio('manual')}
-                  className={`rounded-md px-2 py-0.5 text-[11px] ${modoPrecio === 'manual' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                  className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors ${modoPrecio === 'manual' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                   💰 Precio fijo
                 </button>
                 <button type="button" onClick={() => { setModoPrecio('margen'); if (!margenProducto) setMargenProducto(margenDefecto) }}
-                  className={`rounded-md px-2 py-0.5 text-[11px] ${modoPrecio === 'margen' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                  className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors ${modoPrecio === 'margen' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                   📊 Por margen %
                 </button>
               </div>
               {modoPrecio === 'manual' ? (
                 <input placeholder="Precio de venta *" type="number" value={form.precio_venta} onChange={e => setForm(f => ({ ...f, precio_venta: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10" />
               ) : (
                 <div>
                   <div className="relative">
                     <input placeholder="Margen %" type="number" value={margenProducto} onChange={e => setMargenProducto(e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 pr-7 text-sm outline-none focus:border-blue-400" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 pr-7 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10" />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
                   </div>
-                  {form.precio_venta && <p className="mt-1 text-[11px] text-gray-500">Precio de venta: ${form.precio_venta}</p>}
+                  {form.precio_venta && <p className="mt-1.5 text-[11px] text-slate-500">Precio de venta: ${form.precio_venta}</p>}
                 </div>
               )}
             </div>
             <input placeholder="Stock actual" type="number" value={form.stock_actual} onChange={e => setForm(f => ({ ...f, stock_actual: e.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+              className="rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10" />
             <select value={form.vendedor_id} onChange={e => setForm(f => ({ ...f, vendedor_id: e.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400">
+              className="rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10">
               <option value="">— Seleccionar vendedor —</option>
               {vendedores.map(v => <option key={v.id} value={v.id}>{v.nombre}</option>)}
             </select>
             <select value={form.categoria_id} onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400">
+              className="rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10">
               <option value="">— Seleccionar categoría —</option>
               {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
-            <label className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600">
+            <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-600">
               <input type="checkbox" checked={form.visible_en_catalogo} onChange={e => setForm(f => ({ ...f, visible_en_catalogo: e.target.checked }))}
-                className="rounded border-gray-300" />
+                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/30" />
               🛍️ Mostrar en catálogo web
             </label>
           </div>
         </div>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-4 flex gap-2">
           <button onClick={guardar} disabled={guardando}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+            className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:shadow-none">
             {guardando ? 'Guardando…' : editando ? 'Actualizar' : 'Agregar producto'}
           </button>
-          {editando && <button onClick={() => { setEditando(null); limpiarForm() }} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-500 hover:bg-gray-50">Cancelar</button>}
+          {editando && <button onClick={() => { setEditando(null); limpiarForm() }} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-500 transition-colors hover:bg-slate-50">Cancelar</button>}
         </div>
       </div>
-      <div className="rounded-2xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-100 px-5 py-3">
-          <h2 className="text-sm font-semibold text-gray-900">Productos ({productos.length})</h2>
+
+      <div className="rounded-3xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/50">
+        <div className="border-b border-slate-100 px-6 py-4">
+          <h2 className="text-sm font-semibold tracking-tight text-slate-900">Productos ({productos.length})</h2>
         </div>
-        {loading ? <div className="p-5 text-sm text-gray-400">Cargando…</div> : (
+        {loading ? <div className="p-6 text-sm text-slate-400">Cargando…</div> : (
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 text-xs text-gray-400">
+            <thead className="border-b border-slate-200 text-xs font-medium uppercase tracking-wide text-slate-400">
               <tr>
-                <th className="px-5 py-3 text-left">Foto</th>
-                <th className="px-5 py-3 text-left">Nombre</th>
-                <th className="px-5 py-3 text-left">Vendedor</th>
-                <th className="px-5 py-3 text-left">Categoría</th>
-                <th className="px-5 py-3 text-right">Precio</th>
-                <th className="px-5 py-3 text-right">Stock</th>
-                <th className="px-5 py-3 text-right">Acciones</th>
+                <th className="px-6 py-3 text-left">Foto</th>
+                <th className="px-6 py-3 text-left">Nombre</th>
+                <th className="px-6 py-3 text-left">Vendedor</th>
+                <th className="px-6 py-3 text-left">Categoría</th>
+                <th className="px-6 py-3 text-right">Precio</th>
+                <th className="px-6 py-3 text-right">Stock</th>
+                <th className="px-6 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {productos.map(p => (
-                <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-5 py-3">
-                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+                <tr key={p.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50/80">
+                  <td className="px-6 py-3">
+                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
                       {p.imagen_url ? (
                         <img src={p.imagen_url} alt={p.nombre} className="h-full w-full object-cover" />
                       ) : (
@@ -334,15 +335,15 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
                       )}
                     </div>
                   </td>
-                  <td className="px-5 py-3 font-medium text-gray-900">{p.nombre}</td>
-                  <td className="px-5 py-3 text-gray-500">{p.vendedor?.nombre ?? '—'}</td>
-                  <td className="px-5 py-3 text-gray-500">{p.categoria?.nombre ?? '—'}</td>
-                  <td className="px-5 py-3 text-right">${p.precio_venta.toFixed(2)}</td>
-                  <td className="px-5 py-3 text-right">{p.stock_actual}</td>
-                  <td className="px-5 py-3 text-right">
-                    <button onClick={() => setLoteParaProducto(p)} className="mr-2 text-emerald-600 hover:text-emerald-700 text-xs">📦 Stock</button>
-                    <button onClick={() => editar(p)} className="mr-2 text-blue-500 hover:text-blue-700 text-xs">Editar</button>
-                    <button onClick={() => eliminar(p.id)} className="text-red-400 hover:text-red-600 text-xs">Eliminar</button>
+                  <td className="px-6 py-3 font-medium text-slate-900">{p.nombre}</td>
+                  <td className="px-6 py-3 text-slate-500">{p.vendedor?.nombre ?? '—'}</td>
+                  <td className="px-6 py-3 text-slate-500">{p.categoria?.nombre ?? '—'}</td>
+                  <td className="px-6 py-3 text-right text-slate-900">${p.precio_venta.toFixed(2)}</td>
+                  <td className="px-6 py-3 text-right text-slate-900">{p.stock_actual}</td>
+                  <td className="px-6 py-3 text-right">
+                    <button onClick={() => setLoteParaProducto(p)} className="mr-3 text-xs font-medium text-emerald-600 hover:text-emerald-700">📦 Stock</button>
+                    <button onClick={() => editar(p)} className="mr-3 text-xs font-medium text-indigo-600 hover:text-indigo-700">Editar</button>
+                    <button onClick={() => eliminar(p.id)} className="text-xs font-medium text-rose-500 hover:text-rose-600">Eliminar</button>
                   </td>
                 </tr>
               ))}
