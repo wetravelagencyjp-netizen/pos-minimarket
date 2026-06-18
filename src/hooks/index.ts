@@ -102,21 +102,25 @@ export function useCarrito(establecimientoId: number) {
     return Object.values(map)
   }, [items])
 
-  const procesarVenta = useCallback(async () => {
+  const procesarVenta = useCallback(async (
+    descuentoTotal = 0,
+    clienteId?: number
+  ) => {
     if (!Object.keys(items).length) return { ok: false, error: 'Carrito vacío' }
     try {
-      // Generar comprobante consultando la DB
       const { data: last } = await supabase.from('ventas')
         .select('numero_comprobante').eq('establecimiento_id', establecimientoId)
         .order('id', { ascending: false }).limit(1).single()
       const siguiente = last ? parseInt(last.numero_comprobante.split('-')[2] ?? '0') + 1 : 1
       const comprobante = `001-001-${String(siguiente).padStart(7, '0')}`
 
-      const { error } = await supabase.rpc('registrar_venta', {
+      const { data: ventaData, error } = await supabase.rpc('registrar_venta', {
         establecimiento_id: establecimientoId,
         numero_comprobante: comprobante,
         total,
         metodo_pago: metodoPago,
+        descuento_total: descuentoTotal,
+        cliente_id: clienteId ?? null,
         detalles: Object.values(items).map(i => ({
           producto_id: i.producto.id,
           vendedor_id: i.producto.vendedor_id,
@@ -125,8 +129,13 @@ export function useCarrito(establecimientoId: number) {
         })),
       } as never)
       if (error) throw error
+
+      // Detectar cambios de precio por cambio de lote (PEPS)
+      const cambiosPrecio: { producto_id: number; precio_inicial: number; precio_final: number }[] =
+        ventaData?.cambios_precio ?? []
+
       vaciar()
-      return { ok: true, comprobante }
+      return { ok: true, comprobante, cambiosPrecio }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : 'Error al procesar' }
     }
