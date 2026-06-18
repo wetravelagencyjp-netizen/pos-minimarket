@@ -81,17 +81,20 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
 
   const cargar = useCallback(async () => {
     setLoading(true)
-    const [p, v, c, e] = await Promise.all([
+    const [p, v, c] = await Promise.all([
       supabase.from('productos').select('*, vendedor:vendedores(nombre), categoria:categorias(nombre)').eq('establecimiento_id', establecimientoId).order('nombre'),
       supabase.from('vendedores').select('*').eq('establecimiento_id', establecimientoId),
       supabase.from('categorias').select('*').eq('establecimiento_id', establecimientoId),
-      supabase.from('establecimientos').select('margen_costo_estimado').eq('id', establecimientoId).single(),
     ])
     setProductos(p.data ?? [])
     setVendedores(v.data ?? [])
     setCategorias(c.data ?? [])
-    setMargenDefecto(e.data?.margen_costo_estimado != null ? String(e.data.margen_costo_estimado) : '')
     setLoading(false)
+  }, [establecimientoId])
+
+  useEffect(() => {
+    supabase.from('establecimientos').select('margen_costo_estimado').eq('id', establecimientoId).single()
+      .then(({ data }) => setMargenDefecto(data?.margen_costo_estimado != null ? String(data.margen_costo_estimado) : ''))
   }, [establecimientoId])
 
   useEffect(() => { cargar() }, [cargar])
