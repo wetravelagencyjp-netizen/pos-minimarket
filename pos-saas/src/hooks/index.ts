@@ -31,16 +31,20 @@ export function useInventario(establecimientoId: number) {
       if (c.error) throw c.error
       if (v.error) throw v.error
 
-      // Para cada producto, encontrar el lote más antiguo con stock (PEPS)
+      // Para cada producto, encontrar el lote más antiguo (activo) y el siguiente (PEPS)
       const lotesData = lotes.data ?? []
-      const loteActivoPorProducto: Record<number, { precio: number; stock: number; id_lote: number }> = {}
+      const loteActivoPorProducto: Record<number, { precio: number; stock: number; id_lote: number; precioSiguiente: number }> = {}
       lotesData.forEach(l => {
         if (!loteActivoPorProducto[l.producto_id]) {
           loteActivoPorProducto[l.producto_id] = {
             precio: l.precio_venta_sugerido,
             stock: l.stock_lote,
             id_lote: l.id_lote,
+            precioSiguiente: l.precio_venta_sugerido, // se sobreescribe si hay un segundo lote
           }
+        } else if (loteActivoPorProducto[l.producto_id].precioSiguiente === loteActivoPorProducto[l.producto_id].precio) {
+          // Este es el segundo lote — guardarlo como precio siguiente
+          loteActivoPorProducto[l.producto_id].precioSiguiente = l.precio_venta_sugerido
         }
       })
 
@@ -49,6 +53,7 @@ export function useInventario(establecimientoId: number) {
         ...prod,
         precio_venta: loteActivoPorProducto[prod.id]?.precio ?? prod.precio_venta,
         stock_lote_activo: loteActivoPorProducto[prod.id]?.stock ?? prod.stock_actual,
+        precio_siguiente_lote: loteActivoPorProducto[prod.id]?.precioSiguiente ?? prod.precio_venta,
       }))
       setTodos(productosConLote)
       setProductos(productosConLote)
@@ -106,7 +111,7 @@ export function useCarrito(establecimientoId: number) {
 
       // Al intentar agregar la unidad que supera el lote activo, pausar y preguntar
       if (qty === stockLote + 1) {
-        const precioSiguiente = (producto as any).precio_venta_original ?? producto.precio_venta
+        const precioSiguiente = (producto as any).precio_siguiente_lote ?? producto.precio_venta
         setAvisoStockLote({
           producto,
           stockLote,

@@ -799,16 +799,24 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
 
 
       {avisoStockLote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onKeyDown={e => e.key === 'Escape' && setAvisoStockLote(null)}
+          tabIndex={-1}>
           <div className="w-full max-w-sm rounded-3xl border border-indigo-200 bg-white p-6 shadow-2xl">
-            <div className="mb-4 flex items-start gap-3">
-              <span className="text-2xl">📦</span>
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900">Lote por agotarse</h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  Solo quedan <span className="font-semibold text-slate-700">{avisoStockLote.stockLote} unidades</span> de <span className="font-semibold text-slate-700">{avisoStockLote.producto.nombre}</span> al precio de <span className="font-semibold text-indigo-600">${avisoStockLote.precioActual.toFixed(2)}</span>. El siguiente lote tiene un precio diferente.
-                </p>
+            <div className="mb-4 flex items-start justify-between">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">📦</span>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Lote por agotarse</h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Solo quedan <span className="font-semibold text-slate-700">{avisoStockLote.stockLote} uds</span> de <span className="font-semibold text-slate-700">{avisoStockLote.producto.nombre}</span> a <span className="font-semibold text-indigo-600">${avisoStockLote.precioActual.toFixed(2)}</span>. El siguiente lote sale a <span className="font-semibold text-amber-600">${avisoStockLote.precioSiguiente.toFixed(2)}</span>.
+                  </p>
+                </div>
               </div>
+              <button onClick={() => setAvisoStockLote(null)}
+                className="ml-2 shrink-0 text-slate-400 hover:text-slate-600 transition-colors">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
             </div>
             <div className="space-y-2">
               <button
@@ -820,7 +828,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
               <button
                 onClick={() => confirmarPrecioNuevo(avisoStockLote.producto, avisoStockLote.stockLote, avisoStockLote.precioSiguiente)}
                 className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-left text-sm transition-colors hover:bg-slate-50">
-                <p className="font-medium text-slate-800">Continuar al precio del siguiente lote</p>
+                <p className="font-medium text-slate-800">Continuar al precio siguiente ${avisoStockLote.precioSiguiente.toFixed(2)}</p>
                 <p className="text-xs text-slate-400">La unidad adicional se cobra al precio nuevo</p>
               </button>
               <button
