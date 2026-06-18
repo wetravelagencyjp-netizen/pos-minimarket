@@ -410,9 +410,7 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
   const [vendedorActivo, setVendedorActivo] = useState<number | null>(null)
   const [searchQ, setSearchQ]           = useState('')
   const [toast, setToast]               = useState<Toast | null>(null)
-  const [procesando, setProcesando]     if (res.ok) {
-      let whatsapp: Toast['whatsapp']
-      if (pagoInfo.whatsappTelefono?.trim()) {
+  const [procesando, setProcesando]     = useState(false)
   const [avisoLote, setAvisoLote]       = useState<{ nombre: string; precioAnterior: number; precioNuevo: number }[] | null>(null)
   const [tipoDoc, setTipoDoc]           = useState<TipoDocumento>('ticket')
   const [modalCliente, setModalCliente] = useState(false)
