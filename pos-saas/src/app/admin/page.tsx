@@ -116,6 +116,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
   }
   const guardarMargen = async () => {
     setGuardandoMargen(true)
+    alert(`Guardando margen ${margenDefecto} en establecimiento ID: ${establecimientoId}`)
     await supabase.from('establecimientos').update({ margen_costo_estimado: parseFloat(margenDefecto) || 0 }).eq('id', establecimientoId)
     setGuardandoMargen(false)
   }
