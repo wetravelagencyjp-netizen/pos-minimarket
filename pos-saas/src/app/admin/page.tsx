@@ -52,11 +52,11 @@ export default function AdminPage() {
         </aside>
 
         <main className="flex-1 overflow-y-auto p-6">
-          {seccion === 'productos' && <SeccionProductos establecimientoId={usuario?.establecimiento_id ?? 1} />}
-          {seccion === 'vendedores' && <SeccionVendedores establecimientoId={usuario?.establecimiento_id ?? 1} />}
-          {seccion === 'categorias' && <SeccionCategorias establecimientoId={usuario?.establecimiento_id ?? 1} />}
-          {seccion === 'equipo' && <SeccionEquipo establecimientoId={usuario?.establecimiento_id ?? 1} />}
-          {seccion === 'reportes' && <SeccionReportes establecimientoId={usuario?.establecimiento_id ?? 1} />}
+          {seccion === 'productos' && <SeccionProductos establecimientoId={Number(usuario?.establecimiento_id ?? 1)} />}
+          {seccion === 'vendedores' && <SeccionVendedores establecimientoId={Number(usuario?.establecimiento_id ?? 1)} />}
+          {seccion === 'categorias' && <SeccionCategorias establecimientoId={Number(usuario?.establecimiento_id ?? 1)} />}
+          {seccion === 'equipo' && <SeccionEquipo establecimientoId={Number(usuario?.establecimiento_id ?? 1)} />}
+          {seccion === 'reportes' && <SeccionReportes establecimientoId={Number(usuario?.establecimiento_id ?? 1)} />}
         </main>
       </div>
     </div>
