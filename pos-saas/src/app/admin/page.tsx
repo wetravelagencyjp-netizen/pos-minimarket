@@ -78,6 +78,8 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
   const [loteParaProducto, setLoteParaProducto] = useState<any | null>(null)
   const [margenDefecto, setMargenDefecto] = useState('')
   const [guardandoMargen, setGuardandoMargen] = useState(false)
+  const [modoPrecio, setModoPrecio] = useState<'manual' | 'margen'>('manual')
+  const [margenProducto, setMargenProducto] = useState('')
 
   const cargar = useCallback(async () => {
     setLoading(true)
@@ -97,9 +99,21 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
       .then(({ data }) => setMargenDefecto(data?.margen_costo_estimado != null ? String(data.margen_costo_estimado) : ''))
   }, [establecimientoId])
 
+  useEffect(() => {
+    if (modoPrecio !== 'margen') return
+    const costo = parseFloat(form.precio_costo)
+    const margen = parseFloat(margenProducto)
+    if (!costo || costo <= 0 || isNaN(margen)) return
+    setForm(f => ({ ...f, precio_venta: (costo * (1 + margen / 100)).toFixed(2) }))
+  }, [modoPrecio, form.precio_costo, margenProducto])
+
   useEffect(() => { cargar() }, [cargar])
 
-  const limpiarForm = () => setForm({ nombre: '', precio_costo: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '', imagen_url: '', visible_en_catalogo: true })
+  const limpiarForm = () => {
+    setForm({ nombre: '', precio_costo: '', precio_venta: '', stock_actual: '', vendedor_id: '', categoria_id: '', codigo_barras: '', imagen_url: '', visible_en_catalogo: true })
+    setModoPrecio('manual')
+    setMargenProducto('')
+  }
   const guardarMargen = async () => {
     setGuardandoMargen(true)
     await supabase.from('establecimientos').update({ margen_costo_estimado: parseFloat(margenDefecto) || 0 }).eq('id', establecimientoId)
@@ -155,6 +169,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
   const editar = (p: any) => {
     setEditando(p.id)
     setForm({ nombre: p.nombre, precio_costo: p.precio_costo != null ? String(p.precio_costo) : '', precio_venta: String(p.precio_venta), stock_actual: String(p.stock_actual), vendedor_id: String(p.vendedor_id ?? ''), categoria_id: String(p.categoria_id ?? ''), codigo_barras: p.codigo_barras ?? '', imagen_url: p.imagen_url ?? '', visible_en_catalogo: p.visible_en_catalogo ?? true })
+    setModoPrecio('manual')
   }
 
   const eliminar = async (id: number) => {
@@ -238,8 +253,31 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
               className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
             <input placeholder="Precio de costo" type="number" value={form.precio_costo} onChange={e => setForm(f => ({ ...f, precio_costo: e.target.value }))}
               className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
-            <input placeholder="Precio de venta *" type="number" value={form.precio_venta} onChange={e => setForm(f => ({ ...f, precio_venta: e.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+            <div>
+              <div className="mb-1 flex gap-1">
+                <button type="button" onClick={() => setModoPrecio('manual')}
+                  className={`rounded-md px-2 py-0.5 text-[11px] ${modoPrecio === 'manual' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                  💰 Precio fijo
+                </button>
+                <button type="button" onClick={() => { setModoPrecio('margen'); if (!margenProducto) setMargenProducto(margenDefecto) }}
+                  className={`rounded-md px-2 py-0.5 text-[11px] ${modoPrecio === 'margen' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                  📊 Por margen %
+                </button>
+              </div>
+              {modoPrecio === 'manual' ? (
+                <input placeholder="Precio de venta *" type="number" value={form.precio_venta} onChange={e => setForm(f => ({ ...f, precio_venta: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+              ) : (
+                <div>
+                  <div className="relative">
+                    <input placeholder="Margen %" type="number" value={margenProducto} onChange={e => setMargenProducto(e.target.value)}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 pr-7 text-sm outline-none focus:border-blue-400" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+                  </div>
+                  {form.precio_venta && <p className="mt-1 text-[11px] text-gray-500">Precio de venta: ${form.precio_venta}</p>}
+                </div>
+              )}
+            </div>
             <input placeholder="Stock actual" type="number" value={form.stock_actual} onChange={e => setForm(f => ({ ...f, stock_actual: e.target.value }))}
               className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
             <select value={form.vendedor_id} onChange={e => setForm(f => ({ ...f, vendedor_id: e.target.value }))}
