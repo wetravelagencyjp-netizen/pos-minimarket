@@ -797,25 +797,6 @@ export function POSScreen({ establecimientoId }: { establecimientoId: number }) 
       )}
       {toast && <ToastSRI toast={toast} onClose={() => setToast(null)} />}
 
-      {avisoStockLote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-3xl border border-indigo-200 bg-white p-6 shadow-2xl">
-            <div className="mb-4 flex items-start gap-3">
-              <span className="text-2xl">📦</span>
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900">Último lote disponible</h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  Solo quedan <span className="font-semibold text-slate-700">{avisoStockLote.stockLote} unidades</span> de <span className="font-semibold text-slate-700">{avisoStockLote.nombre}</span> al precio actual de <span className="font-semibold text-indigo-600">${avisoStockLote.precioActual.toFixed(2)}</span>. Las unidades adicionales tendrán el precio del siguiente lote.
-                </p>
-              </div>
-            </div>
-            <button onClick={() => setAvisoStockLote(null)}
-              className="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
-              Entendido
-            </button>
-          </div>
-        </div>
-      )}
 
       {avisoStockLote && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
