@@ -2,6 +2,7 @@
 
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import { getModulo } from '@/modules/_registry'
+import { useCarrito } from '@/core/context/CarritoContext'
 import type { SlotProps } from '@/core/types/modulos.types'
 
 // ─── Slot genérico: Barra superior ────────────────────────────
@@ -44,6 +45,91 @@ function CatalogoDefault({ establecimiento, sucursalId }: SlotProps) {
 
 // ─── Slot genérico: Panel de carrito ──────────────────────────
 function CarritoDefault(_props: SlotProps) {
+  const { items, total, cambiarCantidad, quitarItem } = useCarrito()
+
+  if (items.length === 0) {
+    return (
+      <div className="w-80 flex flex-col bg-slate-800 border-l border-slate-700 h-full">
+        <div className="px-4 py-3 border-b border-slate-700">
+          <h2 className="text-slate-100 font-semibold text-sm tracking-wide">Venta actual</h2>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 bg-slate-700 rounded-full mx-auto mb-3 flex items-center justify-center">
+              <span className="text-2xl">🛒</span>
+            </div>
+            <p className="text-slate-400 text-sm">Carrito vacío</p>
+            <p className="text-slate-500 text-xs mt-1">Selecciona un producto para comenzar</p>
+          </div>
+        </div>
+        <div className="p-4 border-t border-slate-700 space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-slate-400 text-sm">Total</span>
+            <span className="text-slate-100 font-bold text-xl">$0.00</span>
+          </div>
+          <button disabled className="w-full bg-indigo-600 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold py-3 rounded-xl transition-all duration-200 text-sm tracking-wide">
+            Cobrar
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-80 flex flex-col bg-slate-800 border-l border-slate-700 h-full">
+      <div className="px-4 py-3 border-b border-slate-700">
+        <h2 className="text-slate-100 font-semibold text-sm tracking-wide">Venta actual</h2>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+        {items.map((item) => (
+          <div key={item.productoId} className="bg-slate-700/50 rounded-lg p-3">
+            <div className="flex justify-between items-start gap-2">
+              <p className="text-slate-100 text-sm font-medium flex-1">{item.nombre}</p>
+              <button
+                onClick={() => quitarItem(item.productoId)}
+                className="text-slate-500 hover:text-red-400 text-xs transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex justify-between items-center mt-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => cambiarCantidad(item.productoId, item.cantidad - 1)}
+                  className="w-6 h-6 rounded bg-slate-600 hover:bg-slate-500 text-slate-100 text-sm transition-colors"
+                >
+                  −
+                </button>
+                <span className="text-slate-100 text-sm w-6 text-center">{item.cantidad}</span>
+                <button
+                  onClick={() => cambiarCantidad(item.productoId, item.cantidad + 1)}
+                  disabled={item.cantidad >= item.stockDisponible}
+                  className="w-6 h-6 rounded bg-slate-600 hover:bg-slate-500 disabled:opacity-40 text-slate-100 text-sm transition-colors"
+                >
+                  +
+                </button>
+              </div>
+              <span className="text-indigo-400 font-semibold text-sm">
+                ${(item.precioUnitario * item.cantidad).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="p-4 border-t border-slate-700 space-y-3">
+        <div className="flex justify-between items-center">
+          <span className="text-slate-400 text-sm">Total</span>
+          <span className="text-slate-100 font-bold text-xl">${total.toFixed(2)}</span>
+        </div>
+        <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-all duration-200 text-sm tracking-wide">
+          Cobrar
+        </button>
+      </div>
+    </div>
+  )
+}
   return (
     <div className="w-80 flex flex-col bg-slate-800 border-l border-slate-700 h-full">
       <div className="px-4 py-3 border-b border-slate-700">
