@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { createClient } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase/client'
 import type { Tenant, PerfilUsuario } from '@/core/types/modulos.types'
 
 // ─── Shape del contexto ───────────────────────────────────────
@@ -29,7 +29,6 @@ export function EstablecimientoProvider({ children }: { children: ReactNode }) {
   const [error, setError]     = useState<string | null>(null)
 
   useEffect(() => {
-    const supabase = createClient()
 
     async function cargarContexto() {
       try {
