@@ -22,6 +22,12 @@ export default function ConfiguracionPage() {
   const [guardandoEstab,  setGuardandoEstab]  = useState(false)
   const [mensajeEstab,    setMensajeEstab]    = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
 
+  // ── Alerta de caducidad ───────────────────────────────────
+  const [alertaDias,      setAlertaDias]      = useState('7')
+  const [alertaEstilo,    setAlertaEstilo]    = useState<'discreto' | 'llamativo'>('llamativo')
+  const [guardandoAlerta, setGuardandoAlerta] = useState(false)
+  const [mensajeAlerta,   setMensajeAlerta]   = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
+
   // ── Sucursales ────────────────────────────────────────────
   const [sucursales,      setSucursales]      = useState<Sucursal[]>([])
   const [loadingSuc,      setLoadingSuc]      = useState(true)
@@ -32,12 +38,14 @@ export default function ConfiguracionPage() {
   const cargarEstab = useCallback(async () => {
     const { data } = await supabase
       .from('establecimientos')
-      .select('nombre, margen_costo_estimado')
+      .select('nombre, margen_costo_estimado, alerta_caducidad_dias, alerta_caducidad_estilo')
       .eq('id', estabId)
       .single()
     if (data) {
       setNombreNegocio(data.nombre ?? '')
       setMargen(data.margen_costo_estimado != null ? String(data.margen_costo_estimado) : '')
+      setAlertaDias(String(data.alerta_caducidad_dias ?? 7))
+      setAlertaEstilo((data.alerta_caducidad_estilo as 'discreto' | 'llamativo') ?? 'llamativo')
     }
   }, [estabId])
 
@@ -71,6 +79,24 @@ export default function ConfiguracionPage() {
     setMensajeEstab(error
       ? { texto: `❌ ${error.message}`, tipo: 'error' }
       : { texto: '✅ Configuración guardada', tipo: 'ok' }
+    )
+  }
+
+  const guardarAlerta = async () => {
+    setGuardandoAlerta(true)
+    setMensajeAlerta(null)
+    const dias = parseInt(alertaDias, 10)
+    const { error } = await supabase
+      .from('establecimientos')
+      .update({
+        alerta_caducidad_dias: Number.isFinite(dias) && dias > 0 ? dias : 7,
+        alerta_caducidad_estilo: alertaEstilo,
+      })
+      .eq('id', estabId)
+    setGuardandoAlerta(false)
+    setMensajeAlerta(error
+      ? { texto: `❌ ${error.message}`, tipo: 'error' }
+      : { texto: '✅ Configuración de alerta guardada', tipo: 'ok' }
     )
   }
 
@@ -158,6 +184,48 @@ export default function ConfiguracionPage() {
             disabled={guardandoEstab}
             className="mt-4 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50">
             {guardandoEstab ? 'Guardando…' : 'Guardar cambios'}
+          </button>
+        </div>
+
+        {/* Alerta de caducidad */}
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50">
+          <h2 className="mb-1 text-sm font-semibold tracking-tight text-slate-900">⚠️ Alerta de caducidad</h2>
+          <p className="mb-5 text-xs text-slate-500">Define cuándo y cómo se avisa en el POS sobre productos próximos a vencer.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Avisar con cuántos días de anticipación</label>
+              <input
+                type="number"
+                min={1}
+                value={alertaDias}
+                onChange={e => setAlertaDias(e.target.value)}
+                placeholder="ej: 7"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Estilo del banner</label>
+              <select
+                value={alertaEstilo}
+                onChange={e => setAlertaEstilo(e.target.value as 'discreto' | 'llamativo')}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10">
+                <option value="llamativo">Llamativo (banner ámbar)</option>
+                <option value="discreto">Discreto (franja delgada)</option>
+              </select>
+            </div>
+          </div>
+
+          {mensajeAlerta && (
+            <div className={`mt-3 rounded-xl px-4 py-2.5 text-sm ${mensajeAlerta.tipo === 'ok' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
+              {mensajeAlerta.texto}
+            </div>
+          )}
+
+          <button
+            onClick={guardarAlerta}
+            disabled={guardandoAlerta}
+            className="mt-4 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50">
+            {guardandoAlerta ? 'Guardando…' : 'Guardar cambios'}
           </button>
         </div>
 
