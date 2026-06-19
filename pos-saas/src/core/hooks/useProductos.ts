@@ -45,7 +45,7 @@ export function useProductos(establecimientoId: number | undefined, sucursalId: 
 
       let lotesQuery = supabase
         .from('lotes_productos')
-        .select('id_lote, producto_id, sucursal_id, precio_venta_sugerido, stock_lote, creado_en')
+        .select('id_lote, producto_id, sucursal_id, precio_venta_sugerido, stock_lote, creado_en, fecha_caducidad')
         .gt('stock_lote', 0)
         .order('creado_en', { ascending: true })
 
@@ -71,6 +71,7 @@ export function useProductos(establecimientoId: number | undefined, sucursalId: 
                 id_lote: lote.id_lote,
                 precio_venta_sugerido: Number(lote.precio_venta_sugerido),
                 stock_lote: lote.stock_lote,
+                fecha_caducidad: lote.fecha_caducidad,
               }
             : null,
         }
