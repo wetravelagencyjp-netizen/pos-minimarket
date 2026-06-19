@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { supabase } from '@/lib/supabase'
 import type { Establecimiento, Usuario } from '@/core/types/modulos.types'
 
-// ─── Shape del contexto ───────────────────────────────────────
 interface EstablecimientoContextValue {
   establecimiento: Establecimiento | null
   usuario: Usuario | null
@@ -21,7 +20,6 @@ const EstablecimientoContext = createContext<EstablecimientoContextValue>({
   error: null,
 })
 
-// ─── Provider ─────────────────────────────────────────────────
 export function EstablecimientoProvider({ children }: { children: ReactNode }) {
   const [establecimiento, setEstablecimiento] = useState<Establecimiento | null>(null)
   const [usuario, setUsuario] = useState<Usuario | null>(null)
@@ -30,35 +28,41 @@ export function EstablecimientoProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function cargarContexto() {
+      console.log('🔵 PASO 1: Iniciando carga de contexto')
       try {
-        // 1. Sesión activa del usuario
         const { data: { user }, error: authError } = await supabase.auth.getUser()
+        console.log('🔵 PASO 2: Usuario auth:', user?.id, 'error:', authError)
         if (authError || !user) throw new Error('Sin sesión activa')
 
-        // 2. Datos del usuario: establecimiento_id, sucursal_id, rol
         const { data: usuarioData, error: usuarioError } = await supabase
           .from('usuarios')
           .select('id, establecimiento_id, sucursal_id, nombre, email, rol, es_superadmin')
           .eq('id', user.id)
           .single()
 
+        console.log('🔵 PASO 3: Usuario data:', usuarioData, 'error:', usuarioError)
         if (usuarioError || !usuarioData) throw new Error('Usuario no encontrado en el sistema')
         setUsuario(usuarioData as Usuario)
 
-        // 3. Datos del establecimiento (incluye business_type)
+        console.log('🔵 PASO 4: Buscando establecimiento con id:', usuarioData.establecimiento_id)
         const { data: establecimientoData, error: establecimientoError } = await supabase
           .from('establecimientos')
           .select('id, nombre, ruc_nit, direccion, estado_suscripcion, estado_cuenta, fecha_vencimiento, plan_actual, limite_productos, modo_multivendedor, margen_costo_estimado, business_type, creado_en')
           .eq('id', usuarioData.establecimiento_id)
           .single()
 
+        console.log('🔵 PASO 5: Establecimiento data:', establecimientoData, 'error:', establecimientoError)
         if (establecimientoError || !establecimientoData) throw new Error('Establecimiento no encontrado')
         setEstablecimiento(establecimientoData as Establecimiento)
 
+        console.log('🟢 ÉXITO: Contexto cargado completo')
+
       } catch (err) {
+        console.log('🔴 ERROR CAPTURADO:', err)
         setError(err instanceof Error ? err.message : 'Error desconocido')
       } finally {
         setIsLoading(false)
+        console.log('🔵 PASO FINAL: isLoading = false')
       }
     }
 
@@ -89,7 +93,6 @@ export function EstablecimientoProvider({ children }: { children: ReactNode }) {
   )
 }
 
-// ─── Hook de consumo ──────────────────────────────────────────
 export function useEstablecimiento() {
   const ctx = useContext(EstablecimientoContext)
   if (!ctx) throw new Error('useEstablecimiento debe usarse dentro de <EstablecimientoProvider>')
