@@ -12,47 +12,50 @@ export type BusinessType =
   | 'isp'
 
 // ─── Roles del sistema ────────────────────────────────────────
-export type UserRole = 'super_admin' | 'owner' | 'admin_sucursal' | 'vendedor'
+export type UserRole = 'super_admin' | 'owner' | 'admin_sucursal' | 'vendedor' | 'admin'
 
-// ─── Estado de suscripción del tenant ────────────────────────
-export type EstadoSuscripcion = 'activo' | 'suspendido_por_falta_de_pago' | 'demo'
+// ─── Estado de cuenta del establecimiento ─────────────────────
+export type EstadoCuenta = 'activo' | 'suspendido' | 'demo'
 
-// ─── Estrategia de precio del tenant ─────────────────────────
-export type EstrategiasPrecio =
-  | 'porcentaje_sobre_costo'
-  | 'monto_fijo_dolares'
-  | 'margen_comercial_real'
-
-// ─── Datos del tenant que vienen de Supabase ─────────────────
-export interface Tenant {
-  id: string
-  nombre_comercio: string
+// ─── Datos del establecimiento (tabla real: establecimientos) ─
+export interface Establecimiento {
+  id: number
+  nombre: string
+  ruc_nit: string | null
+  direccion: string | null
+  estado_suscripcion: boolean
+  estado_cuenta: EstadoCuenta
+  fecha_vencimiento: string
+  plan_actual: string | null
+  limite_productos: number | null
+  modo_multivendedor: boolean
+  margen_costo_estimado: number | null
   business_type: BusinessType
-  estado_suscripcion: EstadoSuscripcion
-  estrategia_precio_defecto: EstrategiasPrecio
   creado_en: string
 }
 
-// ─── Perfil del usuario autenticado ──────────────────────────
-export interface PerfilUsuario {
+// ─── Perfil del usuario autenticado (tabla real: usuarios) ────
+export interface Usuario {
   id: string
-  tenant_id: string
-  sucursal_id: string | null
-  nombre: string
+  establecimiento_id: number
+  sucursal_id: number | null
+  nombre: string | null
+  email: string | null
   rol: UserRole
+  es_superadmin: boolean
 }
 
 // ─── Props que recibe cualquier componente de slot ────────────
 export interface SlotProps {
-  tenant: Tenant
-  perfil: PerfilUsuario
-  sucursalId: string | null
+  establecimiento: Establecimiento
+  usuario: Usuario
+  sucursalId: number | null
 }
 
 // ─── Firma de componente válido para un slot ──────────────────
 export type SlotComponent = ComponentType<SlotProps>
 
-// ─── Configuración completa de un módulo de giro ─────────────
+// ─── Configuración completa de un módulo de giro ───────────────
 export interface ModuloConfig {
   displayName: string
   topBarSlot:       SlotComponent | null
