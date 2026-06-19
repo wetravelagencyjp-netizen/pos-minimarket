@@ -122,7 +122,7 @@ export function PosShell() {
           <p className="text-slate-400 text-sm">
             {error ?? 'No se pudo cargar la sesión'}
           </p>
-          
+      
             href="/login"
             className="inline-block text-indigo-400 hover:text-indigo-300 text-sm underline transition-colors"
           >
