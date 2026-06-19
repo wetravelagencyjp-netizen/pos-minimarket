@@ -49,6 +49,14 @@ export default function AdminPage() {
             className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 transition-colors">
             📊 Finanzas
           </button>
+          <button onClick={() => router.push('/admin/configuracion')}
+            className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+            ⚙️ Configuración
+          </button>
+          <button onClick={() => router.push('/admin/usuarios')}
+            className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+            👥 Usuarios
+          </button>
         </aside>
 
         <main className="flex-1 overflow-y-auto p-6">
