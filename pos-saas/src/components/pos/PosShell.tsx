@@ -3,6 +3,7 @@
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import { getModulo } from '@/modules/_registry'
 import type { SlotProps } from '@/core/types/modulos.types'
+import { useLotesFIFO } from '@/core/hooks/useLotesFIFO'
 
 // ─── Slot genérico: Barra superior ────────────────────────────
 function TopBarDefault({ tenant }: SlotProps) {
@@ -21,18 +22,62 @@ function TopBarDefault({ tenant }: SlotProps) {
 }
 
 // ─── Slot genérico: Catálogo de productos ─────────────────────
-function CatalogoDefault(_props: SlotProps) {
+function CatalogoDefault({ tenant, sucursalId }: SlotProps) {
+  const { productos, isLoading, error } = useLotesFIFO(tenant.id, sucursalId)
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-slate-800 rounded-xl aspect-square animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-slate-400 text-sm">Error al cargar productos: {error}</p>
+      </div>
+    )
+  }
+
+  if (productos.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-slate-400 text-sm">No hay productos con stock disponible</p>
+          <p className="text-slate-500 text-xs mt-1">Agrega productos y lotes desde el panel de Admin</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-4">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {Array.from({ length: 8 }).map((_, i) => (
+        {productos.map((producto) => (
           <div
-            key={i}
-            className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-indigo-500 cursor-pointer transition-all duration-200 group"
+            key={producto.id}
+            className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-indigo-500 cursor-pointer transition-all duration-200"
           >
-            <div className="w-full aspect-square bg-slate-700 rounded-lg mb-3 group-hover:bg-slate-600 transition-colors" />
-            <div className="h-3 bg-slate-700 rounded w-3/4 mb-2" />
-            <div className="h-3 bg-slate-700 rounded w-1/2" />
+            <div className="w-full aspect-square bg-slate-700 rounded-lg mb-3 flex items-center justify-center text-3xl">
+              📦
+            </div>
+            <p className="text-slate-100 text-sm font-medium truncate">
+              {producto.nombre_producto}
+            </p>
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-indigo-400 font-semibold text-sm">
+                ${producto.precio_venta.toFixed(2)}
+              </span>
+              <span className="text-slate-500 text-xs">
+                {producto.stock_disponible} uds
+              </span>
+            </div>
           </div>
         ))}
       </div>
