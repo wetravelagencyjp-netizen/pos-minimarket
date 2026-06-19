@@ -124,8 +124,7 @@ export function PosShell() {
           </p>
           
             href="/login"
-            className="inline-block text-indigo-400 hover:text-indigo-300
-                       text-sm underline transition-colors"
+            className="inline-block text-indigo-400 hover:text-indigo-300 text-sm underline transition-colors"
           >
             Volver al inicio
           </a>
