@@ -123,11 +123,12 @@ export function PosShell() {
             {error ?? 'No se pudo cargar la sesión'}
           </p>
       
-            href="/login"
+href="/login"
             className="inline-block text-indigo-400 hover:text-indigo-300 text-sm underline transition-colors"
           >
             Volver al inicio
           </a>
+          
         </div>
       </div>
     )
