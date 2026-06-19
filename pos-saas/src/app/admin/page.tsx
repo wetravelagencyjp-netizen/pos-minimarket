@@ -614,6 +614,9 @@ function ModalNuevoLote({
   const [precioVenta, setPrecioVenta] = useState('')
   const [sinHistorial, setSinHistorial] = useState(false)
   const [guardando, setGuardando] = useState(false)
+  const [tieneStockPrevio, setTieneStockPrevio] = useState(false)
+  const [precioViejoLote, setPrecioViejoLote] = useState(0)
+  const [decisionPrecio, setDecisionPrecio] = useState<'respetar_viejo' | 'actualizar_nuevo' | null>(null)
 
   useEffect(() => {
     const costo = parseFloat(precioCompra)
@@ -632,6 +635,10 @@ function ModalNuevoLote({
         const markup = (ultimoLote.precio_venta_sugerido - ultimoLote.precio_compra) / ultimoLote.precio_compra
         setPrecioVenta((costo * (1 + markup)).toFixed(2))
         setSinHistorial(false)
+        if (producto.stock_actual > 0) {
+          setTieneStockPrevio(true)
+          setPrecioViejoLote(ultimoLote.precio_venta_sugerido)
+        }
       } else {
         const { data: estab } = await supabase
           .from('establecimientos')
@@ -675,10 +682,14 @@ function ModalNuevoLote({
       margen_ganancia: +(((venta - costo) / costo) * 100).toFixed(2),
     })
 
+    // Si hay stock previo y el admin eligió respetar precio viejo,
+    // no actualizamos precio_venta del producto — el POS leerá el precio del lote más antiguo
+    const nuevoPrecioVenta = decisionPrecio === 'respetar_viejo' ? precioViejoLote : venta
+
     await supabase.from('productos').update({
       stock_actual: producto.stock_actual + cant,
       precio_costo: costo,
-      precio_venta: venta,
+      precio_venta: nuevoPrecioVenta,
     }).eq('id', producto.id)
 
     setGuardando(false)
@@ -707,9 +718,35 @@ function ModalNuevoLote({
           )}
         </div>
 
+        {tieneStockPrevio && precioVenta && parseFloat(precioVenta) !== precioViejoLote && (
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3 space-y-2">
+            <p className="text-xs font-medium text-indigo-800">
+              ⚠️ Ya tienes {producto.stock_actual} uds en stock al precio ${precioViejoLote.toFixed(2)}. ¿Cómo manejar el precio?
+            </p>
+            <div className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => setDecisionPrecio('respetar_viejo')}
+                className={`rounded-lg px-3 py-2 text-left text-xs transition-colors ${decisionPrecio === 'respetar_viejo' ? 'bg-indigo-600 text-white' : 'bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-100'}`}>
+                <p className="font-medium">Respetar precio viejo ${precioViejoLote.toFixed(2)} hasta agotar</p>
+                <p className={`${decisionPrecio === 'respetar_viejo' ? 'text-indigo-200' : 'text-indigo-400'}`}>El stock actual sigue al precio anterior (PEPS)</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDecisionPrecio('actualizar_nuevo')}
+                className={`rounded-lg px-3 py-2 text-left text-xs transition-colors ${decisionPrecio === 'actualizar_nuevo' ? 'bg-indigo-600 text-white' : 'bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-100'}`}>
+                <p className="font-medium">Actualizar todo al precio nuevo ${parseFloat(precioVenta).toFixed(2)}</p>
+                <p className={`${decisionPrecio === 'actualizar_nuevo' ? 'text-indigo-200' : 'text-indigo-400'}`}>Todo el inventario, incluyendo el stock anterior</p>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2">
           <button onClick={onCerrar} className="flex-1 rounded-lg border border-gray-200 py-2 text-sm text-gray-500 hover:bg-gray-50">Cancelar</button>
-          <button onClick={guardar} disabled={guardando}
+          <button
+            onClick={guardar}
+            disabled={guardando || (tieneStockPrevio && parseFloat(precioVenta || '0') !== precioViejoLote && !decisionPrecio)}
             className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
             {guardando ? 'Guardando…' : 'Registrar lote'}
           </button>
