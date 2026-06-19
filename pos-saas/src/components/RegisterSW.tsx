@@ -1,13 +1,10 @@
 'use client'
-import { useEffect } from 'react'
+
+// Service Worker desactivado temporalmente — estaba cacheando
+// versiones viejas del código y causando errores de sincronización.
+// Si en el futuro se vuelve a activar, debe incluir lógica de
+// invalidación de caché en cada deploy nuevo.
 
 export default function RegisterSW() {
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch((err) => {
-        console.error('Error registrando service worker:', err)
-      })
-    }
-  }, [])
   return null
 }
