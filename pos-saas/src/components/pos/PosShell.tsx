@@ -130,41 +130,7 @@ function CarritoDefault(_props: SlotProps) {
     </div>
   )
 }
-  return (
-    <div className="w-80 flex flex-col bg-slate-800 border-l border-slate-700 h-full">
-      <div className="px-4 py-3 border-b border-slate-700">
-        <h2 className="text-slate-100 font-semibold text-sm tracking-wide">
-          Venta actual
-        </h2>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 bg-slate-700 rounded-full mx-auto mb-3 flex items-center justify-center">
-            <span className="text-2xl">🛒</span>
-          </div>
-          <p className="text-slate-400 text-sm">Carrito vacío</p>
-          <p className="text-slate-500 text-xs mt-1">
-            Selecciona un producto para comenzar
-          </p>
-        </div>
-      </div>
-
-      <div className="p-4 border-t border-slate-700 space-y-3">
-        <div className="flex justify-between items-center">
-          <span className="text-slate-400 text-sm">Total</span>
-          <span className="text-slate-100 font-bold text-xl">$0.00</span>
-        </div>
-        <button
-          disabled
-          className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold py-3 rounded-xl transition-all duration-200 text-sm tracking-wide"
-        >
-          Cobrar
-        </button>
-      </div>
-    </div>
-  )
-}
+  
 
 // ─── Skeleton Loader ───────────────────────────────────────────
 function PosSkeletonLoader() {
