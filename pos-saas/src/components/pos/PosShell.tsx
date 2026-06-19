@@ -11,9 +11,7 @@ function TopBarDefault({ tenant }: SlotProps) {
       <input
         type="text"
         placeholder="Buscar producto o escanear código..."
-        className="flex-1 bg-slate-700 text-slate-100 placeholder-slate-400 text-sm
-                   rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500
-                   transition-all"
+        className="flex-1 bg-slate-700 text-slate-100 placeholder-slate-400 text-sm rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
       />
       <span className="text-xs text-slate-400 font-medium tracking-wide uppercase">
         {tenant.nombre_comercio}
@@ -30,12 +28,9 @@ function CatalogoDefault(_props: SlotProps) {
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
-            className="bg-slate-800 rounded-xl p-4 border border-slate-700
-                       hover:border-indigo-500 cursor-pointer
-                       transition-all duration-200 group"
+            className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-indigo-500 cursor-pointer transition-all duration-200 group"
           >
-            <div className="w-full aspect-square bg-slate-700 rounded-lg mb-3
-                            group-hover:bg-slate-600 transition-colors" />
+            <div className="w-full aspect-square bg-slate-700 rounded-lg mb-3 group-hover:bg-slate-600 transition-colors" />
             <div className="h-3 bg-slate-700 rounded w-3/4 mb-2" />
             <div className="h-3 bg-slate-700 rounded w-1/2" />
           </div>
@@ -49,19 +44,15 @@ function CatalogoDefault(_props: SlotProps) {
 function CarritoDefault(_props: SlotProps) {
   return (
     <div className="w-80 flex flex-col bg-slate-800 border-l border-slate-700 h-full">
-
-      {/* Header */}
       <div className="px-4 py-3 border-b border-slate-700">
         <h2 className="text-slate-100 font-semibold text-sm tracking-wide">
           Venta actual
         </h2>
       </div>
 
-      {/* Carrito vacío */}
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 bg-slate-700 rounded-full mx-auto mb-3
-                          flex items-center justify-center">
+          <div className="w-12 h-12 bg-slate-700 rounded-full mx-auto mb-3 flex items-center justify-center">
             <span className="text-2xl">🛒</span>
           </div>
           <p className="text-slate-400 text-sm">Carrito vacío</p>
@@ -71,7 +62,6 @@ function CarritoDefault(_props: SlotProps) {
         </div>
       </div>
 
-      {/* Footer con total y botón cobrar */}
       <div className="p-4 border-t border-slate-700 space-y-3">
         <div className="flex justify-between items-center">
           <span className="text-slate-400 text-sm">Total</span>
@@ -79,9 +69,7 @@ function CarritoDefault(_props: SlotProps) {
         </div>
         <button
           disabled
-          className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700
-                     disabled:text-slate-500 text-white font-semibold py-3 rounded-xl
-                     transition-all duration-200 text-sm tracking-wide"
+          className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold py-3 rounded-xl transition-all duration-200 text-sm tracking-wide"
         >
           Cobrar
         </button>
@@ -111,10 +99,8 @@ function PosSkeletonLoader() {
 export function PosShell() {
   const { tenant, perfil, sucursalId, isLoading, error } = useEstablecimiento()
 
-  // Muestra skeleton mientras carga
   if (isLoading) return <PosSkeletonLoader />
 
-  // Error de sesión
   if (error || !tenant || !perfil) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-900">
@@ -122,44 +108,31 @@ export function PosShell() {
           <p className="text-slate-400 text-sm">
             {error ?? 'No se pudo cargar la sesión'}
           </p>
-      
-href="/login"
-            className="inline-block text-indigo-400 hover:text-indigo-300 text-sm underline transition-colors"
-          >
+          <a href="/login" className="inline-block text-indigo-400 hover:text-indigo-300 text-sm underline transition-colors">
             Volver al inicio
           </a>
-          
         </div>
       </div>
     )
   }
 
-  // Obtiene el módulo según el giro del negocio
   const modulo = getModulo(tenant.business_type)
-
-  // Props compartidas para todos los slots
   const slotProps: SlotProps = { tenant, perfil, sucursalId }
 
-  // Resuelve cada slot: módulo real o genérico del Core
   const TopBar   = modulo.topBarSlot   ?? TopBarDefault
   const Catalogo = modulo.catalogoSlot ?? CatalogoDefault
   const Carrito  = modulo.carritoSlot  ?? CarritoDefault
 
   return (
     <div className="flex flex-col h-screen bg-slate-900 text-slate-100 overflow-hidden">
-
-      {/* Alerta flotante: solo si el módulo tiene alertaSlot activo */}
       {modulo.alertaSlot && <modulo.alertaSlot {...slotProps} />}
 
-      {/* Barra superior */}
       <TopBar {...slotProps} />
 
-      {/* Cuerpo principal */}
       <div className="flex flex-1 overflow-hidden">
         <Catalogo {...slotProps} />
-        <Carrito  {...slotProps} />
+        <Carrito {...slotProps} />
       </div>
-
     </div>
   )
 }
