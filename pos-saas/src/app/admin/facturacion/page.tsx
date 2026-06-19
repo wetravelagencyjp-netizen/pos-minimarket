@@ -628,7 +628,7 @@ function SeccionClientes({ establecimientoId }: { establecimientoId: number }) {
   const [clientes, setClientes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
-  const [form, setForm] = useState({ identificacion: '', tipo_identificacion: 'cedula', razon_social: '', direccion: '', email: '', telefono: '' })
+  const [form, setForm] = useState({ identificacion: '', tipo_identificacion: 'cedula', razon_social: '', direccion: '', email: '', telefono: '', limite_credito: '' })
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
 
@@ -648,13 +648,15 @@ function SeccionClientes({ establecimientoId }: { establecimientoId: number }) {
     }
     setGuardando(true); setMensaje(null)
     const { error } = await supabase.from('clientes').upsert({
-      establecimiento_id: establecimientoId, ...form,
+      establecimiento_id: establecimientoId,
+      ...form,
+      limite_credito: parseFloat(form.limite_credito) || 0,
     }, { onConflict: 'establecimiento_id,identificacion' })
     if (error) {
       setMensaje({ texto: `Error: ${error.message}`, tipo: 'error' })
     } else {
       setMensaje({ texto: 'Cliente guardado', tipo: 'ok' })
-      setForm({ identificacion: '', tipo_identificacion: 'cedula', razon_social: '', direccion: '', email: '', telefono: '' })
+      setForm({ identificacion: '', tipo_identificacion: 'cedula', razon_social: '', direccion: '', email: '', telefono: '', limite_credito: '' })
       cargar()
     }
     setGuardando(false)
@@ -712,6 +714,12 @@ function SeccionClientes({ establecimientoId }: { establecimientoId: number }) {
             <label className="block text-xs font-medium text-slate-600 mb-1.5">Teléfono</label>
             <input placeholder="0999999999" value={form.telefono}
               onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))}
+              className={inputClass} />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-slate-600 mb-1.5">Límite de Crédito Máximo</label>
+            <input type="number" step="0.01" min="0" placeholder="0.00" value={form.limite_credito}
+              onChange={e => setForm(f => ({ ...f, limite_credito: e.target.value }))}
               className={inputClass} />
           </div>
         </div>
