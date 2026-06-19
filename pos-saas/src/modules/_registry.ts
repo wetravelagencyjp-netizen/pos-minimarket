@@ -1,4 +1,5 @@
 import type { ModuloConfig, BusinessType } from '@/core/types/modulos.types'
+import { RetailModule } from './retail'
 
 // ─── Cascarón vacío reutilizable ──────────────────────────────
 // Todos los slots en null = el POS usa los componentes Core por defecto.
@@ -14,7 +15,7 @@ const moduloVacio = (displayName: string): ModuloConfig => ({
 
 // ─── Mapa central: business_type → módulo ────────────────────
 export const MODULE_REGISTRY: Record<BusinessType, ModuloConfig> = {
-  retail:         moduloVacio('Retail / Minimarket'),
+  retail:         RetailModule,
   restaurant:     moduloVacio('Restaurante / Cafetería'),
   medical_clinic: moduloVacio('Clínica Médica'),
   veterinary:     moduloVacio('Veterinaria'),
