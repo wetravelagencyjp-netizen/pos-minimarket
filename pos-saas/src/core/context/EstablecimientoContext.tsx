@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase'
 import type { Tenant, PerfilUsuario } from '@/core/types/modulos.types'
 
 // ─── Shape del contexto ───────────────────────────────────────
