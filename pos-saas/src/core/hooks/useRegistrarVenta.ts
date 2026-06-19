@@ -44,13 +44,13 @@ export function useRegistrarVenta() {
       if (ventaError || !venta) throw new Error(ventaError?.message ?? 'No se pudo crear la venta')
 
       // 2. Insertar cada línea de detalle_ventas
+      // (subtotal NO se envía: es GENERATED ALWAYS, Postgres lo calcula solo)
       const detalles = params.items.map((item) => ({
         venta_id: venta.id,
         producto_id: item.productoId,
         vendedor_id: params.vendedorId,
         cantidad: item.cantidad,
         precio_unitario: item.precioUnitario,
-        subtotal: item.precioUnitario * item.cantidad,
       }))
 
       const { error: detalleError } = await supabase.from('detalle_ventas').insert(detalles)
