@@ -3,10 +3,9 @@
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import { getModulo } from '@/modules/_registry'
 import type { SlotProps } from '@/core/types/modulos.types'
-import { useLotesFIFO } from '@/core/hooks/useLotesFIFO'
 
 // ─── Slot genérico: Barra superior ────────────────────────────
-function TopBarDefault({ tenant }: SlotProps) {
+function TopBarDefault({ establecimiento }: SlotProps) {
   return (
     <div className="flex items-center gap-3 px-4 py-2 bg-slate-800 border-b border-slate-700">
       <input
@@ -15,69 +14,27 @@ function TopBarDefault({ tenant }: SlotProps) {
         className="flex-1 bg-slate-700 text-slate-100 placeholder-slate-400 text-sm rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
       />
       <span className="text-xs text-slate-400 font-medium tracking-wide uppercase">
-        {tenant.nombre_comercio}
+        {establecimiento.nombre}
       </span>
     </div>
   )
 }
 
 // ─── Slot genérico: Catálogo de productos ─────────────────────
-function CatalogoDefault({ tenant, sucursalId }: SlotProps) {
-  const { productos, isLoading, error } = useLotesFIFO(tenant.id, sucursalId)
-
-  if (isLoading) {
-    return (
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="bg-slate-800 rounded-xl aspect-square animate-pulse" />
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-slate-400 text-sm">Error al cargar productos: {error}</p>
-      </div>
-    )
-  }
-
-  if (productos.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-slate-400 text-sm">No hay productos con stock disponible</p>
-          <p className="text-slate-500 text-xs mt-1">Agrega productos y lotes desde el panel de Admin</p>
-        </div>
-      </div>
-    )
-  }
-
+function CatalogoDefault({ establecimiento, sucursalId }: SlotProps) {
   return (
     <div className="flex-1 overflow-y-auto p-4">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {productos.map((producto) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div
-            key={producto.id}
+            key={i}
             className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-indigo-500 cursor-pointer transition-all duration-200"
           >
             <div className="w-full aspect-square bg-slate-700 rounded-lg mb-3 flex items-center justify-center text-3xl">
               📦
             </div>
-            <p className="text-slate-100 text-sm font-medium truncate">
-              {producto.nombre_producto}
-            </p>
-            <div className="flex justify-between items-center mt-1">
-              <span className="text-indigo-400 font-semibold text-sm">
-                ${producto.precio_venta.toFixed(2)}
-              </span>
-              <span className="text-slate-500 text-xs">
-                {producto.stock_disponible} uds
-              </span>
-            </div>
+            <div className="h-3 bg-slate-700 rounded w-3/4 mb-2" />
+            <div className="h-3 bg-slate-700 rounded w-1/2" />
           </div>
         ))}
       </div>
@@ -123,7 +80,7 @@ function CarritoDefault(_props: SlotProps) {
   )
 }
 
-// ─── Skeleton Loader (mientras carga el contexto) ─────────────
+// ─── Skeleton Loader ───────────────────────────────────────────
 function PosSkeletonLoader() {
   return (
     <div className="flex flex-col h-screen bg-slate-900 animate-pulse">
@@ -142,11 +99,11 @@ function PosSkeletonLoader() {
 
 // ─── PosShell: Orquestador principal ──────────────────────────
 export function PosShell() {
-  const { tenant, perfil, sucursalId, isLoading, error } = useEstablecimiento()
+  const { establecimiento, usuario, sucursalId, isLoading, error } = useEstablecimiento()
 
   if (isLoading) return <PosSkeletonLoader />
 
-  if (error || !tenant || !perfil) {
+  if (error || !establecimiento || !usuario) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-900">
         <div className="text-center space-y-3">
@@ -161,8 +118,8 @@ export function PosShell() {
     )
   }
 
-  const modulo = getModulo(tenant.business_type)
-  const slotProps: SlotProps = { tenant, perfil, sucursalId }
+  const modulo = getModulo(establecimiento.business_type)
+  const slotProps: SlotProps = { establecimiento, usuario, sucursalId }
 
   const TopBar   = modulo.topBarSlot   ?? TopBarDefault
   const Catalogo = modulo.catalogoSlot ?? CatalogoDefault
