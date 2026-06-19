@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useCarrito } from '@/core/context/CarritoContext'
 import { useRegistrarVenta, type MetodoPago } from '@/core/hooks/useRegistrarVenta'
+import SelectorCliente, { type ClienteConCredito } from './SelectorCliente'
 
 interface CheckoutModalProps {
   establecimientoId: number
@@ -21,12 +22,30 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const { registrarVenta, isProcesando } = useRegistrarVenta()
   const [metodo, setMetodo] = useState<MetodoPago>('efectivo')
   const [resultado, setResultado] = useState<{ numeroComprobante: string } | null>(null)
+  const [cliente, setCliente] = useState<ClienteConCredito | null>(null)
+  const [errorCredito, setErrorCredito] = useState<string | null>(null)
 
   async function handleConfirmar() {
+    setErrorCredito(null)
+
+    if (metodo === 'credito') {
+      if (!cliente) {
+        setErrorCredito('Selecciona un cliente para registrar la venta a crédito.')
+        return
+      }
+      const saldoResultante = cliente.saldo_pendiente + total
+      if (saldoResultante > cliente.limite_credito) {
+        setErrorCredito(
+          `Esta venta supera el límite de crédito del cliente. Disponible: $${(cliente.limite_credito - cliente.saldo_pendiente).toFixed(2)}`
+        )
+        return
+      }
+    }
+
     const res = await registrarVenta({
       establecimientoId,
       vendedorId: null,
-      clienteId: null,
+      clienteId: metodo === 'credito' ? cliente!.id : null,
       cajaId: null,
       items,
       total,
@@ -36,6 +55,8 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
     if (res.success && res.numeroComprobante) {
       setResultado({ numeroComprobante: res.numeroComprobante })
       vaciarCarrito()
+    } else if (res.error) {
+      setErrorCredito(res.error)
     }
   }
 
@@ -78,7 +99,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
             {METODOS.map((m) => (
               <button
                 key={m.id}
-                onClick={() => setMetodo(m.id)}
+                onClick={() => { setMetodo(m.id); setErrorCredito(null) }}
                 className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   metodo === m.id
                     ? 'bg-indigo-600 text-white'
@@ -91,6 +112,23 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
             ))}
           </div>
         </div>
+
+        {metodo === 'credito' && (
+          <div className="space-y-2">
+            <p className="text-slate-400 text-xs uppercase tracking-wide">Cliente</p>
+            <SelectorCliente
+              establecimientoId={establecimientoId}
+              clienteSeleccionado={cliente}
+              onSeleccionar={setCliente}
+            />
+          </div>
+        )}
+
+        {errorCredito && (
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg px-3 py-2.5">
+            {errorCredito}
+          </div>
+        )}
 
         <button
           onClick={handleConfirmar}
