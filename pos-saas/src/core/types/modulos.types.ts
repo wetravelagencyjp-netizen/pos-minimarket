@@ -32,6 +32,8 @@ export interface Establecimiento {
   margen_costo_estimado: number | null
   business_type: BusinessType
   creado_en: string
+  alerta_caducidad_dias: number
+  alerta_caducidad_estilo: 'discreto' | 'llamativo'
 }
 
 // ─── Perfil del usuario autenticado (tabla real: usuarios) ────
