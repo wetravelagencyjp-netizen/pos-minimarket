@@ -3,6 +3,8 @@
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import { getModulo } from '@/modules/_registry'
 import { useCarrito } from '@/core/context/CarritoContext'
+import { useState } from 'react'
+import CheckoutModal from './CheckoutModal'
 import type { SlotProps } from '@/core/types/modulos.types'
 
 // ─── Slot genérico: Barra superior ────────────────────────────
@@ -46,6 +48,7 @@ function CatalogoDefault({ establecimiento, sucursalId }: SlotProps) {
 // ─── Slot genérico: Panel de carrito ──────────────────────────
 function CarritoDefault(_props: SlotProps) {
   const { items, total, cambiarCantidad, quitarItem } = useCarrito()
+  const [mostrarCheckout, setMostrarCheckout] = useState(false)
 
   if (items.length === 0) {
     return (
@@ -123,14 +126,22 @@ function CarritoDefault(_props: SlotProps) {
           <span className="text-slate-400 text-sm">Total</span>
           <span className="text-slate-100 font-bold text-xl">${total.toFixed(2)}</span>
         </div>
-        <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-all duration-200 text-sm tracking-wide">
+        <button
+          onClick={() => setMostrarCheckout(true)}
+          className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-all duration-200 text-sm tracking-wide"
+        >
           Cobrar
         </button>
+        {mostrarCheckout && (
+          <CheckoutModal
+            establecimientoId={_props.establecimiento.id}
+            onClose={() => setMostrarCheckout(false)}
+          />
+        )}
       </div>
     </div>
   )
 }
-  
 
 // ─── Skeleton Loader ───────────────────────────────────────────
 function PosSkeletonLoader() {
