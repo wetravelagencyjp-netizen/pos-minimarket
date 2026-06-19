@@ -76,6 +76,23 @@ export function useRegistrarVenta() {
           .eq('id_lote', lote.id_lote)
       }
 
+      // 4. Si la venta es a crédito, sumar el total al saldo pendiente del cliente
+      if (params.metodoPago === 'credito' && params.clienteId) {
+        const { data: clienteActual, error: clienteFetchError } = await supabase
+          .from('clientes')
+          .select('saldo_pendiente')
+          .eq('id', params.clienteId)
+          .single()
+
+        if (!clienteFetchError && clienteActual) {
+          const nuevoSaldo = Number(clienteActual.saldo_pendiente) + params.total
+          await supabase
+            .from('clientes')
+            .update({ saldo_pendiente: nuevoSaldo })
+            .eq('id', params.clienteId)
+        }
+      }
+
       return { success: true, ventaId: venta.id, numeroComprobante }
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : 'Error al registrar la venta'
