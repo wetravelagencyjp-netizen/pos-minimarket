@@ -32,6 +32,10 @@ export default function ConfiguracionPage() {
   const [permiteSinStock, setPermiteSinStock]   = useState(false)
   const [guardandoStock,  setGuardandoStock]    = useState(false)
 
+  // ── Venta sin stock ────────────────────────────────────────
+  const [permiteSinStock, setPermiteSinStock]   = useState(false)
+  const [guardandoStock,  setGuardandoStock]    = useState(false)
+
   // ── PIN de supervisor ──────────────────────────────────────
   const [pin,             setPin]             = useState('')
   const [pinConfirmar,    setPinConfirmar]    = useState('')
@@ -115,6 +119,18 @@ export default function ConfiguracionPage() {
       ? { texto: `❌ ${error.message}`, tipo: 'error' }
       : { texto: '✅ Configuración de alerta guardada', tipo: 'ok' }
     )
+  }
+
+  const toggleVentaSinStock = async () => {
+    const nuevoValor = !permiteSinStock
+    setGuardandoStock(true)
+    setPermiteSinStock(nuevoValor)
+    const { error } = await supabase
+      .from('establecimientos')
+      .update({ permite_venta_sin_stock: nuevoValor })
+      .eq('id', estabId)
+    setGuardandoStock(false)
+    if (error) setPermiteSinStock(!nuevoValor)
   }
 
   const toggleVentaSinStock = async () => {
@@ -284,6 +300,19 @@ export default function ConfiguracionPage() {
             className="mt-4 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50">
             {guardandoAlerta ? 'Guardando…' : 'Guardar cambios'}
           </button>
+        </div>
+
+        {/* Venta sin stock */}
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50">
+          <h2 className="mb-1 text-sm font-semibold tracking-tight text-slate-900">📦 Reservas y Pedidos Especiales</h2>
+          <p className="mb-5 text-xs text-slate-500">Permitir vender por encima del stock disponible (reservas / pedidos especiales).</p>
+          <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3.5">
+            <span className="text-sm text-slate-700">Permitir ventas sin stock disponible</span>
+            <button type="button" onClick={toggleVentaSinStock} disabled={guardandoStock}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${permiteSinStock ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${permiteSinStock ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
         </div>
 
         {/* Venta sin stock */}
