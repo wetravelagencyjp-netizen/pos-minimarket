@@ -37,6 +37,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const [validandoPin, setValidandoPin] = useState(false)
   const [errorPin, setErrorPin] = useState<string | null>(null)
   const [bancos, setBancos] = useState<{ id: number; nombre: string }[]>([])
+  const [cajaId, setCajaId] = useState<number | null>(null)
 
   const [pagos, setPagos] = useState<LineaPago[]>([{ metodo: 'efectivo', monto: total.toFixed(2), bancoId: null }])
 
@@ -54,6 +55,20 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
       .eq('establecimiento_id', establecimientoId).eq('activo', true).order('nombre')
       .then(({ data }) => setBancos(data ?? []))
   }, [pagos, establecimientoId])
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('cajas').select('id')
+        .eq('usuario_id', user.id)
+        .eq('establecimiento_id', establecimientoId)
+        .is('fecha_cierre', null)
+        .order('fecha_apertura', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => setCajaId(data?.id ?? null))
+    })
+  }, [establecimientoId])
 
   function agregarLinea() {
     if (faltante <= 0) return
@@ -110,7 +125,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
       establecimientoId,
       vendedorId: null,
       clienteId: usaCredito ? cliente!.id : null,
-      cajaId: null,
+      cajaId,
       bancoId: bancoPrincipal,
       items,
       total,
