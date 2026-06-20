@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
-import { exportarCierreCSV, exportarCierrePDF } from '@/lib/exportarCierreCaja'
 
 interface CajaActiva {
   id: number
@@ -34,6 +33,7 @@ export default function CajaPage() {
   const [validandoEgreso, setValidandoEgreso] = useState(false)
   const [errorEgreso, setErrorEgreso] = useState<string | null>(null)
   const [totalEgresos, setTotalEgresos] = useState(0)
+  const [bloqueSri, setBloqueSri] = useState<{ totalFacturado: number; cantidadComprobantes: number; primerComprobante: string | null; ultimoComprobante: string | null } | null>(null)
 
   const cargarCajaActiva = useCallback(async () => {
     setCargando(true)
@@ -88,6 +88,27 @@ export default function CajaPage() {
         .select('monto')
         .eq('caja_id', cajaActiva.id)
       setTotalEgresos((egresos ?? []).reduce((s, e) => s + Number(e.monto), 0))
+
+      // ⚠️ Bloque fiscal SRI: solo cuenta ventas con comprobante AUTORIZADO.
+      // El botón "Emitir Factura SRI" que crea sri_comprobante_id queda pendiente
+      // para una sesión futura (hoy la mayoría de ventas tendrán este campo en NULL).
+      const { data: ventasFacturadas } = await supabase
+        .from('ventas')
+        .select('id, total, sri_comprobante_id, sri_comprobantes(numero_comprobante, estado)')
+        .in('id', idsVenta)
+        .not('sri_comprobante_id', 'is', null)
+
+      const autorizadas = (ventasFacturadas ?? []).filter(
+        (v: any) => v.sri_comprobantes?.estado === 'AUTORIZADO'
+      )
+      const totalFacturado = autorizadas.reduce((s: number, v: any) => s + Number(v.total), 0)
+      const numeros = autorizadas.map((v: any) => v.sri_comprobantes?.numero_comprobante).filter(Boolean).sort()
+      setBloqueSri({
+        totalFacturado,
+        cantidadComprobantes: autorizadas.length,
+        primerComprobante: numeros[0] ?? null,
+        ultimoComprobante: numeros[numeros.length - 1] ?? null,
+      })
     }
     cargarResumen()
   }, [cajaActiva])
@@ -211,24 +232,6 @@ export default function CajaPage() {
             <div className="flex justify-between"><span className="text-slate-500">Efectivo esperado</span><span className="font-medium text-slate-900">{fmt(cierreFinal.esperado)}</span></div>
             <div className="flex justify-between"><span className="text-slate-500">Efectivo contado</span><span className="font-medium text-slate-900">{fmt(cierreFinal.fisico)}</span></div>
             <div className="flex justify-between"><span className="text-slate-500">Diferencia</span><span className={`font-semibold ${cierreFinal.diferencia === 0 ? 'text-emerald-600' : cierreFinal.diferencia > 0 ? 'text-blue-600' : 'text-rose-600'}`}>{fmt(cierreFinal.diferencia)}</span></div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => exportarCierrePDF({
-              nombreNegocio: usuario?.nombre ?? 'Negocio', ruc: null, cajero: usuario?.nombre ?? '',
-              cajaId: cierreFinal.cajaId, fechaApertura: cierreFinal.fechaApertura, fechaCierre: new Date().toISOString(),
-              montoInicial: 0, porMetodo: resumen?.porMetodo ?? {}, porBanco: resumen?.porBanco ?? {}, totalEgresos,
-              efectivoEsperado: cierreFinal.esperado, efectivoDeclarado: cierreFinal.fisico, diferencia: cierreFinal.diferencia,
-            })} className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-              📄 PDF
-            </button>
-            <button onClick={() => exportarCierreCSV({
-              nombreNegocio: usuario?.nombre ?? 'Negocio', ruc: null, cajero: usuario?.nombre ?? '',
-              cajaId: cierreFinal.cajaId, fechaApertura: cierreFinal.fechaApertura, fechaCierre: new Date().toISOString(),
-              montoInicial: 0, porMetodo: resumen?.porMetodo ?? {}, porBanco: resumen?.porBanco ?? {}, totalEgresos,
-              efectivoEsperado: cierreFinal.esperado, efectivoDeclarado: cierreFinal.fisico, diferencia: cierreFinal.diferencia,
-            })} className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-              📊 Excel
-            </button>
           </div>
           <button onClick={() => router.push('/pos')}
             className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
