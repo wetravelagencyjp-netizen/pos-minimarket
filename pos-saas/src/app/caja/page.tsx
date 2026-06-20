@@ -96,8 +96,7 @@ export default function CajaPage() {
     if (error) {
       setMensaje({ texto: `❌ ${error.message}`, tipo: 'error' })
     } else {
-      setMontoInicial('')
-      cargarCajaActiva()
+      router.push('/pos')
     }
   }
 

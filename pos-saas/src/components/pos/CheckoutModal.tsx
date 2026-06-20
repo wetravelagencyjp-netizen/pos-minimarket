@@ -103,6 +103,12 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
       return
     }
 
+    const transferenciaSinBanco = pagos.some((p) => p.metodo === 'transferencia' && !p.bancoId)
+    if (transferenciaSinBanco) {
+      setErrorCredito('Selecciona el banco para la transferencia.')
+      return
+    }
+
     if (usaCredito) {
       if (!cliente) {
         setErrorCredito('Selecciona un cliente para la porción a crédito.')
