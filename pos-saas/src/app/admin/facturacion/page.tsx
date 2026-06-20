@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import LogoUploader from '@/components/LogoUploader'
 
 type Seccion = 'comprobantes' | 'credenciales' | 'clientes'
 
@@ -435,11 +434,7 @@ function SeccionCredenciales({ establecimientoId }: { establecimientoId: number 
             {form.tipo_emision === 'produccion' ? 'Producción' : 'Pruebas'}
           </span>
         </div>
-        <LogoUploader
-          establecimientoId={establecimientoId}
-          currentLogoUrl={logoUrl}
-          onUploaded={(url) => setLogoUrl(url)}
-        />
+        
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <label className="block text-xs font-medium text-slate-600 mb-1.5">RUC del emisor *</label>

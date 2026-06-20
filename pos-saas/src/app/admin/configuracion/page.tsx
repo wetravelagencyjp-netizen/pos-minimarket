@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
+import LogoUploader from '@/components/LogoUploader'
 
 interface Sucursal {
   id: number
@@ -19,6 +20,7 @@ export default function ConfiguracionPage() {
   // ── Establecimiento ───────────────────────────────────────
   const [margen,          setMargen]          = useState('')
   const [nombreNegocio,   setNombreNegocio]   = useState('')
+  const [logoUrl,         setLogoUrl]         = useState<string | null>(null)
   const [guardandoEstab,  setGuardandoEstab]  = useState(false)
   const [mensajeEstab,    setMensajeEstab]    = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
 
@@ -55,7 +57,7 @@ export default function ConfiguracionPage() {
   const cargarEstab = useCallback(async () => {
     const { data } = await supabase
       .from('establecimientos')
-      .select('nombre, margen_costo_estimado, alerta_caducidad_dias, alerta_caducidad_estilo, permite_venta_sin_stock')
+      .select('nombre, margen_costo_estimado, alerta_caducidad_dias, alerta_caducidad_estilo, permite_venta_sin_stock, logo_url')
       .eq('id', estabId)
       .single()
     if (data) {
@@ -64,6 +66,7 @@ export default function ConfiguracionPage() {
       setAlertaDias(String(data.alerta_caducidad_dias ?? 7))
       setAlertaEstilo((data.alerta_caducidad_estilo as 'discreto' | 'llamativo') ?? 'llamativo')
       setPermiteSinStock(data.permite_venta_sin_stock ?? false)
+      setLogoUrl(data.logo_url ?? null)
     }
   }, [estabId])
 
@@ -254,6 +257,13 @@ export default function ConfiguracionPage() {
         <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50">
           <h2 className="mb-1 text-sm font-semibold tracking-tight text-slate-900">🏪 Datos del negocio</h2>
           <p className="mb-5 text-xs text-slate-500">Nombre del local y margen de ganancia por defecto para nuevos lotes.</p>
+          <div className="mb-4">
+            <LogoUploader
+              establecimientoId={estabId}
+              currentLogoUrl={logoUrl}
+              onUploaded={(url) => setLogoUrl(url)}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-slate-600">Nombre del negocio</label>
