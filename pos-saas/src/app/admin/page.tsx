@@ -57,6 +57,10 @@ export default function AdminPage() {
             className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 transition-colors">
             👥 Usuarios
           </button>
+          <button onClick={() => router.push('/admin/cajas')}
+            className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+            📋 Cierres de Caja
+          </button>
         </aside>
 
         <main className="flex-1 overflow-y-auto p-6">
