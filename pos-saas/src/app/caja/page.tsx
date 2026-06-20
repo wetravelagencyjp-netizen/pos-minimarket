@@ -26,6 +26,13 @@ export default function CajaPage() {
   const [mensaje, setMensaje] = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
   const [cierreFinal, setCierreFinal] = useState<{ esperado: number; fisico: number; diferencia: number } | null>(null)
   const [mostrarCierre, setMostrarCierre] = useState(false)
+  const [mostrarEgreso, setMostrarEgreso] = useState(false)
+  const [montoEgreso, setMontoEgreso] = useState('')
+  const [motivoEgreso, setMotivoEgreso] = useState('')
+  const [pinEgreso, setPinEgreso] = useState('')
+  const [validandoEgreso, setValidandoEgreso] = useState(false)
+  const [errorEgreso, setErrorEgreso] = useState<string | null>(null)
+  const [totalEgresos, setTotalEgresos] = useState(0)
 
   const cargarCajaActiva = useCallback(async () => {
     setCargando(true)
@@ -74,6 +81,12 @@ export default function CajaPage() {
         }
       }
       setResumen({ porMetodo, porBanco, totalSistema })
+
+      const { data: egresos } = await supabase
+        .from('movimientos_caja')
+        .select('monto')
+        .eq('caja_id', cajaActiva.id)
+      setTotalEgresos((egresos ?? []).reduce((s, e) => s + Number(e.monto), 0))
     }
     cargarResumen()
   }, [cajaActiva])
@@ -100,6 +113,58 @@ export default function CajaPage() {
     }
   }
 
+  const registrarEgreso = async () => {
+    setErrorEgreso(null)
+    const monto = parseFloat(montoEgreso)
+    if (isNaN(monto) || monto <= 0) {
+      setErrorEgreso('Ingresa un monto válido')
+      return
+    }
+    if (!motivoEgreso.trim()) {
+      setErrorEgreso('Ingresa el motivo del egreso')
+      return
+    }
+    if (!/^[0-9]{4,6}$/.test(pinEgreso)) {
+      setErrorEgreso('Ingresa el PIN de supervisor')
+      return
+    }
+
+    setValidandoEgreso(true)
+    const { data: validacion, error: errorPin } = await supabase.rpc('validar_pin_supervisor', {
+      p_establecimiento_id: estabId,
+      p_pin: pinEgreso,
+    })
+
+    if (errorPin || !validacion?.autorizado) {
+      setValidandoEgreso(false)
+      if (validacion?.bloqueado_hasta) {
+        const minutos = Math.ceil((new Date(validacion.bloqueado_hasta).getTime() - Date.now()) / 60000)
+        setErrorEgreso(`Demasiados intentos fallidos. Intenta en ${minutos > 0 ? minutos : 1} minuto(s).`)
+      } else {
+        setErrorEgreso('PIN incorrecto')
+      }
+      return
+    }
+
+    const { error } = await supabase.from('movimientos_caja').insert({
+      caja_id: cajaActiva!.id,
+      monto,
+      motivo: motivoEgreso.trim(),
+      autorizado_por: usuario?.id,
+    })
+    setValidandoEgreso(false)
+
+    if (error) {
+      setErrorEgreso(error.message)
+    } else {
+      setMontoEgreso('')
+      setMotivoEgreso('')
+      setPinEgreso('')
+      setMostrarEgreso(false)
+      cargarCajaActiva()
+    }
+  }
+
   const cerrarCaja = async () => {
     if (!cajaActiva || !resumen) return
     const fisico = parseFloat(montoFisico)
@@ -108,7 +173,7 @@ export default function CajaPage() {
       return
     }
     setCerrando(true)
-    const efectivoEsperado = cajaActiva.monto_inicial + (resumen.porMetodo['efectivo'] ?? 0)
+    const efectivoEsperado = cajaActiva.monto_inicial + (resumen.porMetodo['efectivo'] ?? 0) - totalEgresos
     const diferencia = +(fisico - efectivoEsperado).toFixed(2)
 
     const { error } = await supabase.from('cajas').update({
@@ -216,6 +281,54 @@ export default function CajaPage() {
                 <div className="pt-2 border-t border-slate-100 flex justify-between text-sm font-semibold">
                   <span className="text-slate-700">Total ventas</span>
                   <span className="text-slate-900">{fmt(resumen.totalSistema)}</span>
+                </div>
+                {totalEgresos > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-rose-500">Egresos de caja</span>
+                    <span className="text-rose-500">-{fmt(totalEgresos)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!mostrarEgreso ? (
+              <button onClick={() => setMostrarEgreso(true)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                💸 Registrar egreso de caja
+              </button>
+            ) : (
+              <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50 space-y-3">
+                <h2 className="text-sm font-semibold text-slate-900">Registrar egreso</h2>
+                <input
+                  type="number" step="0.01"
+                  value={montoEgreso}
+                  onChange={(e) => setMontoEgreso(e.target.value)}
+                  placeholder="Monto"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10"
+                />
+                <input
+                  value={motivoEgreso}
+                  onChange={(e) => setMotivoEgreso(e.target.value)}
+                  placeholder="Motivo (ej: compra de suministros)"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10"
+                />
+                <input
+                  type="password" inputMode="numeric" maxLength={6}
+                  value={pinEgreso}
+                  onChange={(e) => setPinEgreso(e.target.value.replace(/\D/g, ''))}
+                  placeholder="PIN de supervisor"
+                  className="w-full rounded-xl border border-amber-200 bg-amber-50/50 px-3.5 py-2.5 text-sm outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/10"
+                />
+                {errorEgreso && <p className="text-rose-600 text-xs">{errorEgreso}</p>}
+                <div className="flex gap-2">
+                  <button onClick={() => { setMostrarEgreso(false); setErrorEgreso(null) }}
+                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-500 hover:bg-slate-50 transition-colors">
+                    Cancelar
+                  </button>
+                  <button onClick={registrarEgreso} disabled={validandoEgreso}
+                    className="flex-1 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-amber-400 disabled:opacity-50 transition-colors">
+                    {validandoEgreso ? 'Validando…' : 'Autorizar y registrar'}
+                  </button>
                 </div>
               </div>
             )}
