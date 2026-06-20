@@ -4,6 +4,7 @@ import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import { getModulo } from '@/modules/_registry'
 import { useCarrito } from '@/core/context/CarritoContext'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import CheckoutModal from './CheckoutModal'
 import type { SlotProps } from '@/core/types/modulos.types'
 
@@ -49,12 +50,16 @@ function CatalogoDefault({ establecimiento, sucursalId }: SlotProps) {
 function CarritoDefault(_props: SlotProps) {
   const { items, total, cambiarCantidad, quitarItem } = useCarrito()
   const [mostrarCheckout, setMostrarCheckout] = useState(false)
+  const router = useRouter()
 
   if (items.length === 0) {
     return (
       <div className="w-80 flex flex-col bg-slate-800 border-l border-slate-700 h-full">
-        <div className="px-4 py-3 border-b border-slate-700">
+        <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
           <h2 className="text-slate-100 font-semibold text-sm tracking-wide">Venta actual</h2>
+          <button onClick={() => router.push('/caja')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
+            💰 Caja
+          </button>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -80,8 +85,11 @@ function CarritoDefault(_props: SlotProps) {
 
   return (
     <div className="w-80 flex flex-col bg-slate-800 border-l border-slate-700 h-full">
-      <div className="px-4 py-3 border-b border-slate-700">
+      <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
         <h2 className="text-slate-100 font-semibold text-sm tracking-wide">Venta actual</h2>
+        <button onClick={() => router.push('/caja')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
+          💰 Caja
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
