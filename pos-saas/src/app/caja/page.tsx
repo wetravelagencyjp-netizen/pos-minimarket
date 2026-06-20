@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
+import { exportarCierreCSV, exportarCierrePDF } from '@/lib/exportarCierreCaja'
 
 interface CajaActiva {
   id: number
@@ -24,7 +25,7 @@ export default function CajaPage() {
   const [cerrando, setCerrando] = useState(false)
   const [resumen, setResumen] = useState<{ porMetodo: Record<string, number>; porBanco: Record<string, number>; totalSistema: number } | null>(null)
   const [mensaje, setMensaje] = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
-  const [cierreFinal, setCierreFinal] = useState<{ esperado: number; fisico: number; diferencia: number } | null>(null)
+  const [cierreFinal, setCierreFinal] = useState<{ esperado: number; fisico: number; diferencia: number; cajaId: number; fechaApertura: string } | null>(null)
   const [mostrarCierre, setMostrarCierre] = useState(false)
   const [mostrarEgreso, setMostrarEgreso] = useState(false)
   const [montoEgreso, setMontoEgreso] = useState('')
@@ -189,7 +190,7 @@ export default function CajaPage() {
     if (error) {
       setMensaje({ texto: `❌ ${error.message}`, tipo: 'error' })
     } else {
-      setCierreFinal({ esperado: efectivoEsperado, fisico, diferencia })
+      setCierreFinal({ esperado: efectivoEsperado, fisico, diferencia, cajaId: cajaActiva.id, fechaApertura: cajaActiva.fecha_apertura })
       setCajaActiva(null)
     }
   }
@@ -210,6 +211,24 @@ export default function CajaPage() {
             <div className="flex justify-between"><span className="text-slate-500">Efectivo esperado</span><span className="font-medium text-slate-900">{fmt(cierreFinal.esperado)}</span></div>
             <div className="flex justify-between"><span className="text-slate-500">Efectivo contado</span><span className="font-medium text-slate-900">{fmt(cierreFinal.fisico)}</span></div>
             <div className="flex justify-between"><span className="text-slate-500">Diferencia</span><span className={`font-semibold ${cierreFinal.diferencia === 0 ? 'text-emerald-600' : cierreFinal.diferencia > 0 ? 'text-blue-600' : 'text-rose-600'}`}>{fmt(cierreFinal.diferencia)}</span></div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => exportarCierrePDF({
+              nombreNegocio: usuario?.nombre ?? 'Negocio', ruc: null, cajero: usuario?.nombre ?? '',
+              cajaId: cierreFinal.cajaId, fechaApertura: cierreFinal.fechaApertura, fechaCierre: new Date().toISOString(),
+              montoInicial: 0, porMetodo: resumen?.porMetodo ?? {}, porBanco: resumen?.porBanco ?? {}, totalEgresos,
+              efectivoEsperado: cierreFinal.esperado, efectivoDeclarado: cierreFinal.fisico, diferencia: cierreFinal.diferencia,
+            })} className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+              📄 PDF
+            </button>
+            <button onClick={() => exportarCierreCSV({
+              nombreNegocio: usuario?.nombre ?? 'Negocio', ruc: null, cajero: usuario?.nombre ?? '',
+              cajaId: cierreFinal.cajaId, fechaApertura: cierreFinal.fechaApertura, fechaCierre: new Date().toISOString(),
+              montoInicial: 0, porMetodo: resumen?.porMetodo ?? {}, porBanco: resumen?.porBanco ?? {}, totalEgresos,
+              efectivoEsperado: cierreFinal.esperado, efectivoDeclarado: cierreFinal.fisico, diferencia: cierreFinal.diferencia,
+            })} className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+              📊 Excel
+            </button>
           </div>
           <button onClick={() => router.push('/pos')}
             className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
