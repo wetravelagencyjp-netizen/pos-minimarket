@@ -81,7 +81,12 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
     setValidandoPin(false)
 
     if (error || !data?.autorizado) {
-      setErrorPin('PIN incorrecto')
+      if (data?.bloqueado_hasta) {
+        const minutos = Math.ceil((new Date(data.bloqueado_hasta).getTime() - Date.now()) / 60000)
+        setErrorPin(`Demasiados intentos fallidos. Intenta de nuevo en ${minutos > 0 ? minutos : 1} minuto(s).`)
+      } else {
+        setErrorPin('PIN incorrecto')
+      }
       return
     }
 
