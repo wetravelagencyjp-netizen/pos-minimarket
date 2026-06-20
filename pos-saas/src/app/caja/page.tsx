@@ -25,6 +25,7 @@ export default function CajaPage() {
   const [resumen, setResumen] = useState<{ porMetodo: Record<string, number>; porBanco: Record<string, number>; totalSistema: number } | null>(null)
   const [mensaje, setMensaje] = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
   const [cierreFinal, setCierreFinal] = useState<{ esperado: number; fisico: number; diferencia: number } | null>(null)
+  const [mostrarCierre, setMostrarCierre] = useState(false)
 
   const cargarCajaActiva = useCallback(async () => {
     setCargando(true)
@@ -220,22 +221,35 @@ export default function CajaPage() {
               </div>
             )}
 
-            <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50">
-              <h2 className="mb-1 text-sm font-semibold text-slate-900">Cerrar caja</h2>
-              <p className="mb-4 text-xs text-slate-500">Cuenta el efectivo físico en caja e ingrésalo aquí.</p>
-              <input
-                type="number" step="0.01"
-                value={montoFisico}
-                onChange={(e) => setMontoFisico(e.target.value)}
-                placeholder="0.00"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10"
-              />
-              {mensaje && <div className="mt-3 rounded-xl px-4 py-2.5 text-sm bg-rose-50 text-rose-600">{mensaje.texto}</div>}
-              <button onClick={cerrarCaja} disabled={cerrando}
-                className="mt-4 w-full rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50 transition-colors">
-                {cerrando ? 'Cerrando…' : 'Cerrar caja'}
+            {!mostrarCierre ? (
+              <button onClick={() => setMostrarCierre(true)}
+                className="w-full rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-medium text-rose-600 hover:bg-rose-100 transition-colors">
+                🔒 Cerrar turno
               </button>
-            </div>
+            ) : (
+              <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50">
+                <h2 className="mb-1 text-sm font-semibold text-slate-900">Cerrar caja</h2>
+                <p className="mb-4 text-xs text-slate-500">Cuenta el efectivo físico en caja e ingrésalo aquí.</p>
+                <input
+                  type="number" step="0.01"
+                  value={montoFisico}
+                  onChange={(e) => setMontoFisico(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10"
+                />
+                {mensaje && <div className="mt-3 rounded-xl px-4 py-2.5 text-sm bg-rose-50 text-rose-600">{mensaje.texto}</div>}
+                <div className="mt-4 flex gap-2">
+                  <button onClick={() => setMostrarCierre(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-500 hover:bg-slate-50 transition-colors">
+                    Cancelar
+                  </button>
+                  <button onClick={cerrarCaja} disabled={cerrando}
+                    className="flex-1 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50 transition-colors">
+                    {cerrando ? 'Cerrando…' : 'Confirmar cierre'}
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </main>
