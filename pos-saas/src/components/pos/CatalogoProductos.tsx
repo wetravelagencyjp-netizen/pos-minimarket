@@ -47,7 +47,7 @@ export default function CatalogoProductos({ establecimiento, sucursalId }: SlotP
           return (
             <button
               key={producto.id}
-              onClick={() => agregarItem(producto)}
+              onClick={() => agregarItem(producto, establecimiento.permite_venta_sin_stock)}
               className={`text-left bg-slate-800 rounded-xl p-4 border transition-all duration-200 ${
                 resaltado
                   ? 'border-indigo-500 ring-2 ring-indigo-500/50 scale-[1.02]'
