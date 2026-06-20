@@ -14,6 +14,7 @@ interface RegistrarVentaParams {
   total: number
   metodoPago: MetodoPago
   cajaId: number | null
+  bancoId: number | null
 }
 
 export function useRegistrarVenta() {
@@ -42,6 +43,7 @@ export function useRegistrarVenta() {
         p_caja_id: params.cajaId,
         p_vendedor_id: params.vendedorId,
         p_items: itemsPayload,
+        p_banco_id: params.bancoId,
       })
 
       if (rpcError) throw new Error(rpcError.message)

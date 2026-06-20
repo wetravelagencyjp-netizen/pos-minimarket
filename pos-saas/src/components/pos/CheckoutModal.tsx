@@ -5,6 +5,7 @@ import { useCarrito } from '@/core/context/CarritoContext'
 import { useRegistrarVenta, type MetodoPago } from '@/core/hooks/useRegistrarVenta'
 import SelectorCliente, { type ClienteConCredito } from './SelectorCliente'
 import { supabase } from '@/lib/supabase'
+import { useEffect } from 'react'
 
 interface CheckoutModalProps {
   establecimientoId: number
@@ -31,6 +32,15 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const [pinIngresado, setPinIngresado] = useState('')
   const [validandoPin, setValidandoPin] = useState(false)
   const [errorPin, setErrorPin] = useState<string | null>(null)
+  const [bancos, setBancos] = useState<{ id: number; nombre: string }[]>([])
+  const [bancoId, setBancoId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (metodo !== 'transferencia') return
+    supabase.from('bancos').select('id, nombre')
+      .eq('establecimiento_id', establecimientoId).eq('activo', true).order('nombre')
+      .then(({ data }) => setBancos(data ?? []))
+  }, [metodo, establecimientoId])
 
   async function handleConfirmar() {
     setErrorCredito(null)
@@ -55,6 +65,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
       vendedorId: null,
       clienteId: metodo === 'credito' ? cliente!.id : null,
       cajaId: null,
+      bancoId: metodo === 'transferencia' ? bancoId : null,
       items,
       total,
       metodoPago: metodo,
@@ -156,6 +167,22 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
             ))}
           </div>
         </div>
+
+        {metodo === 'transferencia' && (
+          <div className="space-y-2">
+            <p className="text-slate-400 text-xs uppercase tracking-wide">Banco</p>
+            <select
+              value={bancoId ?? ''}
+              onChange={(e) => setBancoId(e.target.value ? Number(e.target.value) : null)}
+              className="w-full bg-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+            >
+              <option value="">— Seleccionar banco —</option>
+              {bancos.map((b) => (
+                <option key={b.id} value={b.id}>{b.nombre}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {metodo === 'credito' && (
           <div className="space-y-2">
