@@ -264,7 +264,9 @@ export default function CajaPage() {
                 {Object.entries(resumen.porMetodo).map(([metodo, monto]) => (
                   <div key={metodo} className="flex justify-between text-sm">
                     <span className="text-slate-600 capitalize">{metodo}</span>
-                    <span className="font-medium text-slate-900">{fmt(monto)}</span>
+                    <span className="font-medium text-slate-900">
+                      {metodo === 'efectivo' ? '••••' : fmt(monto)}
+                    </span>
                   </div>
                 ))}
                 {Object.keys(resumen.porBanco).length > 0 && (
@@ -279,8 +281,8 @@ export default function CajaPage() {
                   </div>
                 )}
                 <div className="pt-2 border-t border-slate-100 flex justify-between text-sm font-semibold">
-                  <span className="text-slate-700">Total ventas</span>
-                  <span className="text-slate-900">{fmt(resumen.totalSistema)}</span>
+                  <span className="text-slate-700">Total ventas (no efectivo)</span>
+                  <span className="text-slate-900">{fmt(resumen.totalSistema - (resumen.porMetodo['efectivo'] ?? 0))}</span>
                 </div>
                 {totalEgresos > 0 && (
                   <div className="flex justify-between text-sm">
