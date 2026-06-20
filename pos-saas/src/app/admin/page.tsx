@@ -1235,6 +1235,7 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
                     <th className="px-5 py-3 text-left">Fecha</th>
                     <th className="px-5 py-3 text-left">Pago</th>
                     <th className="px-5 py-3 text-right">Total</th>
+                    <th className="px-5 py-3 text-right">SRI</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1254,6 +1255,16 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
                         <td className={`px-5 py-3 text-right ${tieneDescuento ? 'font-bold text-orange-600' : 'font-medium text-gray-900'}`}>
                           {fmt(venta.total)}
                           {tieneDescuento && <span className="ml-1.5 text-[10px]">(− {fmt(venta.descuento_total)})</span>}
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          {/* TODO (sesión futura): botón "Emitir Factura SRI" — abrirá modal para
+                              ingresar identificacion/razon_social del cliente, crear el registro
+                              en sri_comprobantes (estado inicial 'PENDIENTE'), y actualizar
+                              ventas.sri_comprobante_id con ese id. */}
+                          <button disabled title="Próximamente"
+                            className="text-xs font-medium text-slate-300 cursor-not-allowed">
+                            Emitir Factura
+                          </button>
                         </td>
                       </tr>
                     )
