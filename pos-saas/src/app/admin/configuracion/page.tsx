@@ -16,21 +16,6 @@ export default function ConfiguracionPage() {
   const router      = useRouter()
   const estabId     = Number(usuario?.establecimiento_id ?? 1)
 
-  if (usuario && usuario.rol !== 'admin') {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <div className="text-center space-y-3 max-w-xs">
-          <p className="text-sm font-medium text-slate-700">Acceso restringido</p>
-          <p className="text-xs text-slate-400">Esta sección es solo para administradores.</p>
-          <button onClick={() => router.push('/pos')}
-            className="mt-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
-            Volver al POS
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   // ── Establecimiento ───────────────────────────────────────
   const [margen,          setMargen]          = useState('')
   const [nombreNegocio,   setNombreNegocio]   = useState('')
@@ -46,6 +31,12 @@ export default function ConfiguracionPage() {
   // ── Venta sin stock ────────────────────────────────────────
   const [permiteSinStock, setPermiteSinStock]   = useState(false)
   const [guardandoStock,  setGuardandoStock]    = useState(false)
+
+  // ── Bancos ──────────────────────────────────────────────────
+  const [bancos,          setBancos]          = useState<{ id: number; nombre: string }[]>([])
+  const [nuevoBanco,      setNuevoBanco]      = useState('')
+  const [guardandoBanco,  setGuardandoBanco]  = useState(false)
+  const [mensajeBanco,    setMensajeBanco]    = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
 
   // ── PIN de supervisor ──────────────────────────────────────
   const [pin,             setPin]             = useState('')
@@ -76,6 +67,16 @@ export default function ConfiguracionPage() {
     }
   }, [estabId])
 
+  const cargarBancos = useCallback(async () => {
+    const { data } = await supabase
+      .from('bancos')
+      .select('id, nombre')
+      .eq('establecimiento_id', estabId)
+      .eq('activo', true)
+      .order('nombre')
+    setBancos(data ?? [])
+  }, [estabId])
+
   const cargarSucursales = useCallback(async () => {
     setLoadingSuc(true)
     const { data } = await supabase
@@ -90,7 +91,8 @@ export default function ConfiguracionPage() {
   useEffect(() => {
     cargarEstab()
     cargarSucursales()
-  }, [cargarEstab, cargarSucursales])
+    cargarBancos()
+  }, [cargarEstab, cargarSucursales, cargarBancos])
 
   const guardarEstab = async () => {
     setGuardandoEstab(true)
@@ -167,6 +169,28 @@ export default function ConfiguracionPage() {
     }
   }
 
+  const agregarBanco = async () => {
+    if (!nuevoBanco.trim()) return
+    setGuardandoBanco(true)
+    setMensajeBanco(null)
+    const { error } = await supabase.from('bancos').insert({
+      establecimiento_id: estabId,
+      nombre: nuevoBanco.trim(),
+    })
+    setGuardandoBanco(false)
+    if (error) {
+      setMensajeBanco({ texto: `❌ ${error.message}`, tipo: 'error' })
+    } else {
+      setNuevoBanco('')
+      cargarBancos()
+    }
+  }
+
+  const eliminarBanco = async (id: number) => {
+    await supabase.from('bancos').update({ activo: false }).eq('id', id)
+    cargarBancos()
+  }
+
   const guardarSucursal = async () => {
     if (!formSuc.nombre.trim()) return
     setGuardandoSuc(true)
@@ -193,6 +217,21 @@ export default function ConfiguracionPage() {
     if (!confirm(`¿Eliminar la sucursal "${nombre}"? Esto afectará a los usuarios y lotes asignados a ella.`)) return
     await supabase.from('sucursales').delete().eq('id', id)
     cargarSucursales()
+  }
+
+  if (usuario && usuario.rol !== 'admin') {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="text-center space-y-3 max-w-xs">
+          <p className="text-sm font-medium text-slate-700">Acceso restringido</p>
+          <p className="text-xs text-slate-400">Esta sección es solo para administradores.</p>
+          <button onClick={() => router.push('/pos')}
+            className="mt-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
+            Volver al POS
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -362,6 +401,36 @@ export default function ConfiguracionPage() {
             className="mt-4 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50">
             {guardandoPin ? 'Guardando…' : 'Guardar PIN'}
           </button>
+        </div>
+
+        {/* Bancos */}
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50">
+          <h2 className="mb-1 text-sm font-semibold tracking-tight text-slate-900">🏦 Bancos para transferencias</h2>
+          <p className="mb-5 text-xs text-slate-500">Bancos disponibles al registrar una venta por transferencia.</p>
+          <div className="flex gap-2">
+            <input
+              value={nuevoBanco}
+              onChange={e => setNuevoBanco(e.target.value)}
+              placeholder="Ej: Banco Pichincha"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10"
+            />
+            <button onClick={agregarBanco} disabled={guardandoBanco}
+              className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50">
+              {guardandoBanco ? 'Agregando…' : 'Agregar'}
+            </button>
+          </div>
+          {mensajeBanco && (
+            <div className="mt-3 rounded-xl px-4 py-2.5 text-sm bg-rose-50 text-rose-600">{mensajeBanco.texto}</div>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {bancos.map(b => (
+              <span key={b.id} className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs text-slate-700">
+                {b.nombre}
+                <button onClick={() => eliminarBanco(b.id)} className="text-slate-400 hover:text-rose-500">✕</button>
+              </span>
+            ))}
+            {bancos.length === 0 && <p className="text-xs text-slate-400">Aún no hay bancos agregados.</p>}
+          </div>
         </div>
 
         {/* Sucursales */}
