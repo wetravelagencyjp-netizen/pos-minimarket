@@ -88,7 +88,12 @@ function CarritoDefault(_props: SlotProps) {
         {items.map((item) => (
           <div key={item.productoId} className="bg-slate-700/50 rounded-lg p-3">
             <div className="flex justify-between items-start gap-2">
-              <p className="text-slate-100 text-sm font-medium flex-1">{item.nombre}</p>
+              <p className="text-slate-100 text-sm font-medium flex-1 flex items-center gap-1.5">
+                {item.nombre}
+                {item.esReserva && (
+                  <span className="bg-amber-500/15 text-amber-400 text-[10px] font-semibold px-1.5 py-0.5 rounded">Reserva</span>
+                )}
+              </p>
               <button
                 onClick={() => quitarItem(item.productoId)}
                 className="text-slate-500 hover:text-red-400 text-xs transition-colors"
@@ -106,8 +111,8 @@ function CarritoDefault(_props: SlotProps) {
                 </button>
                 <span className="text-slate-100 text-sm w-6 text-center">{item.cantidad}</span>
                 <button
-                  onClick={() => cambiarCantidad(item.productoId, item.cantidad + 1)}
-                  disabled={item.cantidad >= item.stockDisponible}
+                  onClick={() => cambiarCantidad(item.productoId, item.cantidad + 1, _props.establecimiento.permite_venta_sin_stock)}
+                  disabled={item.cantidad >= item.stockDisponible && !_props.establecimiento.permite_venta_sin_stock}
                   className="w-6 h-6 rounded bg-slate-600 hover:bg-slate-500 disabled:opacity-40 text-slate-100 text-sm transition-colors"
                 >
                   +
