@@ -16,6 +16,21 @@ export default function ConfiguracionPage() {
   const router      = useRouter()
   const estabId     = Number(usuario?.establecimiento_id ?? 1)
 
+  if (usuario && usuario.rol !== 'admin') {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="text-center space-y-3 max-w-xs">
+          <p className="text-sm font-medium text-slate-700">Acceso restringido</p>
+          <p className="text-xs text-slate-400">Esta sección es solo para administradores.</p>
+          <button onClick={() => router.push('/pos')}
+            className="mt-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
+            Volver al POS
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // ── Establecimiento ───────────────────────────────────────
   const [margen,          setMargen]          = useState('')
   const [nombreNegocio,   setNombreNegocio]   = useState('')
