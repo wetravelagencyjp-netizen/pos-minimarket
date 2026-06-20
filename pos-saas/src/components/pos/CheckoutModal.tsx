@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useCarrito } from '@/core/context/CarritoContext'
 import { useRegistrarVenta, type MetodoPago } from '@/core/hooks/useRegistrarVenta'
 import SelectorCliente, { type ClienteConCredito } from './SelectorCliente'
+import { supabase } from '@/lib/supabase'
 
 interface CheckoutModalProps {
   establecimientoId: number
@@ -24,6 +25,12 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const [resultado, setResultado] = useState<{ numeroComprobante: string } | null>(null)
   const [cliente, setCliente] = useState<ClienteConCredito | null>(null)
   const [errorCredito, setErrorCredito] = useState<string | null>(null)
+  const [excedeLimite, setExcedeLimite] = useState(false)
+  const [autorizado, setAutorizado] = useState(false)
+  const [mostrarPin, setMostrarPin] = useState(false)
+  const [pinIngresado, setPinIngresado] = useState('')
+  const [validandoPin, setValidandoPin] = useState(false)
+  const [errorPin, setErrorPin] = useState<string | null>(null)
 
   async function handleConfirmar() {
     setErrorCredito(null)
@@ -34,7 +41,8 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
         return
       }
       const saldoResultante = cliente.saldo_pendiente + total
-      if (saldoResultante > cliente.limite_credito) {
+      if (saldoResultante > cliente.limite_credito && !autorizado) {
+        setExcedeLimite(true)
         setErrorCredito(
           `Esta venta supera el límite de crédito del cliente. Disponible: $${(cliente.limite_credito - cliente.saldo_pendiente).toFixed(2)}`
         )
@@ -58,6 +66,38 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
     } else if (res.error) {
       setErrorCredito(res.error)
     }
+  }
+
+  async function handleValidarPin() {
+    setErrorPin(null)
+    if (!/^[0-9]{4,6}$/.test(pinIngresado)) {
+      setErrorPin('Ingresa un PIN válido')
+      return
+    }
+    setValidandoPin(true)
+    const { data, error } = await supabase.rpc('validar_pin_supervisor', {
+      p_establecimiento_id: establecimientoId,
+      p_pin: pinIngresado,
+    })
+    setValidandoPin(false)
+
+    if (error || !data?.autorizado) {
+      setErrorPin('PIN incorrecto')
+      return
+    }
+
+    setAutorizado(true)
+    setMostrarPin(false)
+    setPinIngresado('')
+    setErrorCredito(null)
+  }
+
+  function resetearAutorizacion() {
+    setAutorizado(false)
+    setExcedeLimite(false)
+    setMostrarPin(false)
+    setPinIngresado('')
+    setErrorPin(null)
   }
 
   if (resultado) {
@@ -99,7 +139,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
             {METODOS.map((m) => (
               <button
                 key={m.id}
-                onClick={() => { setMetodo(m.id); setErrorCredito(null) }}
+                onClick={() => { setMetodo(m.id); setErrorCredito(null); resetearAutorizacion() }}
                 className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   metodo === m.id
                     ? 'bg-indigo-600 text-white'
@@ -119,7 +159,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
             <SelectorCliente
               establecimientoId={establecimientoId}
               clienteSeleccionado={cliente}
-              onSeleccionar={setCliente}
+              onSeleccionar={(c) => { setCliente(c); resetearAutorizacion() }}
             />
           </div>
         )}
@@ -130,9 +170,55 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
           </div>
         )}
 
+        {excedeLimite && !autorizado && !mostrarPin && (
+          <button
+            onClick={() => setMostrarPin(true)}
+            className="w-full bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-400 font-medium py-2.5 rounded-xl transition-colors text-sm"
+          >
+            🔒 Solicitar Autorización de Supervisor
+          </button>
+        )}
+
+        {mostrarPin && !autorizado && (
+          <div className="bg-slate-700/50 rounded-xl p-3 space-y-2">
+            <p className="text-amber-400 text-xs font-medium">PIN de supervisor</p>
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              value={pinIngresado}
+              onChange={(e) => setPinIngresado(e.target.value.replace(/\D/g, ''))}
+              placeholder="••••"
+              className="w-full bg-slate-800 text-slate-100 placeholder-slate-500 text-sm rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+            />
+            {errorPin && <p className="text-red-400 text-xs">{errorPin}</p>}
+            <div className="flex gap-2">
+              <button
+                onClick={handleValidarPin}
+                disabled={validandoPin}
+                className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-slate-900 font-semibold py-2 rounded-lg transition-colors text-sm"
+              >
+                {validandoPin ? 'Validando...' : 'Autorizar'}
+              </button>
+              <button
+                onClick={() => { setMostrarPin(false); setPinIngresado(''); setErrorPin(null) }}
+                className="px-4 bg-slate-600 hover:bg-slate-500 text-slate-200 rounded-lg transition-colors text-sm"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {autorizado && (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs rounded-lg px-3 py-2.5 flex items-center gap-1.5">
+            ✅ Venta autorizada por supervisor — puedes confirmar
+          </div>
+        )}
+
         <button
           onClick={handleConfirmar}
-          disabled={isProcesando}
+          disabled={isProcesando || (excedeLimite && !autorizado)}
           className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
         >
           {isProcesando ? 'Procesando...' : 'Confirmar venta'}
