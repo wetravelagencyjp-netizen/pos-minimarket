@@ -62,7 +62,6 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
 
     if (res.success && res.numeroComprobante) {
       setResultado({ numeroComprobante: res.numeroComprobante })
-      vaciarCarrito()
     } else if (res.error) {
       setErrorCredito(res.error)
     }
@@ -110,7 +109,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
           <h3 className="text-slate-100 font-semibold text-lg">Venta registrada</h3>
           <p className="text-slate-400 text-sm">Comprobante: {resultado.numeroComprobante}</p>
           <button
-            onClick={onClose}
+            onClick={() => { vaciarCarrito(); onClose() }}
             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
           >
             Cerrar
