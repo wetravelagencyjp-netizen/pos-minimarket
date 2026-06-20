@@ -28,6 +28,13 @@ export default function ConfiguracionPage() {
   const [guardandoAlerta, setGuardandoAlerta] = useState(false)
   const [mensajeAlerta,   setMensajeAlerta]   = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
 
+  // ── PIN de supervisor ──────────────────────────────────────
+  const [pin,             setPin]             = useState('')
+  const [pinConfirmar,    setPinConfirmar]    = useState('')
+  const [mostrarPin,      setMostrarPin]      = useState(false)
+  const [guardandoPin,    setGuardandoPin]    = useState(false)
+  const [mensajePin,      setMensajePin]      = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
+
   // ── Sucursales ────────────────────────────────────────────
   const [sucursales,      setSucursales]      = useState<Sucursal[]>([])
   const [loadingSuc,      setLoadingSuc]      = useState(true)
@@ -98,6 +105,34 @@ export default function ConfiguracionPage() {
       ? { texto: `❌ ${error.message}`, tipo: 'error' }
       : { texto: '✅ Configuración de alerta guardada', tipo: 'ok' }
     )
+  }
+
+  const guardarPin = async () => {
+    setMensajePin(null)
+
+    if (!/^[0-9]{4,6}$/.test(pin)) {
+      setMensajePin({ texto: '❌ El PIN debe tener entre 4 y 6 dígitos numéricos', tipo: 'error' })
+      return
+    }
+    if (pin !== pinConfirmar) {
+      setMensajePin({ texto: '❌ Los PIN no coinciden', tipo: 'error' })
+      return
+    }
+
+    setGuardandoPin(true)
+    const { data, error } = await supabase.rpc('configurar_pin_supervisor', {
+      p_usuario_id: usuario?.id,
+      p_pin: pin,
+    })
+    setGuardandoPin(false)
+
+    if (error || !data?.ok) {
+      setMensajePin({ texto: `❌ ${error?.message ?? 'No se pudo guardar el PIN'}`, tipo: 'error' })
+    } else {
+      setMensajePin({ texto: '✅ PIN de supervisor guardado', tipo: 'ok' })
+      setPin('')
+      setPinConfirmar('')
+    }
   }
 
   const guardarSucursal = async () => {
@@ -226,6 +261,61 @@ export default function ConfiguracionPage() {
             disabled={guardandoAlerta}
             className="mt-4 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50">
             {guardandoAlerta ? 'Guardando…' : 'Guardar cambios'}
+          </button>
+        </div>
+
+        {/* PIN de supervisor */}
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50">
+          <h2 className="mb-1 text-sm font-semibold tracking-tight text-slate-900">🔒 Seguridad y Autorizaciones</h2>
+          <p className="mb-5 text-xs text-slate-500">
+            Define tu PIN personal de supervisor. Se usará en el POS para autorizar ventas a crédito que superen el límite del cliente. Por seguridad, una vez guardado no se puede volver a ver — solo cambiarlo.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Nuevo PIN (4 a 6 dígitos)</label>
+              <div className="relative">
+                <input
+                  type={mostrarPin ? 'text' : 'password'}
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={pin}
+                  onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="••••"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 pr-10 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarPin(s => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600">
+                  {mostrarPin ? 'Ocultar' : 'Ver'}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Confirmar PIN</label>
+              <input
+                type={mostrarPin ? 'text' : 'password'}
+                inputMode="numeric"
+                maxLength={6}
+                value={pinConfirmar}
+                onChange={e => setPinConfirmar(e.target.value.replace(/\D/g, ''))}
+                placeholder="••••"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10"
+              />
+            </div>
+          </div>
+
+          {mensajePin && (
+            <div className={`mt-3 rounded-xl px-4 py-2.5 text-sm ${mensajePin.tipo === 'ok' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
+              {mensajePin.texto}
+            </div>
+          )}
+
+          <button
+            onClick={guardarPin}
+            disabled={guardandoPin}
+            className="mt-4 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50">
+            {guardandoPin ? 'Guardando…' : 'Guardar PIN'}
           </button>
         </div>
 
