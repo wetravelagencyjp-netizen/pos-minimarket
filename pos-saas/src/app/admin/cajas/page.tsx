@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
+import { exportarCierreCSV, exportarCierrePDF } from '@/lib/exportarCierreCaja'
 
 interface CierreCaja {
   id: number
@@ -15,6 +16,7 @@ interface CierreCaja {
   diferencia: number
   usuario_id: string
   nombre_cajero?: string
+  desglose_pagos: Record<string, number> | null
 }
 
 export default function CajasAdminPage() {
@@ -29,7 +31,7 @@ export default function CajasAdminPage() {
     setLoading(true)
     const { data: cajas } = await supabase
       .from('cajas')
-      .select('id, fecha_apertura, fecha_cierre, monto_inicial, monto_final_sistema, monto_final_fisico, diferencia, usuario_id')
+      .select('id, fecha_apertura, fecha_cierre, monto_inicial, monto_final_sistema, monto_final_fisico, diferencia, usuario_id, desglose_pagos')
       .eq('establecimiento_id', estabId)
       .not('fecha_cierre', 'is', null)
       .order('fecha_cierre', { ascending: false })
@@ -123,6 +125,7 @@ export default function CajasAdminPage() {
                   <th className="px-5 py-4 text-right font-medium">Esperado</th>
                   <th className="px-5 py-4 text-right font-medium">Declarado</th>
                   <th className="px-5 py-4 text-right font-medium">Diferencia</th>
+                  <th className="px-5 py-4 text-right font-medium">Exportar</th>
                 </tr>
               </thead>
               <tbody>
@@ -139,6 +142,20 @@ export default function CajasAdminPage() {
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${bgDiferencia(c.diferencia)} ${colorDiferencia(c.diferencia)}`}>
                         {c.diferencia > 0 ? '+' : ''}{fmt(c.diferencia)}
                       </span>
+                    </td>
+                    <td className="px-5 py-4 text-right whitespace-nowrap">
+                      <button onClick={() => exportarCierrePDF({
+                        nombreNegocio: usuario?.nombre ?? 'Negocio', ruc: null, cajero: c.nombre_cajero ?? '—',
+                        cajaId: c.id, fechaApertura: c.fecha_apertura, fechaCierre: c.fecha_cierre,
+                        montoInicial: c.monto_inicial, porMetodo: c.desglose_pagos ?? {}, porBanco: {}, totalEgresos: 0,
+                        efectivoEsperado: c.monto_final_sistema, efectivoDeclarado: c.monto_final_fisico, diferencia: c.diferencia,
+                      })} className="mr-3 text-xs font-medium text-indigo-600 hover:text-indigo-700">PDF</button>
+                      <button onClick={() => exportarCierreCSV({
+                        nombreNegocio: usuario?.nombre ?? 'Negocio', ruc: null, cajero: c.nombre_cajero ?? '—',
+                        cajaId: c.id, fechaApertura: c.fecha_apertura, fechaCierre: c.fecha_cierre,
+                        montoInicial: c.monto_inicial, porMetodo: c.desglose_pagos ?? {}, porBanco: {}, totalEgresos: 0,
+                        efectivoEsperado: c.monto_final_sistema, efectivoDeclarado: c.monto_final_fisico, diferencia: c.diferencia,
+                      })} className="text-xs font-medium text-emerald-600 hover:text-emerald-700">Excel</button>
                     </td>
                   </tr>
                 ))}
