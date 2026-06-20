@@ -82,7 +82,29 @@ export default function CajasAdminPage() {
         <span className="text-xs text-slate-500">{usuario?.nombre ?? 'Admin'}</span>
       </header>
 
-      <main className="mx-auto max-w-5xl p-6">
+      <main className="mx-auto max-w-5xl p-6 space-y-4">
+        {cierres.length > 0 && (
+          <div className="grid grid-cols-3 gap-4">
+            <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/50">
+              <p className="text-xs text-slate-400 mb-1">Total cierres</p>
+              <p className="text-2xl font-bold text-slate-900">{cierres.length}</p>
+            </div>
+            <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/50">
+              <p className="text-xs text-slate-400 mb-1">Diferencia acumulada</p>
+              <p className={`text-2xl font-bold ${colorDiferencia(cierres.reduce((s, c) => s + Number(c.diferencia), 0))}`}>
+                {fmt(cierres.reduce((s, c) => s + Number(c.diferencia), 0))}
+              </p>
+            </div>
+            <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/50">
+              <p className="text-xs text-slate-400 mb-1">Cajas con descuadre</p>
+              <p className="text-2xl font-bold text-slate-900">
+                {cierres.filter((c) => Number(c.diferencia) !== 0).length}
+                <span className="text-sm font-normal text-slate-400"> / {cierres.length}</span>
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="rounded-3xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/50 overflow-hidden">
           {loading ? (
             <div className="p-8 text-center text-sm text-slate-400">Cargando…</div>
