@@ -625,6 +625,9 @@ function SeccionCredenciales({ establecimientoId }: { establecimientoId: number 
 
 // ─── CLIENTES ─────────────────────────────────────────────────
 function SeccionClientes({ establecimientoId }: { establecimientoId: number }) {
+  const { usuario } = useAuth()
+  const puedeEditarCredito = usuario?.rol === 'admin'
+
   const [clientes, setClientes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
@@ -647,11 +650,18 @@ function SeccionClientes({ establecimientoId }: { establecimientoId: number }) {
       setMensaje({ texto: 'Identificación y nombre son obligatorios', tipo: 'error' }); return
     }
     setGuardando(true); setMensaje(null)
-    const { error } = await supabase.from('clientes').upsert({
-      establecimiento_id: establecimientoId,
-      ...form,
-      limite_credito: parseFloat(form.limite_credito) || 0,
-    }, { onConflict: 'establecimiento_id,identificacion' })
+
+    const datosAGuardar: Record<string, unknown> = { establecimiento_id: establecimientoId, ...form }
+    if (puedeEditarCredito) {
+      datosAGuardar.limite_credito = parseFloat(form.limite_credito) || 0
+    } else {
+      delete datosAGuardar.limite_credito // un no-admin nunca envía cambios a este campo, ni manipulando el form
+    }
+
+    const { error } = await supabase.from('clientes').upsert(
+      datosAGuardar,
+      { onConflict: 'establecimiento_id,identificacion' }
+    )
     if (error) {
       setMensaje({ texto: `Error: ${error.message}`, tipo: 'error' })
     } else {
@@ -717,10 +727,14 @@ function SeccionClientes({ establecimientoId }: { establecimientoId: number }) {
               className={inputClass} />
           </div>
           <div className="col-span-2">
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">Límite de Crédito Máximo</label>
+            <label className="block text-xs font-medium text-slate-600 mb-1.5">
+              Límite de Crédito Máximo
+              {!puedeEditarCredito && <span className="ml-2 text-[11px] font-normal text-slate-400">(solo administradores)</span>}
+            </label>
             <input type="number" step="0.01" min="0" placeholder="0.00" value={form.limite_credito}
+              disabled={!puedeEditarCredito}
               onChange={e => setForm(f => ({ ...f, limite_credito: e.target.value }))}
-              className={inputClass} />
+              className={`${inputClass} disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed`} />
           </div>
         </div>
         {mensaje && (
