@@ -20,6 +20,14 @@ interface ModalEmitirFacturaProps {
 
 const TASA_IVA = 0.15
 
+interface ClienteCandidato {
+  identificacion: string
+  razon_social: string
+  direccion: string | null
+  email: string | null
+  tipo_identificacion: string | null
+}
+
 export default function ModalEmitirFactura({
   ventaId, numeroComprobanteVenta, establecimientoId, total, onCerrar, onEmitido,
 }: ModalEmitirFacturaProps) {
@@ -31,27 +39,39 @@ export default function ModalEmitirFactura({
   const [buscando, setBuscando] = useState(false)
   const [emitiendo, setEmitiendo] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [candidatos, setCandidatos] = useState<ClienteCandidato[]>([])
+  const [mostrarLista, setMostrarLista] = useState(false)
+  const [clienteElegido, setClienteElegido] = useState(false)
 
   useEffect(() => {
-    if (identificacion.length < 5) return
+    if (clienteElegido || identificacion.length < 3) {
+      setCandidatos([])
+      return
+    }
     setBuscando(true)
     const timeout = setTimeout(async () => {
       const { data } = await supabase
         .from('clientes')
-        .select('razon_social, direccion, email, tipo_identificacion')
+        .select('identificacion, razon_social, direccion, email, tipo_identificacion')
         .eq('establecimiento_id', establecimientoId)
-        .eq('identificacion', identificacion)
-        .maybeSingle()
-      if (data) {
-        setRazonSocial(data.razon_social ?? '')
-        setDireccion(data.direccion ?? '')
-        setEmail(data.email ?? '')
-        setTipoIdentificacion(data.tipo_identificacion ?? 'cedula')
-      }
+        .or(`identificacion.ilike.%${identificacion}%,razon_social.ilike.%${identificacion}%`)
+        .limit(6)
+      setCandidatos((data as ClienteCandidato[]) ?? [])
       setBuscando(false)
-    }, 500)
+    }, 400)
     return () => clearTimeout(timeout)
-  }, [identificacion, establecimientoId])
+  }, [identificacion, establecimientoId, clienteElegido])
+
+  function elegirCandidato(c: ClienteCandidato) {
+    setIdentificacion(c.identificacion)
+    setRazonSocial(c.razon_social ?? '')
+    setDireccion(c.direccion ?? '')
+    setEmail(c.email ?? '')
+    setTipoIdentificacion(c.tipo_identificacion ?? 'cedula')
+    setClienteElegido(true)
+    setMostrarLista(false)
+    setCandidatos([])
+  }
 
   async function emitir() {
     setError(null)
@@ -148,14 +168,36 @@ export default function ModalEmitirFactura({
             <option value="pasaporte">Pasaporte</option>
             <option value="consumidor_final">Consumidor Final</option>
           </select>
-          <input
-            value={identificacion}
-            onChange={(e) => setIdentificacion(e.target.value)}
-            placeholder="Identificación"
-            className="bg-slate-700 text-slate-100 placeholder-slate-400 text-sm rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+          <div className="relative">
+            <input
+              value={identificacion}
+              onChange={(e) => { setIdentificacion(e.target.value); setClienteElegido(false); setMostrarLista(true) }}
+              onFocus={() => setMostrarLista(true)}
+              placeholder="Cédula, RUC o nombre"
+              className="w-full bg-slate-700 text-slate-100 placeholder-slate-400 text-sm rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {mostrarLista && identificacion.length >= 3 && !clienteElegido && (
+              <div className="absolute z-10 mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg max-h-44 overflow-y-auto shadow-lg">
+                {buscando ? (
+                  <p className="text-slate-400 text-xs p-2.5">Buscando…</p>
+                ) : candidatos.length === 0 ? (
+                  <p className="text-slate-400 text-xs p-2.5">Sin coincidencias — se usará como nuevo</p>
+                ) : (
+                  candidatos.map((c) => (
+                    <button
+                      key={c.identificacion}
+                      onClick={() => elegirCandidato(c)}
+                      className="w-full text-left px-2.5 py-2 hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-0"
+                    >
+                      <p className="text-slate-100 text-xs">{c.razon_social}</p>
+                      <p className="text-slate-400 text-[11px]">{c.identificacion}</p>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
-        {buscando && <p className="text-xs text-slate-400">Buscando cliente…</p>}
 
         <input
           value={razonSocial}
