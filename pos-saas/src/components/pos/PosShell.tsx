@@ -55,11 +55,23 @@ function CarritoDefault(_props: SlotProps) {
   if (items.length === 0) {
     return (
       <div className="w-80 flex flex-col bg-slate-800 border-l border-slate-700 h-full">
-        <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between gap-2">
           <h2 className="text-slate-100 font-semibold text-sm tracking-wide">Venta actual</h2>
-          <button onClick={() => router.push('/caja')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
-            💰 Caja
-          </button>
+          <div className="flex items-center gap-2">
+            {_props.usuario.rol === 'admin' && (
+              <button onClick={() => router.push('/admin')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
+                ⚙️ Admin
+              </button>
+            )}
+            {(_props.usuario as any).es_superadmin && (
+              <button onClick={() => router.push('/superadmin')} className="text-slate-400 hover:text-amber-400 text-xs transition-colors">
+                ⚡ Super
+              </button>
+            )}
+            <button onClick={() => router.push('/caja')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
+              💰 Caja
+            </button>
+          </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -85,11 +97,23 @@ function CarritoDefault(_props: SlotProps) {
 
   return (
     <div className="w-80 flex flex-col bg-slate-800 border-l border-slate-700 h-full">
-      <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between gap-2">
         <h2 className="text-slate-100 font-semibold text-sm tracking-wide">Venta actual</h2>
-        <button onClick={() => router.push('/caja')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
-          💰 Caja
-        </button>
+        <div className="flex items-center gap-2">
+          {_props.usuario.rol === 'admin' && (
+            <button onClick={() => router.push('/admin')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
+              ⚙️ Admin
+            </button>
+          )}
+          {(_props.usuario as any).es_superadmin && (
+            <button onClick={() => router.push('/superadmin')} className="text-slate-400 hover:text-amber-400 text-xs transition-colors">
+              ⚡ Super
+            </button>
+          )}
+          <button onClick={() => router.push('/caja')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
+            💰 Caja
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
