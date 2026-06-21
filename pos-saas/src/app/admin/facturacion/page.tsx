@@ -359,12 +359,15 @@ function SeccionCredenciales({ establecimientoId }: { establecimientoId: number 
     setProbando(true)
     setMensaje({ texto: 'Probando firma digital…', tipo: 'info' })
     try {
+      const { data: { session } } = await supabase.auth.getSession()
       const r = await fetch('/api/usuarios/sri/firmar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
+        },
         body: JSON.stringify({
           xml: '<factura id="comprobante" version="1.1.0"><prueba>test</prueba></factura>',
-          establecimiento_id: establecimientoId,
         }),
       })
       const data = await r.json()
