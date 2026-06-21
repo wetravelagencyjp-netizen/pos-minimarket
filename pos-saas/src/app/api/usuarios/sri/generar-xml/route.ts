@@ -305,8 +305,29 @@ export async function POST(request: NextRequest) {
       tipoEmision: '1',
     })
 
-    // 6. Calcular totales
-    const porcentajeIva = cred.es_negocio_turistico && cred.iva_reducido_activo ? 8 : 15
+    // 6. Calcular totales — el porcentaje depende del país del establecimiento.
+    // Hoy solo Ecuador (EC) tiene el módulo fiscal implementado. Otros países
+    // quedan con un error controlado hasta que se construya su lógica real.
+    const { data: estab } = await supabaseAdmin
+      .from('establecimientos')
+      .select('pais')
+      .eq('id', establecimiento_id)
+      .single()
+
+    const pais = estab?.pais ?? 'EC'
+    let porcentajeIva: number
+
+    switch (pais) {
+      case 'EC':
+        porcentajeIva = cred.es_negocio_turistico && cred.iva_reducido_activo ? 8 : 15
+        break
+      default:
+        return NextResponse.json(
+          { error: `Módulo fiscal no activado para el país "${pais}". Hoy solo Ecuador (EC) está soportado.` },
+          { status: 400 }
+        )
+    }
+
     const impuestos = calcularImpuestos(detalles, porcentajeIva)
 
     // 7. Generar XML

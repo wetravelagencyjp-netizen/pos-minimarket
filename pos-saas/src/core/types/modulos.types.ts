@@ -35,6 +35,7 @@ export interface Establecimiento {
   alerta_caducidad_dias: number
   alerta_caducidad_estilo: 'discreto' | 'llamativo'
   permite_venta_sin_stock: boolean
+  pais: string
 }
 
 // ─── Perfil del usuario autenticado (tabla real: usuarios) ────
