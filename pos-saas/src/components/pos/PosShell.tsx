@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation'
 import CheckoutModal from './CheckoutModal'
 import type { SlotProps } from '@/core/types/modulos.types'
 
+type Tema = 'claro' | 'oscuro'
+
 // ─── Slot genérico: Barra superior ────────────────────────────
 function TopBarDefault({ establecimiento }: SlotProps) {
   return (
@@ -49,8 +51,20 @@ function CatalogoDefault({ establecimiento, sucursalId }: SlotProps) {
 // ─── Slot genérico: Panel de carrito ──────────────────────────
 function CarritoDefault(_props: SlotProps) {
   const { items, total, cambiarCantidad, quitarItem } = useCarrito()
+  const { tema, cambiarTema } = useEstablecimiento()
   const [mostrarCheckout, setMostrarCheckout] = useState(false)
   const router = useRouter()
+  const esOscuro = tema === 'oscuro'
+
+  const ToggleTema = (
+    <button
+      onClick={() => cambiarTema(esOscuro ? 'claro' : 'oscuro')}
+      title="Cambiar tema"
+      className="text-slate-400 hover:text-indigo-400 text-xs transition-colors"
+    >
+      {esOscuro ? '☀️' : '🌙'}
+    </button>
+  )
 
   if (items.length === 0) {
     return (
@@ -71,6 +85,7 @@ function CarritoDefault(_props: SlotProps) {
             <button onClick={() => router.push('/caja')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
               💰 Caja
             </button>
+            {ToggleTema}
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
@@ -113,6 +128,7 @@ function CarritoDefault(_props: SlotProps) {
           <button onClick={() => router.push('/caja')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
             💰 Caja
           </button>
+          {ToggleTema}
         </div>
       </div>
 
@@ -199,7 +215,7 @@ function PosSkeletonLoader() {
 
 // ─── PosShell: Orquestador principal ──────────────────────────
 export function PosShell() {
-  const { establecimiento, usuario, sucursalId, isLoading, error } = useEstablecimiento()
+  const { establecimiento, usuario, sucursalId, isLoading, error, tema } = useEstablecimiento()
 
   if (isLoading) return <PosSkeletonLoader />
 
@@ -220,13 +236,14 @@ export function PosShell() {
 
   const modulo = getModulo(establecimiento.business_type)
   const slotProps: SlotProps = { establecimiento, usuario, sucursalId }
+  const esOscuro = tema === 'oscuro'
 
   const TopBar   = modulo.topBarSlot   ?? TopBarDefault
   const Catalogo = modulo.catalogoSlot ?? CatalogoDefault
   const Carrito  = modulo.carritoSlot  ?? CarritoDefault
 
   return (
-    <div className="flex flex-col h-screen bg-slate-900 text-slate-100 overflow-hidden">
+    <div className={`flex flex-col h-screen overflow-hidden ${esOscuro ? 'bg-zinc-950 text-zinc-100' : 'bg-slate-50 text-slate-900'}`}>
       {modulo.alertaSlot && <modulo.alertaSlot {...slotProps} />}
 
       <TopBar {...slotProps} />
