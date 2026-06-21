@@ -68,12 +68,14 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+      console.error('Error insertando en usuarios:', dbError)
       return NextResponse.json({ error: dbError.message }, { status: 400 })
     }
 
     return NextResponse.json({ ok: true, id: authData.user.id })
-  } catch {
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+  } catch (e) {
+    console.error('Error interno en POST /api/usuarios:', e)
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Error interno' }, { status: 500 })
   }
 }
 
