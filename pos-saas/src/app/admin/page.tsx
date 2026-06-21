@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import ModalEmitirFactura from '@/components/pos/ModalEmitirFactura'
 
 type Seccion = 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes'
 
@@ -1061,6 +1062,7 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
   const [topProductos, setTopProductos] = useState<any[]>([])
   const [ventasPorDia, setVentasPorDia] = useState<any[]>([])
   const [ventasLista, setVentasLista] = useState<any[]>([])
+  const [ventaParaFactura, setVentaParaFactura] = useState<any | null>(null)
 
   const getFechaInicio = useCallback(() => {
     const hoy = new Date()
@@ -1074,7 +1076,7 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
     setLoading(true)
     const fechaInicio = getFechaInicio()
     const [ventas, detalle] = await Promise.all([
-      supabase.from('ventas').select('*').eq('establecimiento_id', establecimientoId).gte('fecha_venta', fechaInicio).order('fecha_venta'),
+      supabase.from('ventas').select('*, sri_comprobante_id').eq('establecimiento_id', establecimientoId).gte('fecha_venta', fechaInicio).order('fecha_venta'),
       supabase.from('detalle_ventas')
         .select('*, producto:productos(nombre), vendedor:vendedores(nombre), venta:ventas!inner(fecha_venta, establecimiento_id)')
         .eq('venta.establecimiento_id', establecimientoId)
@@ -1257,14 +1259,14 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
                           {tieneDescuento && <span className="ml-1.5 text-[10px]">(− {fmt(venta.descuento_total)})</span>}
                         </td>
                         <td className="px-5 py-3 text-right">
-                          {/* TODO (sesión futura): botón "Emitir Factura SRI" — abrirá modal para
-                              ingresar identificacion/razon_social del cliente, crear el registro
-                              en sri_comprobantes (estado inicial 'PENDIENTE'), y actualizar
-                              ventas.sri_comprobante_id con ese id. */}
-                          <button disabled title="Próximamente"
-                            className="text-xs font-medium text-slate-300 cursor-not-allowed">
-                            Emitir Factura
-                          </button>
+                          {venta.sri_comprobante_id ? (
+                            <span className="text-xs font-medium text-emerald-600">✅ Facturada</span>
+                          ) : (
+                            <button onClick={() => setVentaParaFactura(venta)}
+                              className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
+                              Emitir Factura
+                            </button>
+                          )}
                         </td>
                       </tr>
                     )
@@ -1274,6 +1276,17 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
             )}
           </div>
         </>
+      )}
+
+      {ventaParaFactura && (
+        <ModalEmitirFactura
+          ventaId={ventaParaFactura.id}
+          numeroComprobanteVenta={ventaParaFactura.numero_comprobante}
+          establecimientoId={establecimientoId}
+          total={ventaParaFactura.total}
+          onCerrar={() => setVentaParaFactura(null)}
+          onEmitido={() => { setVentaParaFactura(null); cargar() }}
+        />
       )}
     </div>
   )
