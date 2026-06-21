@@ -29,8 +29,6 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const { items, total, vaciarCarrito } = useCarrito()
   const { registrarVenta, isProcesando } = useRegistrarVenta()
   const [resultado, setResultado] = useState<{ numeroComprobante: string; ventaId?: number } | null>(null)
-  const [mostrarFactura, setMostrarFactura] = useState(false)
-  const [facturaEmitida, setFacturaEmitida] = useState(false)
   const [cliente, setCliente] = useState<ClienteConCredito | null>(null)
   const [errorCredito, setErrorCredito] = useState<string | null>(null)
   const [excedeLimite, setExcedeLimite] = useState(false)
@@ -41,6 +39,8 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const [errorPin, setErrorPin] = useState<string | null>(null)
   const [bancos, setBancos] = useState<{ id: number; nombre: string }[]>([])
   const [cajaId, setCajaId] = useState<number | null>(null)
+  const [mostrarFactura, setMostrarFactura] = useState(false)
+  const [facturaEmitida, setFacturaEmitida] = useState(false)
 
   const [pagos, setPagos] = useState<LineaPago[]>([{ metodo: 'efectivo', monto: total.toFixed(2), bancoId: null }])
 
@@ -127,7 +127,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
       }
     }
 
-    const metodoPrincipal: MetodoPago = pagos.length > 1 ? pagos[0].metodo : pagos[0].metodo
+    const metodoPrincipal: MetodoPago = pagos[0].metodo
     const bancoPrincipal = pagos.find((p) => p.metodo === 'transferencia')?.bancoId ?? null
 
     const res = await registrarVenta({
@@ -184,21 +184,36 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
 
   if (resultado) {
     return (
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
-          <div className="w-14 h-14 bg-emerald-500/20 rounded-full mx-auto flex items-center justify-center text-2xl">
+      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-xl shadow-slate-900/10 p-7 max-w-sm w-full text-center space-y-5">
+          <div className="w-14 h-14 bg-emerald-50 rounded-full mx-auto flex items-center justify-center text-2xl">
             ✅
           </div>
-          <h3 className="text-slate-100 font-semibold text-lg">Venta registrada</h3>
-          <p className="text-slate-400 text-sm">Comprobante: {resultado.numeroComprobante}</p>
+          <div>
+            <h3 className="text-slate-900 font-semibold text-lg">Venta registrada</h3>
+            <p className="text-slate-500 text-sm mt-1">Comprobante {resultado.numeroComprobante}</p>
+          </div>
+
+          {pagos.length > 1 && (
+            <div className="bg-slate-50 rounded-xl p-4 text-left space-y-1.5">
+              <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-2">Pago dividido</p>
+              {pagos.map((p, i) => (
+                <div key={i} className="flex justify-between text-sm text-slate-700">
+                  <span>{METODOS.find((m) => m.id === p.metodo)?.label}</span>
+                  <span className="font-medium">${(parseFloat(p.monto) || 0).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {!facturaEmitida ? (
             <button onClick={() => setMostrarFactura(true)}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-colors text-sm flex items-center justify-center gap-2">
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition-colors text-sm">
               🧾 Emitir Factura SRI
             </button>
           ) : (
-            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm rounded-xl px-4 py-3 text-center font-medium">
-              ✅ Factura emitida (pendiente de autorización SRI)
+            <div className="bg-emerald-50 text-emerald-700 text-sm rounded-xl px-4 py-3 text-center font-medium">
+              ✅ Factura emitida — pendiente de autorización SRI
             </div>
           )}
           {mostrarFactura && resultado.ventaId && (
@@ -211,20 +226,10 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
               onEmitido={() => { setMostrarFactura(false); setFacturaEmitida(true) }}
             />
           )}
-          {pagos.length > 1 && (
-            <div className="bg-slate-700/50 rounded-xl p-3 text-left space-y-1">
-              <p className="text-slate-400 text-xs uppercase tracking-wide mb-1">Pago dividido</p>
-              {pagos.map((p, i) => (
-                <div key={i} className="flex justify-between text-xs text-slate-300">
-                  <span>{METODOS.find((m) => m.id === p.metodo)?.label}</span>
-                  <span>${(parseFloat(p.monto) || 0).toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          )}
+
           <button
             onClick={() => { vaciarCarrito(); onClose() }}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+            className="w-full border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-3 rounded-xl transition-colors text-sm"
           >
             Cerrar
           </button>
@@ -234,35 +239,35 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-5 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl shadow-slate-900/10 p-7 max-w-sm w-full space-y-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center">
-          <h3 className="text-slate-100 font-semibold text-lg">Confirmar cobro</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200 transition-colors">✕</button>
+          <h3 className="text-slate-900 font-semibold text-lg">Confirmar cobro</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors text-lg leading-none">✕</button>
         </div>
 
-        <div className="bg-slate-700/50 rounded-xl p-4 flex justify-between items-center">
-          <span className="text-slate-400 text-sm">Total a cobrar</span>
-          <span className="text-slate-100 font-bold text-2xl">${total.toFixed(2)}</span>
+        <div className="bg-slate-50 rounded-xl p-5 flex justify-between items-baseline">
+          <span className="text-slate-500 text-sm">Total a cobrar</span>
+          <span className="text-slate-900 font-bold text-3xl tracking-tight">${total.toFixed(2)}</span>
         </div>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <p className="text-slate-400 text-xs uppercase tracking-wide">Métodos de pago</p>
+            <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Métodos de pago</p>
             {faltante > 0 && (
-              <button onClick={agregarLinea} className="text-indigo-400 hover:text-indigo-300 text-xs font-medium">
+              <button onClick={agregarLinea} className="text-slate-900 hover:text-slate-600 text-xs font-medium transition-colors">
                 + Dividir pago
               </button>
             )}
           </div>
 
           {pagos.map((linea, idx) => (
-            <div key={idx} className="bg-slate-700/50 rounded-xl p-3 space-y-2">
+            <div key={idx} className="bg-slate-50 rounded-xl p-3 space-y-2">
               <div className="flex gap-2 items-center">
                 <select
                   value={linea.metodo}
                   onChange={(e) => actualizarLinea(idx, { metodo: e.target.value as MetodoPago, bancoId: null })}
-                  className="flex-1 bg-slate-800 text-slate-100 text-sm rounded-lg px-2.5 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="flex-1 bg-white border border-slate-200 text-slate-900 text-sm rounded-lg px-2.5 py-2 outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400"
                 >
                   {METODOS.map((m) => (
                     <option key={m.id} value={m.id}>{m.icono} {m.label}</option>
@@ -273,17 +278,17 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
                   step="0.01"
                   value={linea.monto}
                   onChange={(e) => actualizarLinea(idx, { monto: e.target.value })}
-                  className="w-24 bg-slate-800 text-slate-100 text-sm rounded-lg px-2.5 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-right"
+                  className="w-24 bg-white border border-slate-200 text-slate-900 text-sm rounded-lg px-2.5 py-2 outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 text-right font-medium"
                 />
                 {pagos.length > 1 && (
-                  <button onClick={() => quitarLinea(idx)} className="text-slate-500 hover:text-red-400 text-sm px-1">✕</button>
+                  <button onClick={() => quitarLinea(idx)} className="text-slate-300 hover:text-rose-500 text-sm px-1 transition-colors">✕</button>
                 )}
               </div>
               {linea.metodo === 'transferencia' && (
                 <select
                   value={linea.bancoId ?? ''}
                   onChange={(e) => actualizarLinea(idx, { bancoId: e.target.value ? Number(e.target.value) : null })}
-                  className="w-full bg-slate-800 text-slate-100 text-xs rounded-lg px-2.5 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-white border border-slate-200 text-slate-700 text-xs rounded-lg px-2.5 py-2 outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400"
                 >
                   <option value="">— Seleccionar banco —</option>
                   {bancos.map((b) => (
@@ -294,7 +299,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
             </div>
           ))}
 
-          <div className={`flex justify-between text-xs font-medium px-1 ${faltante === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+          <div className={`flex justify-between text-xs font-medium px-1 ${faltante === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
             <span>{faltante === 0 ? 'Cubierto completamente' : faltante > 0 ? 'Falta cubrir' : 'Excede el total'}</span>
             <span>${Math.abs(faltante).toFixed(2)}</span>
           </div>
@@ -302,7 +307,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
 
         {usaCredito && (
           <div className="space-y-2">
-            <p className="text-slate-400 text-xs uppercase tracking-wide">Cliente (porción a crédito)</p>
+            <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Cliente (porción a crédito)</p>
             <SelectorCliente
               establecimientoId={establecimientoId}
               clienteSeleccionado={cliente}
@@ -312,7 +317,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
         )}
 
         {errorCredito && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg px-3 py-2.5">
+          <div className="bg-rose-50 border border-rose-100 text-rose-600 text-xs rounded-xl px-3.5 py-2.5">
             {errorCredito}
           </div>
         )}
@@ -320,15 +325,15 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
         {excedeLimite && !autorizado && !mostrarPin && (
           <button
             onClick={() => setMostrarPin(true)}
-            className="w-full bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-400 font-medium py-2.5 rounded-xl transition-colors text-sm"
+            className="w-full bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-700 font-medium py-2.5 rounded-xl transition-colors text-sm"
           >
-            🔒 Solicitar Autorización de Supervisor
+            🔒 Solicitar autorización de supervisor
           </button>
         )}
 
         {mostrarPin && !autorizado && (
-          <div className="bg-slate-700/50 rounded-xl p-3 space-y-2">
-            <p className="text-amber-400 text-xs font-medium">PIN de supervisor</p>
+          <div className="bg-slate-50 rounded-xl p-3.5 space-y-2.5">
+            <p className="text-amber-700 text-xs font-medium">PIN de supervisor</p>
             <input
               type="password"
               inputMode="numeric"
@@ -336,20 +341,20 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
               value={pinIngresado}
               onChange={(e) => setPinIngresado(e.target.value.replace(/\D/g, ''))}
               placeholder="••••"
-              className="w-full bg-slate-800 text-slate-100 placeholder-slate-500 text-sm rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+              className="w-full bg-white border border-slate-200 text-slate-900 placeholder-slate-300 text-sm rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition-all"
             />
-            {errorPin && <p className="text-red-400 text-xs">{errorPin}</p>}
+            {errorPin && <p className="text-rose-600 text-xs">{errorPin}</p>}
             <div className="flex gap-2">
               <button
                 onClick={handleValidarPin}
                 disabled={validandoPin}
-                className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-slate-900 font-semibold py-2 rounded-lg transition-colors text-sm"
+                className="flex-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition-colors text-sm"
               >
-                {validandoPin ? 'Validando...' : 'Autorizar'}
+                {validandoPin ? 'Validando…' : 'Autorizar'}
               </button>
               <button
                 onClick={() => { setMostrarPin(false); setPinIngresado(''); setErrorPin(null) }}
-                className="px-4 bg-slate-600 hover:bg-slate-500 text-slate-200 rounded-lg transition-colors text-sm"
+                className="px-4 border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors text-sm"
               >
                 Cancelar
               </button>
@@ -358,17 +363,17 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
         )}
 
         {autorizado && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs rounded-lg px-3 py-2.5 flex items-center gap-1.5">
-            ✅ Venta autorizada por supervisor — puedes confirmar
+          <div className="bg-emerald-50 text-emerald-700 text-xs rounded-xl px-3.5 py-2.5 flex items-center gap-1.5">
+            ✅ Venta autorizada por supervisor
           </div>
         )}
 
         <button
           onClick={handleConfirmar}
           disabled={isProcesando || (excedeLimite && !autorizado)}
-          className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+          className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold py-3.5 rounded-xl transition-colors text-sm"
         >
-          {isProcesando ? 'Procesando...' : 'Confirmar venta'}
+          {isProcesando ? 'Procesando…' : 'Confirmar venta'}
         </button>
       </div>
     </div>
