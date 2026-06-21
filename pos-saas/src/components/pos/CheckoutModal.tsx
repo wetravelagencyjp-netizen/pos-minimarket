@@ -6,6 +6,7 @@ import { useRegistrarVenta, type MetodoPago } from '@/core/hooks/useRegistrarVen
 import SelectorCliente, { type ClienteConCredito } from './SelectorCliente'
 import ModalEmitirFactura from './ModalEmitirFactura'
 import { supabase } from '@/lib/supabase'
+import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 
 interface CheckoutModalProps {
   establecimientoId: number
@@ -43,7 +44,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const [cajaId, setCajaId] = useState<number | null>(null)
   const [mostrarFactura, setMostrarFactura] = useState(false)
   const [facturaEmitida, setFacturaEmitida] = useState(false)
-  const [tema, setTema] = useState<Tema>('claro')
+  const { tema, cambiarTema } = useEstablecimiento()
   const [userId, setUserId] = useState<string | null>(null)
 
   const [pagos, setPagos] = useState<LineaPago[]>([{ metodo: 'efectivo', monto: total.toFixed(2), bancoId: null }])
@@ -75,16 +76,8 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
         .limit(1)
         .maybeSingle()
         .then(({ data }) => setCajaId(data?.id ?? null))
-      supabase.from('usuarios').select('tema_checkout').eq('id', user.id).single()
-        .then(({ data }) => setTema((data?.tema_checkout as Tema) ?? 'claro'))
-    })
+      })
   }, [establecimientoId])
-
-  async function cambiarTema(nuevoTema: Tema) {
-    setTema(nuevoTema)
-    if (!userId) return
-    await supabase.from('usuarios').update({ tema_checkout: nuevoTema }).eq('id', userId)
-  }
 
   function agregarLinea() {
     if (faltante <= 0) return
