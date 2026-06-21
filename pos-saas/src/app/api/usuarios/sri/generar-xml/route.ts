@@ -227,9 +227,35 @@ function generarXML(params: {
 }
 
 // ─── ENDPOINT POST ────────────────────────────────────────
+async function obtenerSolicitanteAdmin(request: NextRequest) {
+  const authHeader = request.headers.get('authorization') ?? ''
+  const token = authHeader.replace('Bearer ', '')
+  if (!token) return null
+
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+  if (error || !user) return null
+
+  const { data: perfil } = await supabaseAdmin
+    .from('usuarios')
+    .select('rol, establecimiento_id, es_superadmin')
+    .eq('id', user.id)
+    .single()
+
+  if (!perfil) return null
+  if (perfil.rol !== 'admin' && !perfil.es_superadmin) return null
+  return perfil
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { venta_id, establecimiento_id, cliente, detalles } = await request.json()
+    const solicitante = await obtenerSolicitanteAdmin(request)
+    if (!solicitante) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    const { venta_id, cliente, detalles } = await request.json()
+    // establecimiento_id SIEMPRE se toma del solicitante autenticado, NUNCA del body.
+    const establecimiento_id = solicitante.establecimiento_id
 
     // 1. Obtener credenciales SRI
     const { data: cred, error: credError } = await supabaseAdmin
