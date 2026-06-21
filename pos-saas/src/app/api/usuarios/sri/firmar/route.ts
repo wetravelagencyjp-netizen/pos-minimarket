@@ -119,15 +119,42 @@ function simularFirma(xmlOriginal: string): string {
   return xmlOriginal.replace(/(<\/factura>)\s*$/, `${sigSimulado}</factura>`)
 }
 
+async function obtenerSolicitanteAdmin(request: NextRequest) {
+  const authHeader = request.headers.get('authorization') ?? ''
+  const token = authHeader.replace('Bearer ', '')
+  if (!token) return null
+
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+  if (error || !user) return null
+
+  const { data: perfil } = await supabaseAdmin
+    .from('usuarios')
+    .select('rol, establecimiento_id, es_superadmin')
+    .eq('id', user.id)
+    .single()
+
+  if (!perfil) return null
+  if (perfil.rol !== 'admin' && !perfil.es_superadmin) return null
+  return perfil
+}
+
 export async function POST(request: NextRequest) {
   const logs: string[] = []
   const log = (msg: string) => { logs.push(`[${new Date().toISOString()}] ${msg}`); console.log(msg) }
 
   try {
-    const { xml, comprobante_id, establecimiento_id } = await request.json()
+    const solicitante = await obtenerSolicitanteAdmin(request)
+    if (!solicitante) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    const { xml, comprobante_id } = await request.json()
 
     if (!xml) return NextResponse.json({ error: 'Se requiere el XML a firmar' }, { status: 400 })
-    if (!establecimiento_id) return NextResponse.json({ error: 'Se requiere establecimiento_id' }, { status: 400 })
+
+    // establecimiento_id SIEMPRE se toma del solicitante autenticado, NUNCA del body —
+    // así nadie puede firmar XML usando el certificado de un negocio que no es el suyo.
+    const establecimiento_id = solicitante.establecimiento_id
 
     log(`Iniciando firma — establecimiento=${establecimiento_id}`)
 
