@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
-    const { email, password, nombre, rol, sucursal_id } = await request.json()
+    const { email, password, nombre, rol, sucursal_id, establecimiento_id } = await request.json()
 
     if (!email || !password || !nombre || !rol) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
@@ -49,14 +49,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: authError?.message ?? 'No se pudo crear el usuario' }, { status: 400 })
     }
 
-    const body = await request.clone().json()
     // establecimiento_id se toma del solicitante (admin normal), EXCEPTO si es
     // superadmin, en cuyo caso sí puede elegir a qué establecimiento asignarlo.
     const establecimientoDestino = solicitante.es_superadmin
-      ? body.establecimiento_id ?? solicitante.establecimiento_id
+      ? establecimiento_id ?? solicitante.establecimiento_id
       : solicitante.establecimiento_id
 
-    const datosInsert = {
+    const { error: dbError } = await supabaseAdmin.from('usuarios').insert({
       id: authData.user.id,
       establecimiento_id: establecimientoDestino,
       nombre,
@@ -64,10 +63,7 @@ export async function POST(request: NextRequest) {
       email,
       sucursal_id: sucursal_id ?? null,
       es_superadmin: false,
-    }
-    console.log('Intentando insertar usuario con datos:', JSON.stringify(datosInsert))
-
-    const { error: dbError } = await supabaseAdmin.from('usuarios').insert(datosInsert)
+    })
 
     if (dbError) {
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
