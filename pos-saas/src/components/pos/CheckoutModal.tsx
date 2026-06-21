@@ -188,6 +188,14 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
           </div>
           <h3 className="text-slate-100 font-semibold text-lg">Venta registrada</h3>
           <p className="text-slate-400 text-sm">Comprobante: {resultado.numeroComprobante}</p>
+          {/* TODO (sesión futura): botón "Emitir Factura SRI" — mismo flujo documentado
+              en app/admin/page.tsx: abrirá modal para identificacion/razon_social del
+              cliente, creará sri_comprobantes (estado 'PENDIENTE'), y actualizará
+              esta venta (resultado.numeroComprobante) con ese sri_comprobante_id. */}
+          <button disabled title="Próximamente"
+            className="w-full text-xs font-medium text-slate-500 cursor-not-allowed py-1">
+            🧾 Emitir Factura SRI
+          </button>
           {pagos.length > 1 && (
             <div className="bg-slate-700/50 rounded-xl p-3 text-left space-y-1">
               <p className="text-slate-400 text-xs uppercase tracking-wide mb-1">Pago dividido</p>
