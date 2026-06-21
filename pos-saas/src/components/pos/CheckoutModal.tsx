@@ -193,11 +193,13 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
           <p className="text-slate-400 text-sm">Comprobante: {resultado.numeroComprobante}</p>
           {!facturaEmitida ? (
             <button onClick={() => setMostrarFactura(true)}
-              className="w-full text-xs font-medium text-indigo-400 hover:text-indigo-300 py-1 transition-colors">
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-colors text-sm flex items-center justify-center gap-2">
               🧾 Emitir Factura SRI
             </button>
           ) : (
-            <p className="text-xs text-emerald-400">✅ Factura emitida (pendiente de autorización SRI)</p>
+            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm rounded-xl px-4 py-3 text-center font-medium">
+              ✅ Factura emitida (pendiente de autorización SRI)
+            </div>
           )}
           {mostrarFactura && resultado.ventaId && (
             <ModalEmitirFactura
