@@ -3,12 +3,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
-interface ItemDetalle {
-  producto_id: number
-  cantidad: number
-  precio_unitario: number
-}
-
 interface ModalEmitirFacturaProps {
   ventaId: number
   numeroComprobanteVenta: string
@@ -17,8 +11,6 @@ interface ModalEmitirFacturaProps {
   onCerrar: () => void
   onEmitido: () => void
 }
-
-const TASA_IVA = 0.15
 
 interface ClienteCandidato {
   identificacion: string
@@ -81,69 +73,57 @@ export default function ModalEmitirFactura({
     }
     setEmitiendo(true)
 
-    // Desglose calculado SOLO al emitir, sobre el total de la venta.
-    // Tasa fija 15% (Ecuador) — no toca registrar_venta_completa ni detalle_ventas.
+    // Traer detalle real de la venta con nombre/código de barras del producto
+    // (el motor de generar-xml necesita estos campos para el XML del SRI).
     const { data: detalle } = await supabase
       .from('detalle_ventas')
-      .select('producto_id, cantidad, precio_unitario')
+      .select('producto_id, cantidad, precio_unitario, producto:productos(nombre, codigo_barras, lleva_iva)')
       .eq('venta_id', ventaId)
 
-    const { data: productosData } = await supabase
-      .from('productos')
-      .select('id, lleva_iva')
-      .in('id', (detalle ?? []).map((d: ItemDetalle) => d.producto_id))
+    const detallesPayload = (detalle ?? []).map((d: any) => ({
+      codigo_barras: d.producto?.codigo_barras ?? null,
+      nombre: d.producto?.nombre ?? 'Producto',
+      cantidad: d.cantidad,
+      precio_unitario: d.precio_unitario,
+      descuento: 0,
+      tiene_iva: d.producto?.lleva_iva !== false,
+    }))
 
-    const mapaIva = new Map((productosData ?? []).map((p) => [p.id, p.lleva_iva]))
-
-    let baseConIva = 0
-    let baseSinIva = 0
-    for (const item of (detalle ?? []) as ItemDetalle[]) {
-      const subtotalItem = item.cantidad * item.precio_unitario
-      if (mapaIva.get(item.producto_id) === false) {
-        baseSinIva += subtotalItem
-      } else {
-        baseConIva += subtotalItem
-      }
-    }
-    const ivaCalculado = +(baseConIva * TASA_IVA).toFixed(2)
-    const subtotalSinImpuesto = +(baseConIva + baseSinIva).toFixed(2)
-
-    const { data: comprobante, error: errorComprobante } = await supabase
-      .from('sri_comprobantes')
-      .insert({
-        establecimiento_id: establecimientoId,
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/usuarios/sri/generar-xml', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token ?? ''}`,
+      },
+      body: JSON.stringify({
         venta_id: ventaId,
-        tipo_comprobante: 'factura',
-        numero_comprobante: numeroComprobanteVenta,
-        estado: 'PENDIENTE',
-        fecha_emision: new Date().toISOString(),
-        cliente_identificacion: identificacion.trim(),
-        cliente_tipo_identificacion: tipoIdentificacion,
-        cliente_razon_social: razonSocial.trim(),
-        cliente_direccion: direccion.trim() || null,
-        cliente_email: email.trim() || null,
-        subtotal_sin_impuesto: subtotalSinImpuesto,
-        subtotal_iva: +baseConIva.toFixed(2),
-        iva: ivaCalculado,
-        total,
-      })
-      .select('id')
-      .single()
+        cliente: {
+          identificacion: identificacion.trim(),
+          tipo_identificacion: tipoIdentificacion,
+          razon_social: razonSocial.trim(),
+          direccion: direccion.trim() || null,
+          email: email.trim() || null,
+        },
+        detalles: detallesPayload,
+      }),
+    })
+    const data = await res.json()
 
-    if (errorComprobante || !comprobante) {
-      setError(errorComprobante?.message ?? 'No se pudo crear el comprobante')
+    if (!res.ok || !data.ok) {
+      setError(data.error ?? 'No se pudo generar el comprobante')
       setEmitiendo(false)
       return
     }
 
-    const { data: vinculo, error: errorVenta } = await supabase.rpc('vincular_sri_comprobante', {
+    const { data: vinculo, error: errorVinculo } = await supabase.rpc('vincular_sri_comprobante', {
       p_venta_id: ventaId,
-      p_sri_comprobante_id: comprobante.id,
+      p_sri_comprobante_id: data.comprobante_id,
     })
 
     setEmitiendo(false)
-    if (errorVenta || !vinculo?.ok) {
-      setError(errorVenta?.message ?? 'No se pudo vincular la factura a la venta')
+    if (errorVinculo || !vinculo?.ok) {
+      setError(errorVinculo?.message ?? 'Comprobante creado pero no se pudo vincular a la venta')
       return
     }
     onEmitido()
@@ -229,7 +209,7 @@ export default function ModalEmitirFactura({
           disabled={emitiendo}
           className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
         >
-          {emitiendo ? 'Emitiendo...' : 'Crear comprobante (PENDIENTE)'}
+          {emitiendo ? 'Generando XML...' : 'Crear comprobante (PENDIENTE)'}
         </button>
       </div>
     </div>
