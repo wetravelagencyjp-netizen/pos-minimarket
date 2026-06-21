@@ -17,11 +17,12 @@ async function obtenerSolicitanteAdmin(request: NextRequest) {
 
   const { data: perfil } = await supabaseAdmin
     .from('usuarios')
-    .select('rol, establecimiento_id')
+    .select('rol, establecimiento_id, es_superadmin')
     .eq('id', user.id)
     .single()
 
-  if (!perfil || perfil.rol !== 'admin') return null
+  if (!perfil) return null
+  if (perfil.rol !== 'admin' && !perfil.es_superadmin) return null
   return perfil
 }
 
@@ -48,11 +49,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: authError?.message ?? 'No se pudo crear el usuario' }, { status: 400 })
     }
 
-    // establecimiento_id SIEMPRE se toma del solicitante autenticado, nunca del body —
-    // así un admin no puede crear usuarios en un establecimiento que no es el suyo.
+    const body = await request.clone().json()
+    // establecimiento_id se toma del solicitante (admin normal), EXCEPTO si es
+    // superadmin, en cuyo caso sí puede elegir a qué establecimiento asignarlo.
+    const establecimientoDestino = solicitante.es_superadmin
+      ? body.establecimiento_id ?? solicitante.establecimiento_id
+      : solicitante.establecimiento_id
+
     const { error: dbError } = await supabaseAdmin.from('usuarios').insert({
       id: authData.user.id,
-      establecimiento_id: solicitante.establecimiento_id,
+      establecimiento_id: establecimientoDestino,
       nombre,
       rol,
       email,
@@ -87,7 +93,10 @@ export async function DELETE(request: NextRequest) {
       .eq('id', id)
       .single()
 
-    if (!objetivo || objetivo.establecimiento_id !== solicitante.establecimiento_id) {
+    if (!objetivo) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+    }
+    if (!solicitante.es_superadmin && objetivo.establecimiento_id !== solicitante.establecimiento_id) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
     if (objetivo.es_superadmin) {
