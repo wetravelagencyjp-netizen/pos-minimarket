@@ -116,14 +116,14 @@ export default function ModalEmitirFactura({
       return
     }
 
-    const { error: errorVenta } = await supabase
-      .from('ventas')
-      .update({ sri_comprobante_id: comprobante.id })
-      .eq('id', ventaId)
+    const { data: vinculo, error: errorVenta } = await supabase.rpc('vincular_sri_comprobante', {
+      p_venta_id: ventaId,
+      p_sri_comprobante_id: comprobante.id,
+    })
 
     setEmitiendo(false)
-    if (errorVenta) {
-      setError(errorVenta.message)
+    if (errorVenta || !vinculo?.ok) {
+      setError(errorVenta?.message ?? 'No se pudo vincular la factura a la venta')
       return
     }
     onEmitido()
