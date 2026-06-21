@@ -81,6 +81,10 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!authLoading && !usuario) {
       router.push('/login')
+      return
+    }
+    if (!authLoading && usuario && usuario.rol !== 'admin') {
+      router.push('/pos')
     }
   }, [authLoading, usuario, router])
 
@@ -142,7 +146,7 @@ export default function DashboardPage() {
   const metodoLabel: Record<string, string> = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', mixto: 'Mixto' }
   const metodoColor: Record<string, string> = { efectivo: 'bg-emerald-400', tarjeta: 'bg-indigo-400', transferencia: 'bg-sky-400', mixto: 'bg-violet-400' }
 
-  if (authLoading || !usuario) {
+  if (authLoading || !usuario || usuario.rol !== 'admin') {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
