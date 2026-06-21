@@ -44,6 +44,8 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const [cajaId, setCajaId] = useState<number | null>(null)
   const [mostrarFactura, setMostrarFactura] = useState(false)
   const [facturaEmitida, setFacturaEmitida] = useState(false)
+  const [notificando, setNotificando] = useState(false)
+  const [solicitudEnviada, setSolicitudEnviada] = useState(false)
   const { tema, cambiarTema } = useEstablecimiento()
   const [userId, setUserId] = useState<string | null>(null)
 
@@ -156,6 +158,24 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
       setResultado({ numeroComprobante: res.numeroComprobante, ventaId: res.ventaId })
     } else if (res.error) {
       setErrorCredito(res.error)
+    }
+  }
+
+  async function handleNotificarDueno() {
+    if (!cliente) return
+    setNotificando(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { error } = await supabase.from('solicitudes_autorizacion').insert({
+      establecimiento_id: establecimientoId,
+      cajero_id: user?.id,
+      cliente_id: cliente.id,
+      monto_excedente: montoCredito - (cliente.limite_credito - cliente.saldo_pendiente),
+      total_venta: total,
+      items_json: { items, pagos, clienteId: cliente.id, total },
+    })
+    setNotificando(false)
+    if (!error) {
+      setSolicitudEnviada(true)
     }
   }
 
@@ -376,13 +396,29 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
           </div>
         )}
 
-        {excedeLimite && !autorizado && !mostrarPin && (
-          <button
-            onClick={() => setMostrarPin(true)}
-            className="w-full bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-500 font-medium py-2.5 rounded-xl transition-colors text-sm"
-          >
-            🔒 Solicitar autorización de supervisor
-          </button>
+        {excedeLimite && !autorizado && !mostrarPin && !solicitudEnviada && (
+          <div className="space-y-2">
+            <button
+              onClick={() => setMostrarPin(true)}
+              className="w-full bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-500 font-medium py-2.5 rounded-xl transition-colors text-sm"
+            >
+              🔒 Solicitar autorización de supervisor (PIN)
+            </button>
+            <button
+              onClick={handleNotificarDueno}
+              disabled={notificando}
+              className="w-full bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-blue-500 disabled:opacity-50 font-medium py-2.5 rounded-xl transition-colors text-sm"
+            >
+              {notificando ? 'Enviando…' : '📲 Notificar al dueño'}
+            </button>
+          </div>
+        )}
+
+        {solicitudEnviada && (
+          <div className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm rounded-xl px-4 py-3 text-center space-y-1">
+            <p className="font-medium">📲 Solicitud enviada al dueño</p>
+            <p className="text-xs opacity-80">Cuando la apruebe, ve a Caja → Solicitudes para completar la venta</p>
+          </div>
         )}
 
         {mostrarPin && !autorizado && (
@@ -422,13 +458,23 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
           </div>
         )}
 
-        <button
-          onClick={handleConfirmar}
-          disabled={isProcesando || (excedeLimite && !autorizado)}
-          className={`w-full font-semibold py-3.5 rounded-xl transition-colors text-sm ${t.btnPrincipal}`}
-        >
-          {isProcesando ? 'Procesando…' : 'Confirmar venta'}
-        </button>
+        {!solicitudEnviada && (
+          <button
+            onClick={handleConfirmar}
+            disabled={isProcesando || (excedeLimite && !autorizado)}
+            className={`w-full font-semibold py-3.5 rounded-xl transition-colors text-sm ${t.btnPrincipal}`}
+          >
+            {isProcesando ? 'Procesando…' : 'Confirmar venta'}
+          </button>
+        )}
+        {solicitudEnviada && (
+          <button
+            onClick={() => { vaciarCarrito(); onClose() }}
+            className={`w-full font-medium py-3 rounded-xl transition-colors text-sm ${t.btnSecundario}`}
+          >
+            Cerrar (revisar más tarde en Caja → Solicitudes)
+          </button>
+        )}
       </div>
     </div>
   )
