@@ -252,7 +252,12 @@ export default function CajaPage() {
           <div className="h-4 w-px bg-slate-200" />
           <h1 className="text-sm font-semibold text-slate-900">💰 Control de Caja</h1>
         </div>
-        <span className="text-xs text-slate-500">{usuario?.nombre ?? ''}</span>
+        <div className="flex items-center gap-3">
+          <button onClick={() => router.push('/caja/solicitudes')} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
+            📲 Mis solicitudes
+          </button>
+          <span className="text-xs text-slate-500">{usuario?.nombre ?? ''}</span>
+        </div>
       </header>
 
       <main className="mx-auto max-w-md p-6 space-y-4">
