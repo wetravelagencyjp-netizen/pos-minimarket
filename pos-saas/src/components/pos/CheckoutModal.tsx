@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useCarrito } from '@/core/context/CarritoContext'
 import { useRegistrarVenta, type MetodoPago } from '@/core/hooks/useRegistrarVenta'
 import SelectorCliente, { type ClienteConCredito } from './SelectorCliente'
+import ModalEmitirFactura from './ModalEmitirFactura'
 import { supabase } from '@/lib/supabase'
 
 interface CheckoutModalProps {
@@ -27,7 +28,9 @@ const METODOS: { id: MetodoPago; label: string; icono: string }[] = [
 export default function CheckoutModal({ establecimientoId, onClose }: CheckoutModalProps) {
   const { items, total, vaciarCarrito } = useCarrito()
   const { registrarVenta, isProcesando } = useRegistrarVenta()
-  const [resultado, setResultado] = useState<{ numeroComprobante: string } | null>(null)
+  const [resultado, setResultado] = useState<{ numeroComprobante: string; ventaId?: number } | null>(null)
+  const [mostrarFactura, setMostrarFactura] = useState(false)
+  const [facturaEmitida, setFacturaEmitida] = useState(false)
   const [cliente, setCliente] = useState<ClienteConCredito | null>(null)
   const [errorCredito, setErrorCredito] = useState<string | null>(null)
   const [excedeLimite, setExcedeLimite] = useState(false)
@@ -144,7 +147,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
     })
 
     if (res.success && res.numeroComprobante) {
-      setResultado({ numeroComprobante: res.numeroComprobante })
+      setResultado({ numeroComprobante: res.numeroComprobante, ventaId: res.ventaId })
     } else if (res.error) {
       setErrorCredito(res.error)
     }
@@ -188,14 +191,24 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
           </div>
           <h3 className="text-slate-100 font-semibold text-lg">Venta registrada</h3>
           <p className="text-slate-400 text-sm">Comprobante: {resultado.numeroComprobante}</p>
-          {/* TODO (sesión futura): botón "Emitir Factura SRI" — mismo flujo documentado
-              en app/admin/page.tsx: abrirá modal para identificacion/razon_social del
-              cliente, creará sri_comprobantes (estado 'PENDIENTE'), y actualizará
-              esta venta (resultado.numeroComprobante) con ese sri_comprobante_id. */}
-          <button disabled title="Próximamente"
-            className="w-full text-xs font-medium text-slate-500 cursor-not-allowed py-1">
-            🧾 Emitir Factura SRI
-          </button>
+          {!facturaEmitida ? (
+            <button onClick={() => setMostrarFactura(true)}
+              className="w-full text-xs font-medium text-indigo-400 hover:text-indigo-300 py-1 transition-colors">
+              🧾 Emitir Factura SRI
+            </button>
+          ) : (
+            <p className="text-xs text-emerald-400">✅ Factura emitida (pendiente de autorización SRI)</p>
+          )}
+          {mostrarFactura && resultado.ventaId && (
+            <ModalEmitirFactura
+              ventaId={resultado.ventaId}
+              numeroComprobanteVenta={resultado.numeroComprobante}
+              establecimientoId={establecimientoId}
+              total={total}
+              onCerrar={() => setMostrarFactura(false)}
+              onEmitido={() => { setMostrarFactura(false); setFacturaEmitida(true) }}
+            />
+          )}
           {pagos.length > 1 && (
             <div className="bg-slate-700/50 rounded-xl p-3 text-left space-y-1">
               <p className="text-slate-400 text-xs uppercase tracking-wide mb-1">Pago dividido</p>
