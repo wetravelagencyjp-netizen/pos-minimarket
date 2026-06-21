@@ -10,6 +10,8 @@ interface EstablecimientoContextValue {
   sucursalId: number | null
   isLoading: boolean
   error: string | null
+  tema: 'claro' | 'oscuro'
+  cambiarTema: (t: 'claro' | 'oscuro') => void
 }
 
 const EstablecimientoContext = createContext<EstablecimientoContextValue>({
@@ -18,6 +20,8 @@ const EstablecimientoContext = createContext<EstablecimientoContextValue>({
   sucursalId: null,
   isLoading: true,
   error: null,
+  tema: 'claro',
+  cambiarTema: () => {},
 })
 
 export function EstablecimientoProvider({ children }: { children: ReactNode }) {
@@ -25,6 +29,7 @@ export function EstablecimientoProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [tema, setTema] = useState<'claro' | 'oscuro'>('claro')
 
   useEffect(() => {
     async function cargarContexto() {
@@ -36,13 +41,14 @@ export function EstablecimientoProvider({ children }: { children: ReactNode }) {
 
         const { data: usuarioData, error: usuarioError } = await supabase
           .from('usuarios')
-          .select('id, establecimiento_id, sucursal_id, nombre, email, rol, es_superadmin')
+          .select('id, establecimiento_id, sucursal_id, nombre, email, rol, es_superadmin, tema_checkout')
           .eq('id', user.id)
           .single()
 
         console.log('🔵 PASO 3: Usuario data:', usuarioData, 'error:', usuarioError)
         if (usuarioError || !usuarioData) throw new Error('Usuario no encontrado en el sistema')
         setUsuario(usuarioData as Usuario)
+        setTema(((usuarioData as any).tema_checkout as 'claro' | 'oscuro') ?? 'claro')
 
         console.log('🔵 PASO 4: Buscando establecimiento con id:', usuarioData.establecimiento_id)
         const { data: establecimientoData, error: establecimientoError } = await supabase
@@ -78,6 +84,13 @@ export function EstablecimientoProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  const cambiarTema = async (nuevoTema: 'claro' | 'oscuro') => {
+    setTema(nuevoTema)
+    if (usuario) {
+      await supabase.from('usuarios').update({ tema_checkout: nuevoTema }).eq('id', usuario.id)
+    }
+  }
+
   return (
     <EstablecimientoContext.Provider
       value={{
@@ -86,6 +99,8 @@ export function EstablecimientoProvider({ children }: { children: ReactNode }) {
         sucursalId: usuario?.sucursal_id ?? null,
         isLoading,
         error,
+        tema,
+        cambiarTema,
       }}
     >
       {children}
