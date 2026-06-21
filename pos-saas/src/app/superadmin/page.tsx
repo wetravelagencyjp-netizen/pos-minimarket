@@ -109,9 +109,13 @@ export default function SuperAdminPage() {
     setCreando(true)
     setMensaje(null)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/api/usuarios', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
+        },
         body: JSON.stringify({
           email: formUsuario.email,
           password: formUsuario.password,
@@ -136,9 +140,13 @@ export default function SuperAdminPage() {
 
   const eliminarUsuario = async (id: string, nombre: string) => {
     if (!confirm(`¿Eliminar el usuario "${nombre}"?`)) return
+    const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/usuarios', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token ?? ''}`,
+      },
       body: JSON.stringify({ id }),
     })
     const data = await res.json()
