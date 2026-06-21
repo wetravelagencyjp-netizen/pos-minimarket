@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
-    const { email, password, nombre, rol } = await request.json()
+    const { email, password, nombre, rol, sucursal_id } = await request.json()
 
     if (!email || !password || !nombre || !rol) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       nombre,
       rol,
       email,
+      sucursal_id: sucursal_id ?? null,
       es_superadmin: false,
     })
 
