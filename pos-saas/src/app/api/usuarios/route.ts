@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       ? body.establecimiento_id ?? solicitante.establecimiento_id
       : solicitante.establecimiento_id
 
-    const { error: dbError } = await supabaseAdmin.from('usuarios').insert({
+    const datosInsert = {
       id: authData.user.id,
       establecimiento_id: establecimientoDestino,
       nombre,
@@ -64,7 +64,10 @@ export async function POST(request: NextRequest) {
       email,
       sucursal_id: sucursal_id ?? null,
       es_superadmin: false,
-    })
+    }
+    console.log('Intentando insertar usuario con datos:', JSON.stringify(datosInsert))
+
+    const { error: dbError } = await supabaseAdmin.from('usuarios').insert(datosInsert)
 
     if (dbError) {
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
