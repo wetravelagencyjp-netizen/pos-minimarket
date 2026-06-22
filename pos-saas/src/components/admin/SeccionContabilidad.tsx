@@ -549,7 +549,6 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
                 ))}
               </div>
             </div>
-            </div>
             {egresos.length === 0 ? <p className="p-5 text-xs text-zinc-500">Sin egresos.</p> : (
               <table className="w-full text-sm">
                 <thead className="border-b border-zinc-800 text-xs text-zinc-600 uppercase tracking-wide">
