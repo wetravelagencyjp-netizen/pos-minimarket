@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import { supabase } from '@/lib/supabase'
 import { imprimirRecibo } from '@/lib/imprimirRecibo'
-import { Printer, CheckCircle, Clock, Sun, Moon } from 'lucide-react'
+import { Printer, CheckCircle, Clock, Sun, Moon, FileText } from 'lucide-react'
 
 interface Venta {
   id: number
