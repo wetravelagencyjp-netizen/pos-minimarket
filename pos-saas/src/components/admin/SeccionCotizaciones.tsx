@@ -123,13 +123,15 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
   const quitarItem = (i: number) => setItems(prev => prev.filter((_, idx) => idx !== i))
   const actualizarItem = (i: number, campo: keyof ItemCot, valor: string | number) => {
     setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [campo]: valor } : it))
-    if (campo === 'nombre' && typeof valor === 'string' && valor.length >= 1) {
-      const filtro = productos.filter(p => p.nombre.toLowerCase().includes(valor.toLowerCase())).slice(0, 6)
-      setSugerencias(filtro)
-      setItemConFoco(i)
-    } else if (campo === 'nombre') {
-      setSugerencias([])
-      setItemConFoco(null)
+    if (campo === 'nombre' && typeof valor === 'string') {
+      if (valor.length >= 1) {
+        const filtro = productos.filter(p => p.nombre.toLowerCase().includes(valor.toLowerCase())).slice(0, 8)
+        setSugerencias(filtro)
+        setItemConFoco(i)
+      } else {
+        setSugerencias(productos.slice(0, 8))
+        setItemConFoco(i)
+      }
     }
   }
 
@@ -269,7 +271,7 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
                 <Plus size={12} /> Agregar línea
               </button>
             </div>
-            <div className={`rounded-xl border ${esOscuro ? 'border-zinc-700' : 'border-slate-200'} overflow-hidden`}>
+            <div className={`rounded-xl border ${esOscuro ? 'border-zinc-700' : 'border-slate-200'}`}>
               <table className="w-full text-sm">
                 <thead className={`text-xs ${esOscuro ? 'bg-zinc-800 text-zinc-400' : 'bg-slate-50 text-slate-500'}`}>
                   <tr>
@@ -300,7 +302,7 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
                           autoComplete="off"
                         />
                         {itemConFoco === i && sugerencias.length > 0 && (
-                          <div className={`absolute left-2 right-2 top-full mt-1 rounded-xl border shadow-lg z-50 overflow-hidden ${esOscuro ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-slate-200'}`}>
+                          <div className={`absolute left-2 right-2 top-full mt-1 rounded-xl border shadow-xl z-[999] max-h-48 overflow-y-auto ${esOscuro ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-slate-200'}`}>
                             {sugerencias.map(p => (
                               <button
                                 key={p.id}
