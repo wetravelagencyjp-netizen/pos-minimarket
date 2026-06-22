@@ -98,6 +98,18 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
       .then(({ data }) => setProductos(data ?? []))
   }, [establecimientoId])
 
+  useEffect(() => {
+    const cerrar = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.autocomplete-wrap')) {
+        setSugerencias([])
+        setItemConFoco(null)
+      }
+    }
+    document.addEventListener('mousedown', cerrar)
+    return () => document.removeEventListener('mousedown', cerrar)
+  }, [])
+
   const calcTotales = () => {
     const subtotal = items.reduce((s, it) => s + (it.precioUnitario - it.descuento) * it.cantidad, 0)
     const montoDescGlobal = activarDescuento ? subtotal * (descuentoGlobal / 100) : 0
@@ -272,12 +284,18 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
                 <tbody>
                   {items.map((it, i) => (
                     <tr key={i} className={`border-t ${esOscuro ? 'border-zinc-700' : 'border-slate-100'}`}>
-                      <td className="px-2 py-1.5 relative">
+                      <td className="px-2 py-1.5 relative autocomplete-wrap">
                         <input
                           placeholder="Nombre del producto/servicio"
                           value={it.nombre}
                           onChange={e => actualizarItem(i, 'nombre', e.target.value)}
-                          onBlur={() => setTimeout(() => { setSugerencias([]); setItemConFoco(null) }, 500)}
+                          onFocus={() => {
+                            if (it.nombre.length >= 1) {
+                              const filtro = productos.filter(p => p.nombre.toLowerCase().includes(it.nombre.toLowerCase())).slice(0, 6)
+                              setSugerencias(filtro)
+                              setItemConFoco(i)
+                            }
+                          }}
                           className={inputCls}
                           autoComplete="off"
                         />
