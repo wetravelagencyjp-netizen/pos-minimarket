@@ -72,7 +72,10 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
   const [transferencias, setTransferencias] = useState<Transferencia[]>([])
   const [ingresosPorMes, setIngresosPorMes] = useState<{ mes: string; total: number }[]>([])
   const [egresosPorMes, setEgresosPorMes] = useState<{ mes: string; total: number }[]>([])
+  const [egresosFijosPorMes, setEgresosFijosPorMes] = useState<{ mes: string; total: number }[]>([])
+  const [egresosVariablesPorMes, setEgresosVariablesPorMes] = useState<{ mes: string; total: number }[]>([])
   const [cargando, setCargando] = useState(true)
+  const [filtro, setFiltro] = useState<'mes' | 'trimestre' | 'anio' | 'todo'>('mes')
 
   // Forms
   const [formCuenta, setFormCuenta] = useState({ nombre: '', tipo: 'efectivo', saldo_inicial: '' })
@@ -94,8 +97,17 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
   const [guardandoTransferencia, setGuardandoTransferencia] = useState(false)
   const [mensajeTransferencia, setMensajeTransferencia] = useState<string | null>(null)
 
+  const getFechaInicio = useCallback(() => {
+    const hoy = new Date()
+    if (filtro === 'mes') return new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString()
+    if (filtro === 'trimestre') return new Date(hoy.getFullYear(), hoy.getMonth() - 2, 1).toISOString()
+    if (filtro === 'anio') return new Date(hoy.getFullYear(), 0, 1).toISOString()
+    return new Date(2020, 0, 1).toISOString()
+  }, [filtro])
+
   const cargar = useCallback(async () => {
     setCargando(true)
+    const fechaInicio = getFechaInicio()
     const [
       { data: c }, { data: cat }, { data: subcat }, { data: eg },
       { data: transf }, { data: ventas }, { data: egAdmin }
@@ -110,8 +122,9 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
         .select('*, cuenta_origen:cuentas_financieras!transferencias_internas_cuenta_origen_id_fkey(nombre), cuenta_destino:cuentas_financieras!transferencias_internas_cuenta_destino_id_fkey(nombre)')
         .eq('establecimiento_id', establecimientoId).order('fecha', { ascending: false }).limit(30),
       supabase.from('ventas').select('total, fecha_venta').eq('establecimiento_id', establecimientoId)
-        .gte('fecha_venta', new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1).toISOString()),
-      supabase.from('egresos_administrador').select('monto, fecha').eq('establecimiento_id', establecimientoId),
+        .gte('fecha_venta', fechaInicio),
+      supabase.from('egresos_administrador').select('monto, fecha, es_recurrente, categoria:categorias_egreso(tipo)').eq('establecimiento_id', establecimientoId)
+        .gte('fecha', fechaInicio.slice(0, 10)),
     ])
 
     setCuentas(c ?? [])
@@ -127,17 +140,28 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
     }
     setIngresosPorMes(Object.entries(porMesIngreso).map(([mes, total]) => ({ mes, total })))
 
-    const porMesEgreso: Record<string, number> = {}
+    cconst porMesEgreso: Record<string, number> = {}
+    const porMesFijo: Record<string, number> = {}
+    const porMesVariable: Record<string, number> = {}
     for (const e of egAdmin ?? []) {
       const mes = new Date(e.fecha).toLocaleDateString('es-EC', { month: 'short', year: '2-digit' })
-      porMesEgreso[mes] = (porMesEgreso[mes] ?? 0) + Number(e.monto)
+      const monto = Number(e.monto)
+      porMesEgreso[mes] = (porMesEgreso[mes] ?? 0) + monto
+      const tipo = (e.categoria as any)?.tipo ?? (e.es_recurrente ? 'fijo' : 'variable')
+      if (tipo === 'fijo') {
+        porMesFijo[mes] = (porMesFijo[mes] ?? 0) + monto
+      } else {
+        porMesVariable[mes] = (porMesVariable[mes] ?? 0) + monto
+      }
     }
     setEgresosPorMes(Object.entries(porMesEgreso).map(([mes, total]) => ({ mes, total })))
+    setEgresosFijosPorMes(Object.entries(porMesFijo).map(([mes, total]) => ({ mes, total })))
+    setEgresosVariablesPorMes(Object.entries(porMesVariable).map(([mes, total]) => ({ mes, total })))
 
     setCargando(false)
   }, [establecimientoId])
 
-  useEffect(() => { cargar() }, [cargar])
+  useEffect(() => { cargar() }, [cargar, filtro])
 
   // Subcategorías filtradas por categoría seleccionada
   const subcatFiltradas = subcategorias.filter(
@@ -254,6 +278,8 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
   ]))
   const mapaIngresos = new Map(ingresosPorMes.map(i => [i.mes, i.total]))
   const mapaEgresos = new Map(egresosPorMes.map(e => [e.mes, e.total]))
+  const mapaFijos = new Map(egresosFijosPorMes.map(e => [e.mes, e.total]))
+  const mapaVariables = new Map(egresosVariablesPorMes.map(e => [e.mes, e.total]))
 
   const Tab = ({ id, label }: { id: typeof tab; label: string }) => (
     <button
@@ -512,8 +538,17 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
           </div>
 
           <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
-            <div className="px-5 py-4 border-b border-zinc-800">
+            <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-white">Historial ({egresos.length})</h2>
+              <div className="flex gap-1 bg-zinc-800 rounded-xl p-0.5">
+                {[{ id: 'mes', label: 'Mes' }, { id: 'trimestre', label: 'Trim.' }, { id: 'anio', label: 'Año' }, { id: 'todo', label: 'Todo' }].map(({ id, label }) => (
+                  <button key={id} onClick={() => setFiltro(id as typeof filtro)}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${filtro === id ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             </div>
             {egresos.length === 0 ? <p className="p-5 text-xs text-zinc-500">Sin egresos.</p> : (
               <table className="w-full text-sm">
@@ -627,9 +662,68 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
       {/* ── BALANCE ── */}
       {tab === 'balance' && (
         <div className="space-y-4">
+
+          {/* Filtro de período */}
+          <div className="flex gap-1 bg-zinc-800/50 rounded-2xl p-1 w-fit">
+            {[
+              { id: 'mes', label: 'Este mes' },
+              { id: 'trimestre', label: 'Trimestre' },
+              { id: 'anio', label: 'Este año' },
+              { id: 'todo', label: 'Todo' },
+            ].map(({ id, label }) => (
+              <button key={id} onClick={() => setFiltro(id as typeof filtro)}
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-colors ${
+                  filtro === id ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tabla P&L */}
           <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
             <div className="px-5 py-4 border-b border-zinc-800">
-              <h2 className="text-sm font-semibold text-white">📈 Ingresos vs Egresos por mes</h2>
+              <h2 className="text-sm font-semibold text-white">📊 Estado de Resultados (P&L)</h2>
+              <p className="text-xs text-zinc-500 mt-0.5">Ingresos − Costos Variables = Margen Bruto − Costos Fijos = Utilidad Neta</p>
+            </div>
+            {mesesUnicos.length === 0 ? <p className="p-5 text-xs text-zinc-500">Sin datos en este período.</p> : (
+              <table className="w-full text-sm">
+                <thead className="border-b border-zinc-800 text-xs text-zinc-600 uppercase tracking-wide">
+                  <tr>
+                    <th className="px-5 py-3 text-left">Mes</th>
+                    <th className="px-5 py-3 text-right">Ingresos</th>
+                    <th className="px-5 py-3 text-right">− C. Variables</th>
+                    <th className="px-5 py-3 text-right">= Margen Bruto</th>
+                    <th className="px-5 py-3 text-right">− C. Fijos</th>
+                    <th className="px-5 py-3 text-right">= Utilidad Neta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mesesUnicos.map(mes => {
+                    const ing = mapaIngresos.get(mes) ?? 0
+                    const variable = mapaVariables.get(mes) ?? 0
+                    const fijo = mapaFijos.get(mes) ?? 0
+                    const margenBruto = ing - variable
+                    const utilidadNeta = margenBruto - fijo
+                    return (
+                      <tr key={mes} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                        <td className="px-5 py-3 text-zinc-300 font-medium capitalize">{mes}</td>
+                        <td className="px-5 py-3 text-right text-emerald-400">{fmt(ing)}</td>
+                        <td className="px-5 py-3 text-right text-rose-400">-{fmt(variable)}</td>
+                        <td className={`px-5 py-3 text-right font-medium ${margenBruto >= 0 ? 'text-blue-400' : 'text-rose-400'}`}>{fmt(margenBruto)}</td>
+                        <td className="px-5 py-3 text-right text-amber-400">-{fmt(fijo)}</td>
+                        <td className={`px-5 py-3 text-right font-bold ${utilidadNeta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmt(utilidadNeta)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
+            <div className="px-5 py-4 border-b border-zinc-800">
+              <h2 className="text-sm font-semibold text-white">📈 Comparativa visual</h2>
             </div>
             {mesesUnicos.length === 0 ? <p className="p-5 text-xs text-zinc-500">Sin datos suficientes.</p> : (
               <table className="w-full text-sm">
