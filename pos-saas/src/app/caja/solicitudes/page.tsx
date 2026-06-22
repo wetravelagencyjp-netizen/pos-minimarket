@@ -66,6 +66,11 @@ export default function SolicitudesPage() {
     setCompletando(s.id)
     setMensaje(null)
     const datos = s.items_json
+    if (!datos || !datos.items || !datos.pagos) {
+      setMensaje('❌ Esta solicitud no tiene datos de venta guardados y no puede completarse.')
+      setCompletando(null)
+      return
+    }
     const { data: { user } } = await supabase.auth.getUser()
 
     const res = await registrarVenta({
