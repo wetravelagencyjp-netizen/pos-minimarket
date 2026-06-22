@@ -221,6 +221,7 @@ function PosSkeletonLoader() {
 // ─── PosShell: Orquestador principal ──────────────────────────
 export function PosShell() {
   const { establecimiento, usuario, sucursalId, isLoading, error, tema } = useEstablecimiento()
+  const router = useRouter()
 
   if (isLoading) return <PosSkeletonLoader />
 
