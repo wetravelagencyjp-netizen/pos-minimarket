@@ -77,6 +77,12 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
   const [cargando, setCargando] = useState(true)
   const [filtro, setFiltro] = useState<'mes' | 'trimestre' | 'anio' | 'todo'>('mes')
 
+  // Ajuste de saldo
+  const [ajustandoCuenta, setAjustandoCuenta] = useState<Cuenta | null>(null)
+  const [nuevoSaldo, setNuevoSaldo] = useState('')
+  const [motivoAjuste, setMotivoAjuste] = useState('')
+  const [guardandoAjuste, setGuardandoAjuste] = useState(false)
+
   // Forms
   const [formCuenta, setFormCuenta] = useState({ nombre: '', tipo: 'efectivo', saldo_inicial: '' })
   const [guardandoCuenta, setGuardandoCuenta] = useState(false)
@@ -159,14 +165,24 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
     setEgresosVariablesPorMes(Object.entries(porMesVariable).map(([mes, total]) => ({ mes, total })))
 
     setCargando(false)
-  }, [establecimientoId])
+  }, [establecimientoId, getFechaInicio])
 
   useEffect(() => { cargar() }, [cargar, filtro])
 
-  // Subcategorías filtradas por categoría seleccionada
   const subcatFiltradas = subcategorias.filter(
     s => s.categoria_id === parseInt(formEgreso.categoria_id)
   )
+
+  // Distribución de gastos por subcategoría (para Resumen)
+  const gastosPorSubcat = Object.entries(
+    egresos.reduce((acc, e) => {
+      const key = (e.subcategoria as any)?.nombre ?? (e.categoria as any)?.nombre ?? 'Sin categoría'
+      acc[key] = (acc[key] ?? 0) + Number(e.monto)
+      return acc
+    }, {} as Record<string, number>)
+  ).sort((a, b) => b[1] - a[1]).slice(0, 8)
+
+  const maxGasto = gastosPorSubcat[0]?.[1] || 1
 
   const guardarCuenta = async () => {
     if (!formCuenta.nombre) return
@@ -182,6 +198,23 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
     setFormCuenta({ nombre: '', tipo: 'efectivo', saldo_inicial: '' })
     setGuardandoCuenta(false)
     cargar()
+  }
+
+  const guardarAjusteSaldo = async () => {
+    if (!ajustandoCuenta || !nuevoSaldo) return
+    setGuardandoAjuste(true)
+    const { error } = await supabase.rpc('ajustar_saldo_cuenta', {
+      p_cuenta_id: ajustandoCuenta.id,
+      p_nuevo_saldo: parseFloat(nuevoSaldo),
+      p_motivo: motivoAjuste || 'Ajuste manual',
+    })
+    setGuardandoAjuste(false)
+    if (!error) {
+      setAjustandoCuenta(null)
+      setNuevoSaldo('')
+      setMotivoAjuste('')
+      cargar()
+    }
   }
 
   const guardarCategoria = async () => {
@@ -236,6 +269,12 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
     }
   }
 
+  const eliminarEgreso = async (id: number) => {
+    if (!confirm('¿Eliminar este egreso? El monto se devolverá a la cuenta de origen.')) return
+    const { error } = await supabase.rpc('revertir_egreso_admin', { p_egreso_id: id })
+    if (!error) cargar()
+  }
+
   const guardarTransferencia = async () => {
     if (!formTransferencia.origen_id || !formTransferencia.destino_id || !formTransferencia.monto) return
     if (formTransferencia.origen_id === formTransferencia.destino_id) {
@@ -262,10 +301,47 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
     }
   }
 
-  const eliminarEgreso = async (id: number) => {
-    if (!confirm('¿Eliminar este egreso?')) return
-    await supabase.from('egresos_administrador').delete().eq('id', id)
-    cargar()
+  const exportarExcel = async () => {
+    const XLSX = await import('xlsx')
+    const wb = XLSX.utils.book_new()
+
+    // Hoja 1: P&L
+    const filasPlY = mesesUnicos.map(mes => {
+      const ing = mapaIngresos.get(mes) ?? 0
+      const variable = mapaVariables.get(mes) ?? 0
+      const fijo = mapaFijos.get(mes) ?? 0
+      const margenBruto = ing - variable
+      const utilidadNeta = margenBruto - fijo
+      return { Mes: mes, Ingresos: ing, 'Costos Variables': variable, 'Margen Bruto': margenBruto, 'Costos Fijos': fijo, 'Utilidad Neta': utilidadNeta }
+    })
+    const wsPL = XLSX.utils.json_to_sheet(filasPlY)
+    XLSX.utils.book_append_sheet(wb, wsPL, 'P&L')
+
+    // Hoja 2: Egresos
+    const filasEgresos = egresos.map(e => ({
+      Fecha: e.fecha,
+      Descripción: e.descripcion,
+      Categoría: (e.categoria as any)?.nombre ?? '—',
+      Subcategoría: (e.subcategoria as any)?.nombre ?? '—',
+      Cuenta: (e.cuenta as any)?.nombre ?? '—',
+      Monto: Number(e.monto),
+      Tipo: e.es_recurrente ? 'Fijo' : 'Variable',
+    }))
+    const wsEg = XLSX.utils.json_to_sheet(filasEgresos)
+    XLSX.utils.book_append_sheet(wb, wsEg, 'Egresos')
+
+    // Hoja 3: Saldos
+    const filasСuentas = cuentas.map(c => ({
+      Cuenta: c.nombre,
+      Tipo: TIPO_CUENTA_LABEL[c.tipo],
+      'Saldo Inicial': Number(c.saldo_inicial),
+      'Saldo Actual': Number(c.saldo_actual),
+    }))
+    const wsCuentas = XLSX.utils.json_to_sheet(filasСuentas)
+    XLSX.utils.book_append_sheet(wb, wsCuentas, 'Cuentas')
+
+    const fecha = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `contabilidad_grpm_${fecha}.xlsx`)
   }
 
   const fmt = (n: number) => `$${Number(n).toFixed(2)}`
@@ -303,12 +379,59 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
 
   return (
     <div className="space-y-5">
-      <div className="flex gap-1 bg-zinc-800/50 rounded-2xl p-1 w-fit flex-wrap">
-        <Tab id="resumen" label="📊 Resumen" />
-        <Tab id="cuentas" label="💰 Cuentas" />
-        <Tab id="egresos" label="💸 Egresos" />
-        <Tab id="transferencias" label="🔄 Transferencias" />
-        <Tab id="balance" label="📈 Balance" />
+
+      {/* Modal ajuste de saldo */}
+      {ajustandoCuenta && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <h2 className="text-sm font-semibold text-white">⚖️ Ajustar saldo — {ajustandoCuenta.nombre}</h2>
+            <p className="text-xs text-zinc-500">Saldo actual: <span className="text-white font-medium">{fmt(Number(ajustandoCuenta.saldo_actual))}</span></p>
+            <input
+              type="number"
+              placeholder="Nuevo saldo *"
+              value={nuevoSaldo}
+              onChange={e => setNuevoSaldo(e.target.value)}
+              className={inputCls}
+            />
+            <input
+              placeholder="Motivo del ajuste (ej: comisión bancaria)"
+              value={motivoAjuste}
+              onChange={e => setMotivoAjuste(e.target.value)}
+              className={inputCls}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setAjustandoCuenta(null); setNuevoSaldo(''); setMotivoAjuste('') }}
+                className="flex-1 rounded-xl border border-zinc-700 px-4 py-2.5 text-sm text-zinc-400 hover:bg-zinc-800 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarAjusteSaldo}
+                disabled={guardandoAjuste || !nuevoSaldo}
+                className="flex-1 rounded-xl bg-white text-zinc-950 px-4 py-2.5 text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 transition-colors"
+              >
+                {guardandoAjuste ? 'Guardando…' : 'Confirmar ajuste'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex gap-1 bg-zinc-800/50 rounded-2xl p-1 flex-wrap">
+          <Tab id="resumen" label="📊 Resumen" />
+          <Tab id="cuentas" label="💰 Cuentas" />
+          <Tab id="egresos" label="💸 Egresos" />
+          <Tab id="transferencias" label="🔄 Transferencias" />
+          <Tab id="balance" label="📈 Balance" />
+        </div>
+        <button
+          onClick={exportarExcel}
+          className="flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-medium text-zinc-300 hover:bg-zinc-700 transition-colors"
+        >
+          📥 Exportar Excel
+        </button>
       </div>
 
       {/* ── RESUMEN ── */}
@@ -328,32 +451,57 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
             ))}
           </div>
 
-          <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-3">
-            <h2 className="text-sm font-semibold text-white">💳 Saldos actuales por cuenta</h2>
-            {cuentas.length === 0 ? (
-              <p className="text-xs text-zinc-500">No hay cuentas — agrégalas en la pestaña Cuentas.</p>
-            ) : (
-              <>
-                {cuentas.map(c => (
-                  <div key={c.id} className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-0">
-                    <div>
-                      <p className="text-sm text-zinc-200">{c.nombre}</p>
-                      <p className={`text-xs ${TIPO_CUENTA_COLOR[c.tipo]}`}>{TIPO_CUENTA_LABEL[c.tipo]}</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-3">
+              <h2 className="text-sm font-semibold text-white">💳 Saldos por cuenta</h2>
+              {cuentas.length === 0 ? (
+                <p className="text-xs text-zinc-500">No hay cuentas.</p>
+              ) : (
+                <>
+                  {cuentas.map(c => (
+                    <div key={c.id} className="flex justify-between items-center py-2 border-b border-zinc-800 last:border-0">
+                      <div>
+                        <p className="text-sm text-zinc-200">{c.nombre}</p>
+                        <p className={`text-xs ${TIPO_CUENTA_COLOR[c.tipo]}`}>{TIPO_CUENTA_LABEL[c.tipo]}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-white">{fmt(Number(c.saldo_actual))}</p>
+                        {Number(c.saldo_actual) !== Number(c.saldo_inicial) && (
+                          <p className="text-[10px] text-zinc-600">Inicial: {fmt(Number(c.saldo_inicial))}</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-white">{fmt(Number(c.saldo_actual))}</p>
-                      {Number(c.saldo_actual) !== Number(c.saldo_inicial) && (
-                        <p className="text-[10px] text-zinc-600">Inicial: {fmt(Number(c.saldo_inicial))}</p>
-                      )}
+                  ))}
+                  <div className="flex justify-between pt-2">
+                    <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Total</span>
+                    <span className="text-sm font-bold text-emerald-400">{fmt(totalSaldoActual)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Distribución de gastos */}
+            <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-3">
+              <h2 className="text-sm font-semibold text-white">🔍 ¿A dónde va el dinero?</h2>
+              {gastosPorSubcat.length === 0 ? (
+                <p className="text-xs text-zinc-500">Sin egresos registrados.</p>
+              ) : (
+                gastosPorSubcat.map(([nombre, monto], i) => (
+                  <div key={nombre} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-300 truncate max-w-[140px]">{nombre}</span>
+                      <span className="text-rose-400 font-medium">{fmt(monto)}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-zinc-800">
+                      <div
+                        className={`h-1.5 rounded-full ${i === 0 ? 'bg-rose-500' : i === 1 ? 'bg-amber-500' : i === 2 ? 'bg-orange-500' : 'bg-zinc-500'}`}
+                        style={{ width: `${(monto / maxGasto) * 100}%` }}
+                      />
                     </div>
                   </div>
-                ))}
-                <div className="flex justify-between pt-2">
-                  <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Total consolidado</span>
-                  <span className="text-sm font-bold text-emerald-400">{fmt(totalSaldoActual)}</span>
-                </div>
-              </>
-            )}
+                ))
+              )}
+            </div>
           </div>
 
           <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-3">
@@ -413,6 +561,7 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
                     <th className="px-5 py-3 text-left">Tipo</th>
                     <th className="px-5 py-3 text-right">Saldo inicial</th>
                     <th className="px-5 py-3 text-right">Saldo actual</th>
+                    <th className="px-5 py-3 text-right"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -422,18 +571,26 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
                       <td className={`px-5 py-3 text-xs ${TIPO_CUENTA_COLOR[c.tipo]}`}>{TIPO_CUENTA_LABEL[c.tipo]}</td>
                       <td className="px-5 py-3 text-right text-zinc-500">{fmt(Number(c.saldo_inicial))}</td>
                       <td className="px-5 py-3 text-right text-white font-bold">{fmt(Number(c.saldo_actual))}</td>
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          onClick={() => { setAjustandoCuenta(c); setNuevoSaldo(String(c.saldo_actual)) }}
+                          className="text-xs font-medium text-zinc-500 hover:text-amber-400 transition-colors"
+                        >
+                          ⚖️ Ajustar
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   <tr className="bg-zinc-800/30">
                     <td colSpan={3} className="px-5 py-3 text-xs font-semibold text-zinc-400 uppercase tracking-wide">Total consolidado</td>
                     <td className="px-5 py-3 text-right text-emerald-400 font-bold">{fmt(totalSaldoActual)}</td>
+                    <td />
                   </tr>
                 </tbody>
               </table>
             )}
           </div>
 
-          {/* Categorías y subcategorías */}
           <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-5">
             <h2 className="text-sm font-semibold text-white">🏷️ Categorías de egreso</h2>
             <div className="grid grid-cols-3 gap-3">
@@ -456,40 +613,39 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
                 </span>
               ))}
             </div>
-
-            </div>
+          </div>
 
           <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-3">
             <h2 className="text-sm font-semibold text-white">🔖 Subcategorías</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <select value={formSubcategoria.categoria_id}
-                  onChange={e => setFormSubcategoria(f => ({ ...f, categoria_id: e.target.value }))} className={inputCls}>
-                  <option value="">— Categoría padre —</option>
-                  {categorias.map(c => <option key={c.id} value={c.id}>{c.icono} {c.nombre}</option>)}
-                </select>
-                <input placeholder="Nombre subcategoría (ej: Marketing)" value={formSubcategoria.nombre}
-                  onChange={e => setFormSubcategoria(f => ({ ...f, nombre: e.target.value }))} className={inputCls} />
-              </div>
-              <button onClick={guardarSubcategoria} disabled={guardandoSubcat} className={btnPrimary}>
-                {guardandoSubcat ? 'Guardando…' : 'Agregar subcategoría'}
-              </button>
-              <div className="space-y-1">
-                {categorias.map(cat => {
-                  const subs = subcategorias.filter(s => s.categoria_id === cat.id)
-                  if (subs.length === 0) return null
-                  return (
-                    <div key={cat.id} className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-zinc-500">{cat.icono} {cat.nombre} →</span>
-                      {subs.map(s => (
-                        <span key={s.id} className="rounded-full bg-zinc-800 border border-zinc-700 px-2.5 py-0.5 text-xs text-zinc-300">
-                          {s.nombre}
-                        </span>
-                      ))}
-                    </div>
-                  )
-                })}
-              </div>
+            <div className="grid grid-cols-2 gap-3">
+              <select value={formSubcategoria.categoria_id}
+                onChange={e => setFormSubcategoria(f => ({ ...f, categoria_id: e.target.value }))} className={inputCls}>
+                <option value="">— Categoría padre —</option>
+                {categorias.map(c => <option key={c.id} value={c.id}>{c.icono} {c.nombre}</option>)}
+              </select>
+              <input placeholder="Nombre subcategoría (ej: Marketing)" value={formSubcategoria.nombre}
+                onChange={e => setFormSubcategoria(f => ({ ...f, nombre: e.target.value }))} className={inputCls} />
             </div>
+            <button onClick={guardarSubcategoria} disabled={guardandoSubcat} className={btnPrimary}>
+              {guardandoSubcat ? 'Guardando…' : 'Agregar subcategoría'}
+            </button>
+            <div className="space-y-1">
+              {categorias.map(cat => {
+                const subs = subcategorias.filter(s => s.categoria_id === cat.id)
+                if (subs.length === 0) return null
+                return (
+                  <div key={cat.id} className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-zinc-500">{cat.icono} {cat.nombre} →</span>
+                    {subs.map(s => (
+                      <span key={s.id} className="rounded-full bg-zinc-800 border border-zinc-700 px-2.5 py-0.5 text-xs text-zinc-300">
+                        {s.nombre}
+                      </span>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
 
@@ -578,7 +734,7 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
                       <td className="px-5 py-3 text-xs text-zinc-500">{new Date(e.fecha).toLocaleDateString('es-EC')}</td>
                       <td className="px-5 py-3 text-right font-medium text-rose-400">-{fmt(Number(e.monto))}</td>
                       <td className="px-5 py-3 text-right">
-                        <button onClick={() => eliminarEgreso(e.id)} className="text-xs text-zinc-600 hover:text-rose-400 transition-colors">✕</button>
+                        <button onClick={() => eliminarEgreso(e.id)} className="text-xs text-zinc-600 hover:text-rose-400 transition-colors" title="Eliminar y revertir saldo">✕</button>
                       </td>
                     </tr>
                   ))}
@@ -661,8 +817,6 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
       {/* ── BALANCE ── */}
       {tab === 'balance' && (
         <div className="space-y-4">
-
-          {/* Filtro de período */}
           <div className="flex gap-1 bg-zinc-800/50 rounded-2xl p-1 w-fit">
             {[
               { id: 'mes', label: 'Este mes' },
@@ -679,7 +833,6 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
             ))}
           </div>
 
-          {/* Tabla P&L */}
           <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
             <div className="px-5 py-4 border-b border-zinc-800">
               <h2 className="text-sm font-semibold text-white">📊 Estado de Resultados (P&L)</h2>
@@ -712,39 +865,6 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
                         <td className={`px-5 py-3 text-right font-medium ${margenBruto >= 0 ? 'text-blue-400' : 'text-rose-400'}`}>{fmt(margenBruto)}</td>
                         <td className="px-5 py-3 text-right text-amber-400">-{fmt(fijo)}</td>
                         <td className={`px-5 py-3 text-right font-bold ${utilidadNeta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmt(utilidadNeta)}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
-            <div className="px-5 py-4 border-b border-zinc-800">
-              <h2 className="text-sm font-semibold text-white">📈 Comparativa visual</h2>
-            </div>
-            {mesesUnicos.length === 0 ? <p className="p-5 text-xs text-zinc-500">Sin datos suficientes.</p> : (
-              <table className="w-full text-sm">
-                <thead className="border-b border-zinc-800 text-xs text-zinc-600 uppercase tracking-wide">
-                  <tr>
-                    <th className="px-5 py-3 text-left">Mes</th>
-                    <th className="px-5 py-3 text-right">Ingresos</th>
-                    <th className="px-5 py-3 text-right">Egresos</th>
-                    <th className="px-5 py-3 text-right">Beneficio neto</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mesesUnicos.map(mes => {
-                    const ing = mapaIngresos.get(mes) ?? 0
-                    const egr = mapaEgresos.get(mes) ?? 0
-                    const neto = ing - egr
-                    return (
-                      <tr key={mes} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                        <td className="px-5 py-3 text-zinc-300 font-medium capitalize">{mes}</td>
-                        <td className="px-5 py-3 text-right text-emerald-400 font-medium">{fmt(ing)}</td>
-                        <td className="px-5 py-3 text-right text-rose-400 font-medium">{fmt(egr)}</td>
-                        <td className={`px-5 py-3 text-right font-bold ${neto >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmt(neto)}</td>
                       </tr>
                     )
                   })}
