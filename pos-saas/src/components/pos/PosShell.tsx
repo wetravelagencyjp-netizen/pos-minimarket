@@ -56,53 +56,77 @@ function CarritoDefault(_props: SlotProps) {
   const router = useRouter()
   const esOscuro = tema === 'oscuro'
 
+  const c = {
+    fondo: esOscuro ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200',
+    header: esOscuro ? 'border-zinc-800' : 'border-slate-200',
+    titulo: esOscuro ? 'text-zinc-100' : 'text-slate-900',
+    btnNav: esOscuro ? 'text-zinc-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-600',
+    itemFondo: esOscuro ? 'bg-zinc-800/60' : 'bg-slate-50 border border-slate-200',
+    itemNombre: esOscuro ? 'text-zinc-100' : 'text-slate-900',
+    itemQuitar: esOscuro ? 'text-zinc-600 hover:text-rose-400' : 'text-slate-300 hover:text-rose-500',
+    btnCantidad: esOscuro ? 'bg-zinc-700 hover:bg-zinc-600 text-zinc-100' : 'bg-slate-200 hover:bg-slate-300 text-slate-700',
+    cantidadText: esOscuro ? 'text-zinc-100' : 'text-slate-900',
+    precio: 'text-indigo-500 font-semibold',
+    footerBorder: esOscuro ? 'border-zinc-800' : 'border-slate-200',
+    totalLabel: esOscuro ? 'text-zinc-400' : 'text-slate-500',
+    totalMonto: esOscuro ? 'text-zinc-100' : 'text-slate-900',
+    btnDisabled: esOscuro ? 'disabled:bg-zinc-800 disabled:text-zinc-600' : 'disabled:bg-slate-100 disabled:text-slate-400',
+    vacio: esOscuro ? 'text-zinc-400' : 'text-slate-400',
+    vacioSub: esOscuro ? 'text-zinc-500' : 'text-slate-400',
+    iconoVacio: esOscuro ? 'bg-zinc-800' : 'bg-slate-100',
+  }
+
   const ToggleTema = (
     <button
       onClick={() => cambiarTema(esOscuro ? 'claro' : 'oscuro')}
       title="Cambiar tema"
-      className="text-slate-400 hover:text-indigo-400 text-xs transition-colors"
+      className={`text-xs px-2 py-1 rounded-lg transition-colors ${esOscuro ? 'text-zinc-500 hover:text-zinc-200' : 'text-slate-400 hover:text-slate-600'}`}
     >
       {esOscuro ? '☀️' : '🌙'}
     </button>
   )
 
+  const Header = (
+    <div className={`px-4 py-3 border-b ${c.header} flex items-center justify-between gap-2`}>
+      <h2 className={`${c.titulo} font-semibold text-sm tracking-wide`}>Venta actual</h2>
+      <div className="flex items-center gap-1">
+        {_props.usuario.rol === 'admin' && (
+          <button onClick={() => router.push('/admin')} className={`${c.btnNav} text-xs transition-colors px-1.5 py-1 rounded-lg`}>
+            ⚙️ Admin
+          </button>
+        )}
+        {(_props.usuario as any).es_superadmin && (
+          <button onClick={() => router.push('/superadmin')} className={`text-xs px-1.5 py-1 rounded-lg transition-colors ${esOscuro ? 'text-zinc-500 hover:text-amber-400' : 'text-slate-400 hover:text-amber-600'}`}>
+            ⚡ Super
+          </button>
+        )}
+        <button onClick={() => router.push('/caja')} className={`${c.btnNav} text-xs transition-colors px-1.5 py-1 rounded-lg`}>
+          💰 Caja
+        </button>
+        {ToggleTema}
+      </div>
+    </div>
+  )
+
   if (items.length === 0) {
     return (
-      <div className="w-80 flex flex-col bg-slate-800 border-l border-slate-700 h-full">
-        <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between gap-2">
-          <h2 className="text-slate-100 font-semibold text-sm tracking-wide">Venta actual</h2>
-          <div className="flex items-center gap-2">
-            {_props.usuario.rol === 'admin' && (
-              <button onClick={() => router.push('/admin')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
-                ⚙️ Admin
-              </button>
-            )}
-            {(_props.usuario as any).es_superadmin && (
-              <button onClick={() => router.push('/superadmin')} className="text-slate-400 hover:text-amber-400 text-xs transition-colors">
-                ⚡ Super
-              </button>
-            )}
-            <button onClick={() => router.push('/caja')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
-              💰 Caja
-            </button>
-            {ToggleTema}
-          </div>
-        </div>
+      <div className={`w-80 flex flex-col ${c.fondo} border-l h-full`}>
+        {Header}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="w-12 h-12 bg-slate-700 rounded-full mx-auto mb-3 flex items-center justify-center">
+            <div className={`w-12 h-12 ${c.iconoVacio} rounded-full mx-auto mb-3 flex items-center justify-center`}>
               <span className="text-2xl">🛒</span>
             </div>
-            <p className="text-slate-400 text-sm">Carrito vacío</p>
-            <p className="text-slate-500 text-xs mt-1">Selecciona un producto para comenzar</p>
+            <p className={`${c.vacio} text-sm`}>Carrito vacío</p>
+            <p className={`${c.vacioSub} text-xs mt-1`}>Selecciona un producto para comenzar</p>
           </div>
         </div>
-        <div className="p-4 border-t border-slate-700 space-y-3">
+        <div className={`p-4 border-t ${c.footerBorder} space-y-3`}>
           <div className="flex justify-between items-center">
-            <span className="text-slate-400 text-sm">Total</span>
-            <span className="text-slate-100 font-bold text-xl">$0.00</span>
+            <span className={`${c.totalLabel} text-sm`}>Total</span>
+            <span className={`${c.totalMonto} font-bold text-xl`}>$0.00</span>
           </div>
-          <button disabled className="w-full bg-indigo-600 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold py-3 rounded-xl transition-all duration-200 text-sm tracking-wide">
+          <button disabled className={`w-full bg-indigo-600 ${c.btnDisabled} text-white font-semibold py-3 rounded-xl transition-all duration-200 text-sm tracking-wide`}>
             Cobrar
           </button>
         </div>
@@ -111,41 +135,20 @@ function CarritoDefault(_props: SlotProps) {
   }
 
   return (
-    <div className="w-80 flex flex-col bg-slate-800 border-l border-slate-700 h-full">
-      <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between gap-2">
-        <h2 className="text-slate-100 font-semibold text-sm tracking-wide">Venta actual</h2>
-        <div className="flex items-center gap-2">
-          {_props.usuario.rol === 'admin' && (
-            <button onClick={() => router.push('/admin')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
-              ⚙️ Admin
-            </button>
-          )}
-          {(_props.usuario as any).es_superadmin && (
-            <button onClick={() => router.push('/superadmin')} className="text-slate-400 hover:text-amber-400 text-xs transition-colors">
-              ⚡ Super
-            </button>
-          )}
-          <button onClick={() => router.push('/caja')} className="text-slate-400 hover:text-indigo-400 text-xs transition-colors">
-            💰 Caja
-          </button>
-          {ToggleTema}
-        </div>
-      </div>
+    <div className={`w-80 flex flex-col ${c.fondo} border-l h-full`}>
+      {Header}
 
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {items.map((item) => (
-          <div key={item.productoId} className="bg-slate-700/50 rounded-lg p-3">
+          <div key={item.productoId} className={`${c.itemFondo} rounded-xl p-3`}>
             <div className="flex justify-between items-start gap-2">
-              <p className="text-slate-100 text-sm font-medium flex-1 flex items-center gap-1.5">
+              <p className={`${c.itemNombre} text-sm font-medium flex-1 flex items-center gap-1.5`}>
                 {item.nombre}
                 {item.esReserva && (
                   <span className="bg-amber-500/15 text-amber-400 text-[10px] font-semibold px-1.5 py-0.5 rounded">Reserva</span>
                 )}
               </p>
-              <button
-                onClick={() => quitarItem(item.productoId)}
-                className="text-slate-500 hover:text-red-400 text-xs transition-colors"
-              >
+              <button onClick={() => quitarItem(item.productoId)} className={`${c.itemQuitar} text-xs transition-colors`}>
                 ✕
               </button>
             </div>
@@ -153,20 +156,20 @@ function CarritoDefault(_props: SlotProps) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => cambiarCantidad(item.productoId, item.cantidad - 1)}
-                  className="w-6 h-6 rounded bg-slate-600 hover:bg-slate-500 text-slate-100 text-sm transition-colors"
+                  className={`w-6 h-6 rounded-lg ${c.btnCantidad} text-sm transition-colors`}
                 >
                   −
                 </button>
-                <span className="text-slate-100 text-sm w-6 text-center">{item.cantidad}</span>
+                <span className={`${c.cantidadText} text-sm w-6 text-center`}>{item.cantidad}</span>
                 <button
                   onClick={() => cambiarCantidad(item.productoId, item.cantidad + 1, _props.establecimiento.permite_venta_sin_stock)}
                   disabled={item.cantidad >= item.stockDisponible && !_props.establecimiento.permite_venta_sin_stock}
-                  className="w-6 h-6 rounded bg-slate-600 hover:bg-slate-500 disabled:opacity-40 text-slate-100 text-sm transition-colors"
+                  className={`w-6 h-6 rounded-lg ${c.btnCantidad} disabled:opacity-40 text-sm transition-colors`}
                 >
                   +
                 </button>
               </div>
-              <span className="text-indigo-400 font-semibold text-sm">
+              <span className={`${c.precio} text-sm`}>
                 ${(item.precioUnitario * item.cantidad).toFixed(2)}
               </span>
             </div>
@@ -174,10 +177,10 @@ function CarritoDefault(_props: SlotProps) {
         ))}
       </div>
 
-      <div className="p-4 border-t border-slate-700 space-y-3">
+      <div className={`p-4 border-t ${c.footerBorder} space-y-3`}>
         <div className="flex justify-between items-center">
-          <span className="text-slate-400 text-sm">Total</span>
-          <span className="text-slate-100 font-bold text-xl">${total.toFixed(2)}</span>
+          <span className={`${c.totalLabel} text-sm`}>Total</span>
+          <span className={`${c.totalMonto} font-bold text-xl`}>${total.toFixed(2)}</span>
         </div>
         <button
           onClick={() => setMostrarCheckout(true)}
