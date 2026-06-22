@@ -49,6 +49,11 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState<string | null>(null)
 
+  // Productos para autocomplete
+  const [productos, setProductos] = useState<{ id: number; nombre: string; precio_venta: number }[]>([])
+  const [sugerencias, setSugerencias] = useState<{ id: number; nombre: string; precio_venta: number }[]>([])
+  const [itemConFoco, setItemConFoco] = useState<number | null>(null)
+
   // Form
   const [cliente, setCliente] = useState({ nombre: '', identificacion: '', email: '', telefono: '', direccion: '' })
   const [items, setItems] = useState<ItemCot[]>([{ nombre: '', cantidad: 1, precioUnitario: 0, descuento: 0 }])
@@ -86,6 +91,12 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
 
   useEffect(() => { cargar() }, [cargar])
 
+  useEffect(() => {
+    supabase.from('productos').select('id, nombre, precio_venta')
+      .eq('establecimiento_id', establecimientoId).order('nombre')
+      .then(({ data }) => setProductos(data ?? []))
+  }, [establecimientoId])
+
   const calcTotales = () => {
     const subtotal = items.reduce((s, it) => s + (it.precioUnitario - it.descuento) * it.cantidad, 0)
     const montoDescGlobal = activarDescuento ? subtotal * (descuentoGlobal / 100) : 0
@@ -99,6 +110,20 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
   const quitarItem = (i: number) => setItems(prev => prev.filter((_, idx) => idx !== i))
   const actualizarItem = (i: number, campo: keyof ItemCot, valor: string | number) => {
     setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [campo]: valor } : it))
+    if (campo === 'nombre' && typeof valor === 'string' && valor.length >= 1) {
+      const filtro = productos.filter(p => p.nombre.toLowerCase().includes(valor.toLowerCase())).slice(0, 6)
+      setSugerencias(filtro)
+      setItemConFoco(i)
+    } else if (campo === 'nombre') {
+      setSugerencias([])
+      setItemConFoco(null)
+    }
+  }
+
+  const seleccionarProducto = (i: number, p: { nombre: string; precio_venta: number }) => {
+    setItems(prev => prev.map((it, idx) => idx === i ? { ...it, nombre: p.nombre, precioUnitario: p.precio_venta } : it))
+    setSugerencias([])
+    setItemConFoco(null)
   }
 
   const generarNumero = () => `COT-${Date.now().toString().slice(-8)}`
@@ -246,8 +271,29 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
                 <tbody>
                   {items.map((it, i) => (
                     <tr key={i} className={`border-t ${esOscuro ? 'border-zinc-700' : 'border-slate-100'}`}>
-                      <td className="px-2 py-1.5">
-                        <input placeholder="Nombre del producto/servicio" value={it.nombre} onChange={e => actualizarItem(i, 'nombre', e.target.value)} className={inputCls} />
+                      <td className="px-2 py-1.5 relative">
+                        <input
+                          placeholder="Nombre del producto/servicio"
+                          value={it.nombre}
+                          onChange={e => actualizarItem(i, 'nombre', e.target.value)}
+                          onBlur={() => setTimeout(() => { setSugerencias([]); setItemConFoco(null) }, 150)}
+                          className={inputCls}
+                          autoComplete="off"
+                        />
+                        {itemConFoco === i && sugerencias.length > 0 && (
+                          <div className={`absolute left-2 right-2 top-full mt-1 rounded-xl border shadow-lg z-50 overflow-hidden ${esOscuro ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-slate-200'}`}>
+                            {sugerencias.map(p => (
+                              <button
+                                key={p.id}
+                                onMouseDown={() => seleccionarProducto(i, p)}
+                                className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${esOscuro ? 'hover:bg-zinc-800 text-zinc-200' : 'hover:bg-slate-50 text-slate-700'}`}
+                              >
+                                <span className="truncate">{p.nombre}</span>
+                                <span className={`ml-2 font-semibold text-indigo-500 flex-shrink-0`}>${p.precio_venta.toFixed(2)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="px-2 py-1.5">
                         <input type="number" min="1" value={it.cantidad} onChange={e => actualizarItem(i, 'cantidad', parseFloat(e.target.value) || 1)} className={`${inputCls} text-center`} />
