@@ -4,8 +4,10 @@ import { useAuth } from '@/lib/auth-context'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import ModalEmitirFactura from '@/components/pos/ModalEmitirFactura'
+import SeccionContabilidad from '@/components/admin/SeccionContabilidad'
+import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 
-type Seccion = 'dashboard' | 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes'
+type Seccion = 'dashboard' | 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes' | 'contabilidad'
 
 export default function AdminPage() {
   const { usuario, logout } = useAuth()
@@ -13,6 +15,8 @@ export default function AdminPage() {
   const estabId = Number(usuario?.establecimiento_id ?? 1)
   const [seccion, setSeccion] = useState<Seccion>('dashboard')
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
+  const { establecimiento } = useEstablecimiento()
+  const tieneContabilidad = establecimiento?.modulo_contabilidad ?? false
 
   useEffect(() => {
     if (!estabId) return
@@ -105,6 +109,12 @@ export default function AdminPage() {
           <NavItem icono="💸" label="Gastos" onClick={() => router.push('/admin/gastos')} />
           <NavItem icono="📈" label="Finanzas" onClick={() => router.push('/admin/finanzas')} />
 
+          {tieneContabilidad && (
+            <>
+              <Divider label="Contabilidad" />
+              <NavItem id="contabilidad" icono="📒" label="Contabilidad" onClick={() => setSeccion('contabilidad')} />
+            </>
+          )}
           <Divider label="Sistema" />
           <NavItem icono="⚙️" label="Configuración" onClick={() => router.push('/admin/configuracion')} />
           <NavItem icono="👥" label="Usuarios" onClick={() => router.push('/admin/usuarios')} />
@@ -136,7 +146,8 @@ export default function AdminPage() {
                seccion === 'productos' ? 'Productos' :
                seccion === 'vendedores' ? 'Vendedores' :
                seccion === 'categorias' ? 'Categorías' :
-               seccion === 'equipo' ? 'Mi equipo' : 'Reportes'}
+               seccion === 'equipo' ? 'Mi equipo' :
+               seccion === 'contabilidad' ? 'Contabilidad de GRPM' : 'Reportes'}
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -158,6 +169,7 @@ export default function AdminPage() {
         {/* Secciones */}
         <main className="flex-1 overflow-y-auto bg-slate-50 p-6">
           {seccion === 'dashboard' && <ResumenDiarioLive establecimientoId={estabId} />}
+          {seccion === 'contabilidad' && <SeccionContabilidad establecimientoId={estabId} />}
           {seccion === 'productos' && <SeccionProductos establecimientoId={estabId} />}
           {seccion === 'vendedores' && <SeccionVendedores establecimientoId={estabId} />}
           {seccion === 'categorias' && <SeccionCategorias establecimientoId={estabId} />}
