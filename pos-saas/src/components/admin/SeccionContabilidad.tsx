@@ -431,8 +431,10 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
               ))}
             </div>
 
-            <div className="border-t border-zinc-800 pt-4 space-y-3">
-              <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Subcategorías</h3>
+            </div>
+
+          <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-3">
+            <h2 className="text-sm font-semibold text-white">🔖 Subcategorías</h2>
               <div className="grid grid-cols-2 gap-3">
                 <select value={formSubcategoria.categoria_id}
                   onChange={e => setFormSubcategoria(f => ({ ...f, categoria_id: e.target.value }))} className={inputCls}>
@@ -462,7 +464,6 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
                 })}
               </div>
             </div>
-          </div>
         </div>
       )}
 
