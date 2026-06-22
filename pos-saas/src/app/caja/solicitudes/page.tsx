@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useRegistrarVenta } from '@/core/hooks/useRegistrarVenta'
 import { supabase } from '@/lib/supabase'
+import { imprimirRecibo } from '@/lib/imprimirRecibo'
 
 interface Solicitud {
   id: number
@@ -26,6 +27,7 @@ export default function SolicitudesPage() {
   const [loading, setLoading] = useState(true)
   const [completando, setCompletando] = useState<number | null>(null)
   const [mensaje, setMensaje] = useState<string | null>(null)
+  const [ultimaVenta, setUltimaVenta] = useState<{ numeroComprobante: string; datos: any } | null>(null)
 
   const cargar = useCallback(async () => {
     if (!usuario) return
@@ -81,11 +83,37 @@ export default function SolicitudesPage() {
     if (res.success) {
       await supabase.from('solicitudes_autorizacion').update({ estado: 'completada' }).eq('id', s.id)
       setMensaje(`✅ Venta completada — comprobante ${res.numeroComprobante}`)
+      setUltimaVenta({ numeroComprobante: res.numeroComprobante ?? '', datos: s })
       cargar()
     } else {
       setMensaje(`❌ ${res.error}`)
     }
     setCompletando(null)
+  }
+
+  function handleImprimir() {
+    if (!ultimaVenta) return
+    const datos = ultimaVenta.datos.items_json
+    imprimirRecibo({
+      nombreNegocio: 'Mi Negocio',
+      ruc: null,
+      direccion: null,
+      numeroComprobante: ultimaVenta.numeroComprobante,
+      claveAcceso: null,
+      fecha: new Date().toLocaleString('es-EC'),
+      cajero: null,
+      items: (datos.items ?? []).map((it: any) => ({
+        nombre: it.nombre,
+        cantidad: it.cantidad,
+        precioUnitario: it.precioUnitario,
+      })),
+      pagos: (datos.pagos ?? []).map((p: any) => ({
+        metodo: p.metodo,
+        monto: parseFloat(p.monto) || 0,
+      })),
+      total: datos.total ?? 0,
+      ancho: '80mm',
+    })
   }
 
   const fmt = (n: number) => `$${Number(n).toFixed(2)}`
@@ -107,6 +135,14 @@ export default function SolicitudesPage() {
           <div className={`rounded-xl px-4 py-3 text-sm ${mensaje.startsWith('✅') ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
             {mensaje}
           </div>
+        )}
+        {ultimaVenta && (
+          <button
+            onClick={handleImprimir}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            🖨️ Imprimir recibo
+          </button>
         )}
 
         {loading ? (
