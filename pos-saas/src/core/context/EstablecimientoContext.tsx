@@ -53,7 +53,7 @@ export function EstablecimientoProvider({ children }: { children: ReactNode }) {
         console.log('🔵 PASO 4: Buscando establecimiento con id:', usuarioData.establecimiento_id)
         const { data: establecimientoData, error: establecimientoError } = await supabase
           .from('establecimientos')
-          .select('id, nombre, ruc_nit, direccion, .select('id, nombre, ruc_nit, direccion, estado_suscripcion, estado_cuenta, fecha_vencimiento, plan_actual, limite_productos, modo_multivendedor, margen_costo_estimado, business_type, creado_en, alerta_caducidad_dias, alerta_caducidad_estilo, permite_venta_sin_stock, pais, ancho_recibo, logo_url')
+          .select('id, nombre, ruc_nit, direccion, estado_suscripcion, estado_cuenta, fecha_vencimiento, plan_actual, limite_productos, modo_multivendedor, margen_costo_estimado, business_type, creado_en, alerta_caducidad_dias, alerta_caducidad_estilo, permite_venta_sin_stock, pais, ancho_recibo, logo_url')
           .eq('id', usuarioData.establecimiento_id)
           .single()
 
