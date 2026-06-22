@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { imprimirRecibo } from '@/lib/imprimirRecibo'
 import { useCarrito } from '@/core/context/CarritoContext'
 import { useRegistrarVenta, type MetodoPago } from '@/core/hooks/useRegistrarVenta'
 import SelectorCliente, { type ClienteConCredito } from './SelectorCliente'
@@ -46,7 +47,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const [facturaEmitida, setFacturaEmitida] = useState(false)
   const [notificando, setNotificando] = useState(false)
   const [solicitudEnviada, setSolicitudEnviada] = useState(false)
-  const { tema, cambiarTema } = useEstablecimiento()
+  const { tema, cambiarTema, establecimiento } = useEstablecimiento()
   const [userId, setUserId] = useState<string | null>(null)
 
   const [pagos, setPagos] = useState<LineaPago[]>([{ metodo: 'efectivo', monto: total.toFixed(2), bancoId: null }])
@@ -208,6 +209,29 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
     setErrorCredito(null)
   }
 
+  function handleImprimir() {
+    imprimirRecibo({
+      nombreNegocio: establecimiento?.nombre ?? 'Mi Negocio',
+      ruc: establecimiento?.ruc_nit ?? null,
+      direccion: establecimiento?.direccion ?? null,
+      numeroComprobante: resultado?.numeroComprobante ?? '',
+      claveAcceso: null,
+      fecha: new Date().toLocaleString('es-EC'),
+      cajero: null,
+      items: items.map((it) => ({
+        nombre: it.nombre,
+        cantidad: it.cantidad,
+        precioUnitario: it.precioUnitario,
+      })),
+      pagos: pagos.map((p) => ({
+        metodo: p.metodo,
+        monto: parseFloat(p.monto) || 0,
+      })),
+      total,
+      ancho: (establecimiento?.ancho_recibo as '80mm' | '58mm') ?? '80mm',
+    })
+  }
+
   const esOscuro = tema === 'oscuro'
 
   // Tokens de estilo por tema
@@ -297,6 +321,13 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
               onEmitido={() => { setMostrarFactura(false); setFacturaEmitida(true) }}
             />
           )}
+
+          <button
+            onClick={handleImprimir}
+            className={`w-full font-medium py-3 rounded-xl transition-colors text-sm ${t.btnSecundario}`}
+          >
+            🖨️ Imprimir recibo
+          </button>
 
           <button
             onClick={() => { vaciarCarrito(); onClose() }}
