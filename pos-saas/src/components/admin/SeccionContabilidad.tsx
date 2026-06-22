@@ -140,7 +140,7 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
     }
     setIngresosPorMes(Object.entries(porMesIngreso).map(([mes, total]) => ({ mes, total })))
 
-    cconst porMesEgreso: Record<string, number> = {}
+    const porMesEgreso: Record<string, number> = {}
     const porMesFijo: Record<string, number> = {}
     const porMesVariable: Record<string, number> = {}
     for (const e of egAdmin ?? []) {
