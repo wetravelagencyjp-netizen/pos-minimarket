@@ -38,6 +38,7 @@ export interface Establecimiento {
   pais: string
   ancho_recibo: '80mm' | '58mm' | null
   logo_url: string | null
+  modulo_contabilidad: boolean
 }
 
 // ─── Perfil del usuario autenticado (tabla real: usuarios) ────
