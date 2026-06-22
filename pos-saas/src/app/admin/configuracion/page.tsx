@@ -34,6 +34,10 @@ export default function ConfiguracionPage() {
   const [permiteSinStock, setPermiteSinStock]   = useState(false)
   const [guardandoStock,  setGuardandoStock]    = useState(false)
 
+  // ── Recibo ──────────────────────────────────────────────────
+  const [anchoRecibo, setAnchoRecibo] = useState<'80mm' | '58mm'>('80mm')
+  const [guardandoRecibo, setGuardandoRecibo] = useState(false)
+
   // ── Bancos ──────────────────────────────────────────────────
   const [bancos,          setBancos]          = useState<{ id: number; nombre: string }[]>([])
   const [nuevoBanco,      setNuevoBanco]      = useState('')
@@ -57,7 +61,7 @@ export default function ConfiguracionPage() {
   const cargarEstab = useCallback(async () => {
     const { data } = await supabase
       .from('establecimientos')
-      .select('nombre, margen_costo_estimado, alerta_caducidad_dias, alerta_caducidad_estilo, permite_venta_sin_stock, logo_url')
+      .select('nombre, margen_costo_estimado, alerta_caducidad_dias, alerta_caducidad_estilo, permite_venta_sin_stock, logo_url, ancho_recibo')
       .eq('id', estabId)
       .single()
     if (data) {
@@ -67,6 +71,7 @@ export default function ConfiguracionPage() {
       setAlertaEstilo((data.alerta_caducidad_estilo as 'discreto' | 'llamativo') ?? 'llamativo')
       setPermiteSinStock(data.permite_venta_sin_stock ?? false)
       setLogoUrl(data.logo_url ?? null)
+      setAnchoRecibo((data.ancho_recibo as '80mm' | '58mm') ?? '80mm')
     }
   }, [estabId])
 
@@ -170,6 +175,13 @@ export default function ConfiguracionPage() {
       setPin('')
       setPinConfirmar('')
     }
+  }
+
+  const cambiarAnchoRecibo = async (valor: '80mm' | '58mm') => {
+    setGuardandoRecibo(true)
+    setAnchoRecibo(valor)
+    await supabase.from('establecimientos').update({ ancho_recibo: valor }).eq('id', estabId)
+    setGuardandoRecibo(false)
   }
 
   const agregarBanco = async () => {
@@ -396,6 +408,22 @@ export default function ConfiguracionPage() {
             className="mt-4 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50">
             {guardandoPin ? 'Guardando…' : 'Guardar PIN'}
           </button>
+        </div>
+
+        {/* Recibo */}
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/50">
+          <h2 className="mb-1 text-sm font-semibold tracking-tight text-slate-900">🧾 Formato de recibo</h2>
+          <p className="mb-5 text-xs text-slate-500">Ancho de papel de tu impresora térmica.</p>
+          <div className="flex gap-2">
+            {(['80mm', '58mm'] as const).map((opcion) => (
+              <button key={opcion} onClick={() => cambiarAnchoRecibo(opcion)} disabled={guardandoRecibo}
+                className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+                  anchoRecibo === opcion ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}>
+                {opcion}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Bancos */}
