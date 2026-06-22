@@ -8,6 +8,8 @@ import SelectorCliente, { type ClienteConCredito } from './SelectorCliente'
 import ModalEmitirFactura from './ModalEmitirFactura'
 import { supabase } from '@/lib/supabase'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
+import { imprimirRecibo } from '@/lib/imprimirRecibo'
+import { imprimirRecibo } from '@/lib/imprimirRecibo'
 
 interface CheckoutModalProps {
   establecimientoId: number
@@ -232,6 +234,29 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
     })
   }
 
+  function handleImprimir() {
+    imprimirRecibo({
+      nombreNegocio: establecimiento?.nombre ?? 'Mi Negocio',
+      ruc: establecimiento?.ruc_nit ?? null,
+      direccion: establecimiento?.direccion ?? null,
+      numeroComprobante: resultado?.numeroComprobante ?? '',
+      claveAcceso: null,
+      fecha: new Date().toLocaleString('es-EC'),
+      cajero: null,
+      items: items.map((it) => ({
+        nombre: it.nombre,
+        cantidad: it.cantidad,
+        precioUnitario: it.precioUnitario,
+      })),
+      pagos: pagos.map((p) => ({
+        metodo: p.metodo,
+        monto: parseFloat(p.monto) || 0,
+      })),
+      total,
+      ancho: (establecimiento?.ancho_recibo as '80mm' | '58mm') ?? '80mm',
+    })
+  }
+
   const esOscuro = tema === 'oscuro'
 
   // Tokens de estilo por tema
@@ -321,6 +346,13 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
               onEmitido={() => { setMostrarFactura(false); setFacturaEmitida(true) }}
             />
           )}
+
+          <button
+            onClick={handleImprimir}
+            className={`w-full font-medium py-3 rounded-xl transition-colors text-sm ${t.btnSecundario}`}
+          >
+            🖨️ Imprimir recibo
+          </button>
 
           <button
             onClick={handleImprimir}
