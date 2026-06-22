@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import { AuthProvider } from '@/lib/auth-context'
 import { EstablecimientoProvider } from '@/core/context/EstablecimientoContext'
 import { CarritoProvider } from '@/core/context/CarritoContext'
+import NotificacionAprobacion from '@/components/NotificacionAprobacion'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <EstablecimientoProvider>
             <CarritoProvider>
               {children}
+              <NotificacionAprobacion />
             </CarritoProvider>
           </EstablecimientoProvider>
         </AuthProvider>

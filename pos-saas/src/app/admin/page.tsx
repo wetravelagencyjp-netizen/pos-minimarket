@@ -177,6 +177,7 @@ function ResumenDiarioLive({ establecimientoId }: { establecimientoId: number })
     ticketPromedio: number
     comprobantesHoy: number
     porMetodo: Record<string, number>
+    porBanco: Record<string, number>
     topProductos: { nombre: string; cantidad: number; total: number }[]
     ultimaActualizacion: Date
   } | null>(null)
@@ -190,7 +191,7 @@ function ResumenDiarioLive({ establecimientoId }: { establecimientoId: number })
     const [{ data: ventas }, { data: detalle }, { data: pagos }, { count: comprobantes }] = await Promise.all([
       supabase.from('ventas').select('id, total, sri_comprobante_id').eq('establecimiento_id', establecimientoId).gte('fecha_venta', fechaInicio),
       supabase.from('detalle_ventas').select('cantidad, precio_unitario, producto:productos(nombre), venta:ventas!inner(establecimiento_id, fecha_venta)').eq('venta.establecimiento_id', establecimientoId).gte('venta.fecha_venta', fechaInicio),
-      supabase.from('pagos_venta').select('metodo_pago, monto, venta:ventas!inner(establecimiento_id, fecha_venta)').eq('venta.establecimiento_id', establecimientoId).gte('venta.fecha_venta', fechaInicio),
+      supabase.from('pagos_venta').select('metodo_pago, monto, banco_id, bancos(nombre), venta:ventas!inner(establecimiento_id, fecha_venta)').eq('venta.establecimiento_id', establecimientoId).gte('venta.fecha_venta', fechaInicio),
       supabase.from('sri_comprobantes').select('id', { count: 'exact', head: true }).eq('establecimiento_id', establecimientoId).eq('estado', 'AUTORIZADO').gte('fecha_emision', fechaInicio),
     ])
 
@@ -198,8 +199,13 @@ function ResumenDiarioLive({ establecimientoId }: { establecimientoId: number })
     const numTransacciones = (ventas ?? []).length
 
     const porMetodo: Record<string, number> = {}
+    const porBanco: Record<string, number> = {}
     for (const p of pagos ?? []) {
       porMetodo[p.metodo_pago] = (porMetodo[p.metodo_pago] ?? 0) + Number(p.monto)
+      if (p.metodo_pago === 'transferencia') {
+        const banco = (p as any).bancos?.nombre ?? 'Sin banco'
+        porBanco[banco] = (porBanco[banco] ?? 0) + Number(p.monto)
+      }
     }
 
     const porProducto: Record<string, { nombre: string; cantidad: number; total: number }> = {}
@@ -217,6 +223,7 @@ function ResumenDiarioLive({ establecimientoId }: { establecimientoId: number })
       ticketPromedio: numTransacciones ? totalVentas / numTransacciones : 0,
       comprobantesHoy: comprobantes ?? 0,
       porMetodo,
+      porBanco,
       topProductos,
       ultimaActualizacion: new Date(),
     })
@@ -277,21 +284,34 @@ function ResumenDiarioLive({ establecimientoId }: { establecimientoId: number })
           {Object.keys(datos?.porMetodo ?? {}).length === 0 ? (
             <p className="text-xs text-zinc-500">Sin ventas hoy</p>
           ) : (
-            Object.entries(datos?.porMetodo ?? {}).sort((a, b) => b[1] - a[1]).map(([metodo, monto]) => (
-              <div key={metodo} className="space-y-1.5">
-                <div className="flex justify-between text-sm">
-                  <span className="text-zinc-300">{METODO_LABEL[metodo] ?? metodo}</span>
-                  <span className="font-medium text-white">{fmt(monto)}</span>
+            <>
+              {Object.entries(datos?.porMetodo ?? {}).sort((a, b) => b[1] - a[1]).map(([metodo, monto]) => (
+                <div key={metodo} className="space-y-1.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-300">{METODO_LABEL[metodo] ?? metodo}</span>
+                    <span className="font-medium text-white">{fmt(monto)}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-zinc-800">
+                    <div
+                      className={`h-1.5 rounded-full ${METODO_COLOR[metodo] ?? 'bg-slate-500'}`}
+                      style={{ width: `${(monto / totalMetodos) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-zinc-600">{((monto / totalMetodos) * 100).toFixed(1)}% del total</p>
                 </div>
-                <div className="h-1.5 rounded-full bg-zinc-800">
-                  <div
-                    className={`h-1.5 rounded-full ${METODO_COLOR[metodo] ?? 'bg-slate-500'}`}
-                    style={{ width: `${(monto / totalMetodos) * 100}%` }}
-                  />
+              ))}
+              {Object.keys(datos?.porBanco ?? {}).length > 0 && (
+                <div className="pt-3 border-t border-zinc-800 space-y-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Desglose por banco</p>
+                  {Object.entries(datos?.porBanco ?? {}).sort((a, b) => b[1] - a[1]).map(([banco, monto]) => (
+                    <div key={banco} className="flex justify-between text-xs">
+                      <span className="text-zinc-400">🏦 {banco}</span>
+                      <span className="font-medium text-violet-400">{fmt(monto)}</span>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-[10px] text-zinc-600">{((monto / totalMetodos) * 100).toFixed(1)}% del total</p>
-              </div>
-            ))
+              )}
+            </>
           )}
         </div>
 
