@@ -5,13 +5,13 @@ import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import ModalEmitirFactura from '@/components/pos/ModalEmitirFactura'
 
-type Seccion = 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes'
+type Seccion = 'dashboard' | 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes'
 
 export default function AdminPage() {
   const { usuario, logout } = useAuth()
   const router = useRouter()
   const estabId = Number(usuario?.establecimiento_id ?? 1)
-  const [seccion, setSeccion] = useState<Seccion>('productos')
+  const [seccion, setSeccion] = useState<Seccion>('dashboard')
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
 
   useEffect(() => {
@@ -86,6 +86,13 @@ export default function AdminPage() {
         <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
 
           <Divider label="Operación" />
+          <NavItem id="dashboard" icono="⚡" label="Dashboard" onClick={() => setSeccion('dashboard')} />
+          <NavItem
+            icono="🔔"
+            label="Notificaciones"
+            onClick={() => router.push('/admin/notificaciones')}
+            badge={solicitudesPendientes}
+          />
           <NavItem icono="🏪" label="Punto de Venta" onClick={() => router.push('/pos')} />
           <NavItem icono="💰" label="Control de Caja" onClick={() => router.push('/caja')} />
           <NavItem id="reportes" icono="📊" label="Ventas" onClick={() => setSeccion('reportes')} />
@@ -103,12 +110,6 @@ export default function AdminPage() {
           <NavItem icono="👥" label="Usuarios" onClick={() => router.push('/admin/usuarios')} />
           <NavItem icono="📋" label="Cierres de Caja" onClick={() => router.push('/admin/cajas')} />
           <NavItem icono="🧾" label="Facturación SRI" onClick={() => router.push('/admin/facturacion')} />
-          <NavItem
-            icono="🔔"
-            label="Notificaciones"
-            onClick={() => router.push('/admin/notificaciones')}
-            badge={solicitudesPendientes}
-          />
 
         </nav>
 
@@ -131,7 +132,8 @@ export default function AdminPage() {
         <header className="flex items-center justify-between border-b border-zinc-800/60 bg-zinc-900 px-6 py-3.5">
           <div>
             <h1 className="text-sm font-semibold text-white capitalize">
-              {seccion === 'productos' ? 'Productos' :
+              {seccion === 'dashboard' ? 'Dashboard' :
+               seccion === 'productos' ? 'Productos' :
                seccion === 'vendedores' ? 'Vendedores' :
                seccion === 'categorias' ? 'Categorías' :
                seccion === 'equipo' ? 'Mi equipo' : 'Reportes'}
@@ -155,12 +157,175 @@ export default function AdminPage() {
 
         {/* Secciones */}
         <main className="flex-1 overflow-y-auto bg-slate-50 p-6">
+          {seccion === 'dashboard' && <ResumenDiarioLive establecimientoId={estabId} />}
           {seccion === 'productos' && <SeccionProductos establecimientoId={estabId} />}
           {seccion === 'vendedores' && <SeccionVendedores establecimientoId={estabId} />}
           {seccion === 'categorias' && <SeccionCategorias establecimientoId={estabId} />}
           {seccion === 'equipo' && <SeccionEquipo establecimientoId={estabId} />}
           {seccion === 'reportes' && <SeccionReportes establecimientoId={estabId} />}
         </main>
+      </div>
+    </div>
+  )
+}
+
+// ─── DASHBOARD / RESUMEN DIARIO LIVE ──────────────────────
+function ResumenDiarioLive({ establecimientoId }: { establecimientoId: number }) {
+  const [datos, setDatos] = useState<{
+    totalVentas: number
+    numTransacciones: number
+    ticketPromedio: number
+    comprobantesHoy: number
+    porMetodo: Record<string, number>
+    topProductos: { nombre: string; cantidad: number; total: number }[]
+    ultimaActualizacion: Date
+  } | null>(null)
+  const [cargando, setCargando] = useState(true)
+
+  const cargar = useCallback(async () => {
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+    const fechaInicio = hoy.toISOString()
+
+    const [{ data: ventas }, { data: detalle }, { data: pagos }, { count: comprobantes }] = await Promise.all([
+      supabase.from('ventas').select('id, total, sri_comprobante_id').eq('establecimiento_id', establecimientoId).gte('fecha_venta', fechaInicio),
+      supabase.from('detalle_ventas').select('cantidad, precio_unitario, producto:productos(nombre), venta:ventas!inner(establecimiento_id, fecha_venta)').eq('venta.establecimiento_id', establecimientoId).gte('venta.fecha_venta', fechaInicio),
+      supabase.from('pagos_venta').select('metodo_pago, monto, venta:ventas!inner(establecimiento_id, fecha_venta)').eq('venta.establecimiento_id', establecimientoId).gte('venta.fecha_venta', fechaInicio),
+      supabase.from('sri_comprobantes').select('id', { count: 'exact', head: true }).eq('establecimiento_id', establecimientoId).eq('estado', 'AUTORIZADO').gte('fecha_emision', fechaInicio),
+    ])
+
+    const totalVentas = (ventas ?? []).reduce((s, v) => s + v.total, 0)
+    const numTransacciones = (ventas ?? []).length
+
+    const porMetodo: Record<string, number> = {}
+    for (const p of pagos ?? []) {
+      porMetodo[p.metodo_pago] = (porMetodo[p.metodo_pago] ?? 0) + Number(p.monto)
+    }
+
+    const porProducto: Record<string, { nombre: string; cantidad: number; total: number }> = {}
+    for (const d of detalle ?? []) {
+      const nombre = (d.producto as any)?.nombre ?? 'Desconocido'
+      if (!porProducto[nombre]) porProducto[nombre] = { nombre, cantidad: 0, total: 0 }
+      porProducto[nombre].cantidad += d.cantidad
+      porProducto[nombre].total += d.precio_unitario * d.cantidad
+    }
+    const topProductos = Object.values(porProducto).sort((a, b) => b.cantidad - a.cantidad).slice(0, 5)
+
+    setDatos({
+      totalVentas,
+      numTransacciones,
+      ticketPromedio: numTransacciones ? totalVentas / numTransacciones : 0,
+      comprobantesHoy: comprobantes ?? 0,
+      porMetodo,
+      topProductos,
+      ultimaActualizacion: new Date(),
+    })
+    setCargando(false)
+  }, [establecimientoId])
+
+  useEffect(() => {
+    cargar()
+    const intervalo = setInterval(cargar, 30000)
+    return () => clearInterval(intervalo)
+  }, [cargar])
+
+  const fmt = (n: number) => `$${n.toFixed(2)}`
+  const maxProducto = datos?.topProductos[0]?.cantidad || 1
+  const totalMetodos = Object.values(datos?.porMetodo ?? {}).reduce((s, v) => s + v, 0) || 1
+
+  const METODO_LABEL: Record<string, string> = {
+    efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', credito: 'Crédito', mixto: 'Mixto',
+  }
+  const METODO_COLOR: Record<string, string> = {
+    efectivo: 'bg-emerald-500', tarjeta: 'bg-blue-500', transferencia: 'bg-violet-500', credito: 'bg-amber-500', mixto: 'bg-slate-400',
+  }
+
+  if (cargando) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+    </div>
+  )
+
+  return (
+    <div className="space-y-5">
+      {/* Última actualización */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-zinc-500">Actualiza cada 30 segundos</p>
+        <p className="text-xs text-zinc-600">Última actualización: {datos?.ultimaActualizacion.toLocaleTimeString('es-EC')}</p>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { label: 'Ventas del día', valor: fmt(datos?.totalVentas ?? 0), icono: '💰', color: 'text-emerald-400' },
+          { label: 'Transacciones', valor: String(datos?.numTransacciones ?? 0), icono: '🧾', color: 'text-blue-400' },
+          { label: 'Ticket promedio', valor: fmt(datos?.ticketPromedio ?? 0), icono: '📊', color: 'text-violet-400' },
+          { label: 'Comprobantes SRI', valor: String(datos?.comprobantesHoy ?? 0), icono: '✅', color: 'text-amber-400' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5">
+            <p className="text-2xl mb-3">{kpi.icono}</p>
+            <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.valor}</p>
+            <p className="text-xs text-zinc-500 mt-1">{kpi.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        {/* Métodos de pago */}
+        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-white">💳 Desglose por método de pago</h2>
+          {Object.keys(datos?.porMetodo ?? {}).length === 0 ? (
+            <p className="text-xs text-zinc-500">Sin ventas hoy</p>
+          ) : (
+            Object.entries(datos?.porMetodo ?? {}).sort((a, b) => b[1] - a[1]).map(([metodo, monto]) => (
+              <div key={metodo} className="space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-300">{METODO_LABEL[metodo] ?? metodo}</span>
+                  <span className="font-medium text-white">{fmt(monto)}</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-zinc-800">
+                  <div
+                    className={`h-1.5 rounded-full ${METODO_COLOR[metodo] ?? 'bg-slate-500'}`}
+                    style={{ width: `${(monto / totalMetodos) * 100}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-zinc-600">{((monto / totalMetodos) * 100).toFixed(1)}% del total</p>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Top 5 productos */}
+        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-white">🏆 Top 5 productos del día</h2>
+          {datos?.topProductos.length === 0 ? (
+            <p className="text-xs text-zinc-500">Sin ventas hoy</p>
+          ) : (
+            datos?.topProductos.map((p, i) => (
+              <div key={p.nombre} className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0
+                      ${i === 0 ? 'bg-yellow-500' : i === 1 ? 'bg-zinc-400' : i === 2 ? 'bg-amber-700' : 'bg-zinc-700'}`}>
+                      {i + 1}
+                    </span>
+                    <span className="text-sm text-zinc-300 truncate max-w-[130px]">{p.nombre}</span>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xs font-bold text-white">{p.cantidad} uds</p>
+                    <p className="text-[10px] text-zinc-500">{fmt(p.total)}</p>
+                  </div>
+                </div>
+                <div className="h-1.5 rounded-full bg-zinc-800">
+                  <div
+                    className={`h-1.5 rounded-full ${i === 0 ? 'bg-yellow-500' : i === 1 ? 'bg-zinc-400' : 'bg-blue-500'}`}
+                    style={{ width: `${(p.cantidad / maxProducto) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   )
