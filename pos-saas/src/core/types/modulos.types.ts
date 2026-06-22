@@ -36,6 +36,8 @@ export interface Establecimiento {
   alerta_caducidad_estilo: 'discreto' | 'llamativo'
   permite_venta_sin_stock: boolean
   pais: string
+  ancho_recibo: '80mm' | '58mm' | null
+  logo_url: string | null
 }
 
 // ─── Perfil del usuario autenticado (tabla real: usuarios) ────
