@@ -39,6 +39,8 @@ export interface Establecimiento {
   ancho_recibo: '80mm' | '58mm' | null
   logo_url: string | null
   modulo_contabilidad: boolean
+  whatsapp: string | null
+  email_negocio: string | null
 }
 
 // ─── Perfil del usuario autenticado (tabla real: usuarios) ────
