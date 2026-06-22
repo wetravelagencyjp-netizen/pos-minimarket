@@ -5,9 +5,10 @@ import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import ModalEmitirFactura from '@/components/pos/ModalEmitirFactura'
 import SeccionContabilidad from '@/components/admin/SeccionContabilidad'
+import SeccionCotizaciones from '@/components/admin/SeccionCotizaciones'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 
-type Seccion = 'dashboard' | 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes' | 'contabilidad'
+type Seccion = 'dashboard' | 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes' | 'contabilidad' | 'cotizaciones'
 
 export default function AdminPage() {
   const { usuario, logout } = useAuth()
@@ -104,6 +105,7 @@ export default function AdminPage() {
 
           <Divider label="Gestión" />
           <NavItem id="productos" icono="📦" label="Productos" onClick={() => setSeccion('productos')} />
+          <NavItem id="cotizaciones" icono="📋" label="Cotizaciones" onClick={() => setSeccion('cotizaciones')} />
           <NavItem id="categorias" icono="🏷️" label="Categorías" onClick={() => setSeccion('categorias')} />
           <NavItem id="vendedores" icono="👤" label="Vendedores" onClick={() => setSeccion('vendedores')} />
           <NavItem id="equipo" icono="👥" label="Mi equipo" onClick={() => setSeccion('equipo')} />
@@ -148,7 +150,8 @@ export default function AdminPage() {
                seccion === 'vendedores' ? 'Vendedores' :
                seccion === 'categorias' ? 'Categorías' :
                seccion === 'equipo' ? 'Mi equipo' :
-               seccion === 'contabilidad' ? 'Contabilidad de GRPM' : 'Reportes'}
+               seccion === 'contabilidad' ? 'Contabilidad de GRPM' :
+               seccion === 'cotizaciones' ? 'Cotizaciones' : 'Reportes'}
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -178,6 +181,7 @@ export default function AdminPage() {
         <main className={`flex-1 overflow-y-auto p-6 ${esOscuro ? 'bg-zinc-950' : 'bg-slate-50'}`}>
           {seccion === 'dashboard' && <ResumenDiarioLive establecimientoId={estabId} />}
           {seccion === 'contabilidad' && <SeccionContabilidad establecimientoId={estabId} />}
+          {seccion === 'cotizaciones' && <SeccionCotizaciones establecimientoId={estabId} />}
           {seccion === 'productos' && <SeccionProductos establecimientoId={estabId} />}
           {seccion === 'vendedores' && <SeccionVendedores establecimientoId={estabId} />}
           {seccion === 'categorias' && <SeccionCategorias establecimientoId={estabId} />}
