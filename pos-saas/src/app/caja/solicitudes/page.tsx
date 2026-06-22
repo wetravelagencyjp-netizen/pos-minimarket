@@ -86,7 +86,7 @@ export default function SolicitudesPage() {
     })
 
     if (res.success) {
-      await supabase.rpc('completar_solicitud_autorizacion', { p_solicitud_id: s.id }).catch(() => {})
+      try { await supabase.rpc('completar_solicitud_autorizacion', { p_solicitud_id: s.id }) } catch (_) {}
       setMensaje(`✅ Venta completada — comprobante ${res.numeroComprobante}`)
       setUltimaVenta({ numeroComprobante: res.numeroComprobante ?? '', datos: s })
       cargar()
