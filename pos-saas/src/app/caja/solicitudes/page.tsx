@@ -81,7 +81,7 @@ export default function SolicitudesPage() {
     })
 
     if (res.success) {
-      await supabase.from('solicitudes_autorizacion').update({ estado: 'completada' }).eq('id', s.id)
+      await supabase.rpc('completar_solicitud_autorizacion', { p_solicitud_id: s.id })
       setMensaje(`✅ Venta completada — comprobante ${res.numeroComprobante}`)
       setUltimaVenta({ numeroComprobante: res.numeroComprobante ?? '', datos: s })
       cargar()
