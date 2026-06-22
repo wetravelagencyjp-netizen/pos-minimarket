@@ -276,7 +276,7 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
                           placeholder="Nombre del producto/servicio"
                           value={it.nombre}
                           onChange={e => actualizarItem(i, 'nombre', e.target.value)}
-                          onBlur={() => setTimeout(() => { setSugerencias([]); setItemConFoco(null) }, 150)}
+                          onBlur={() => setTimeout(() => { setSugerencias([]); setItemConFoco(null) }, 300)}
                           className={inputCls}
                           autoComplete="off"
                         />
