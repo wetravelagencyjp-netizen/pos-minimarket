@@ -53,6 +53,7 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
   const [productos, setProductos] = useState<{ id: number; nombre: string; precio_venta: number }[]>([])
   const [sugerencias, setSugerencias] = useState<{ id: number; nombre: string; precio_venta: number }[]>([])
   const [itemConFoco, setItemConFoco] = useState<number | null>(null)
+  const seleccionandoSugerencia = useState(false)
 
   // Form
   const [cliente, setCliente] = useState({ nombre: '', identificacion: '', email: '', telefono: '', direccion: '' })
@@ -276,7 +277,7 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
                           placeholder="Nombre del producto/servicio"
                           value={it.nombre}
                           onChange={e => actualizarItem(i, 'nombre', e.target.value)}
-                          onBlur={() => setTimeout(() => { setSugerencias([]); setItemConFoco(null) }, 300)}
+                          onBlur={() => setTimeout(() => { setSugerencias([]); setItemConFoco(null) }, 500)}
                           className={inputCls}
                           autoComplete="off"
                         />
@@ -285,7 +286,7 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
                             {sugerencias.map(p => (
                               <button
                                 key={p.id}
-                                onMouseDown={() => seleccionarProducto(i, p)}
+                                onPointerDown={e => { e.preventDefault(); seleccionarProducto(i, p) }}
                                 className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${esOscuro ? 'hover:bg-zinc-800 text-zinc-200' : 'hover:bg-slate-50 text-slate-700'}`}
                               >
                                 <span className="truncate">{p.nombre}</span>
