@@ -15,8 +15,9 @@ export default function AdminPage() {
   const estabId = Number(usuario?.establecimiento_id ?? 1)
   const [seccion, setSeccion] = useState<Seccion>('dashboard')
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
-  const { establecimiento } = useEstablecimiento()
+  const { establecimiento, tema, cambiarTema } = useEstablecimiento()
   const tieneContabilidad = establecimiento?.modulo_contabilidad ?? false
+  const esOscuro = tema === 'oscuro'
 
   useEffect(() => {
     if (!estabId) return
@@ -48,8 +49,8 @@ export default function AdminPage() {
         onClick={onClick}
         className={`w-full flex items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-all ${
           activo
-            ? 'bg-white/10 text-white font-medium shadow-sm'
-            : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
+            ? esOscuro ? 'bg-white/10 text-white font-medium shadow-sm' : 'bg-indigo-50 text-indigo-700 font-medium'
+            : esOscuro ? 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
         }`}
       >
         <span className="flex items-center gap-2.5">
@@ -70,20 +71,20 @@ export default function AdminPage() {
 
   const Divider = ({ label }: { label: string }) => (
     <div className="px-3 pt-4 pb-1">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">{label}</p>
+      <p className={`text-[10px] font-semibold uppercase tracking-widest ${esOscuro ? 'text-zinc-600' : 'text-slate-400'}`}>{label}</p>
     </div>
   )
 
   return (
-    <div className="flex h-screen bg-zinc-950">
+    <div className={`flex h-screen ${esOscuro ? 'bg-zinc-950' : 'bg-slate-50'}`}>
 
-      {/* ── Sidebar Midnight Slate ── */}
-      <aside className="w-56 flex flex-col bg-zinc-950 border-r border-zinc-800/60">
+      {/* ── Sidebar ── */}
+      <aside className={`w-56 flex flex-col border-r ${esOscuro ? 'bg-zinc-950 border-zinc-800/60' : 'bg-white border-slate-200'}`}>
 
         {/* Logo / Marca */}
-        <div className="px-4 py-5 border-b border-zinc-800/60">
-          <p className="text-sm font-bold text-white tracking-tight">POS de GRPM</p>
-          <p className="text-[11px] text-zinc-500 mt-0.5">{usuario?.nombre ?? 'Admin'}</p>
+        <div className={`px-4 py-5 border-b ${esOscuro ? 'border-zinc-800/60' : 'border-slate-200'}`}>
+          <p className={`text-sm font-bold tracking-tight ${esOscuro ? 'text-white' : 'text-slate-900'}`}>POS de GRPM</p>
+          <p className={`text-[11px] mt-0.5 ${esOscuro ? 'text-zinc-500' : 'text-slate-400'}`}>{usuario?.nombre ?? 'Admin'}</p>
         </div>
 
         {/* Navegación */}
@@ -124,10 +125,10 @@ export default function AdminPage() {
         </nav>
 
         {/* Footer */}
-        <div className="px-3 py-3 border-t border-zinc-800/60">
+        <div className={`px-3 py-3 border-t ${esOscuro ? 'border-zinc-800/60' : 'border-slate-200'}`}>
           <button
             onClick={logout}
-            className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-zinc-500 hover:bg-white/5 hover:text-zinc-300 transition-all"
+            className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-all ${esOscuro ? 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'}`}
           >
             <span>🚪</span>
             <span>Salir</span>
@@ -139,9 +140,9 @@ export default function AdminPage() {
       <div className="flex flex-1 flex-col overflow-hidden">
 
         {/* Topbar */}
-        <header className="flex items-center justify-between border-b border-zinc-800/60 bg-zinc-900 px-6 py-3.5">
+        <header className={`flex items-center justify-between border-b px-6 py-3.5 ${esOscuro ? 'border-zinc-800/60 bg-zinc-900' : 'border-slate-200 bg-white'}`}>
           <div>
-            <h1 className="text-sm font-semibold text-white capitalize">
+            <h1 className={`text-sm font-semibold capitalize ${esOscuro ? 'text-white' : 'text-slate-900'}`}>
               {seccion === 'dashboard' ? 'Dashboard' :
                seccion === 'productos' ? 'Productos' :
                seccion === 'vendedores' ? 'Vendedores' :
@@ -151,6 +152,13 @@ export default function AdminPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => cambiarTema(esOscuro ? 'claro' : 'oscuro')}
+              title="Cambiar tema"
+              className={`text-sm px-2.5 py-1.5 rounded-xl transition-colors ${esOscuro ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+            >
+              {esOscuro ? '☀️ Claro' : '🌙 Oscuro'}
+            </button>
             {solicitudesPendientes > 0 && (
               <button
                 onClick={() => router.push('/admin/notificaciones')}
@@ -167,7 +175,7 @@ export default function AdminPage() {
         </header>
 
         {/* Secciones */}
-        <main className="flex-1 overflow-y-auto bg-slate-50 p-6">
+        <main className={`flex-1 overflow-y-auto p-6 ${esOscuro ? 'bg-zinc-950' : 'bg-slate-50'}`}>
           {seccion === 'dashboard' && <ResumenDiarioLive establecimientoId={estabId} />}
           {seccion === 'contabilidad' && <SeccionContabilidad establecimientoId={estabId} />}
           {seccion === 'productos' && <SeccionProductos establecimientoId={estabId} />}

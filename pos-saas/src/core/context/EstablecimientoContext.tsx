@@ -41,14 +41,14 @@ export function EstablecimientoProvider({ children }: { children: ReactNode }) {
 
         const { data: usuarioData, error: usuarioError } = await supabase
           .from('usuarios')
-          .select('id, establecimiento_id, sucursal_id, nombre, email, rol, es_superadmin, tema_checkout')
+          .select('id, establecimiento_id, sucursal_id, nombre, email, rol, es_superadmin, tema_checkout, tema_ui')
           .eq('id', user.id)
           .single()
 
         console.log('🔵 PASO 3: Usuario data:', usuarioData, 'error:', usuarioError)
         if (usuarioError || !usuarioData) throw new Error('Usuario no encontrado en el sistema')
         setUsuario(usuarioData as Usuario)
-        setTema(((usuarioData as any).tema_checkout as 'claro' | 'oscuro') ?? 'claro')
+        setTema(((usuarioData as any).tema_ui ?? (usuarioData as any).tema_checkout ?? 'claro') as 'claro' | 'oscuro')
 
         console.log('🔵 PASO 4: Buscando establecimiento con id:', usuarioData.establecimiento_id)
         const { data: establecimientoData, error: establecimientoError } = await supabase
@@ -87,7 +87,7 @@ export function EstablecimientoProvider({ children }: { children: ReactNode }) {
   const cambiarTema = async (nuevoTema: 'claro' | 'oscuro') => {
     setTema(nuevoTema)
     if (usuario) {
-      await supabase.from('usuarios').update({ tema_checkout: nuevoTema }).eq('id', usuario.id)
+      await supabase.from('usuarios').update({ tema_ui: nuevoTema, tema_checkout: nuevoTema }).eq('id', usuario.id)
     }
   }
 
