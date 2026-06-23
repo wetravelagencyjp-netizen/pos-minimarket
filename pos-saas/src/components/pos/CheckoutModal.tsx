@@ -50,6 +50,18 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const { tema, cambiarTema, establecimiento } = useEstablecimiento()
   const [userId, setUserId] = useState<string | null>(null)
 
+  const [descuentoPct, setDescuentoPct] = useState(0)
+  const [activarDescuento, setActivarDescuento] = useState(false)
+  const [descuentoAutorizado, setDescuentoAutorizado] = useState(false)
+  const [mostrarPinDescuento, setMostrarPinDescuento] = useState(false)
+  const [pinDescuento, setPinDescuento] = useState('')
+  const [validandoPinDescuento, setValidandoPinDescuento] = useState(false)
+  const [errorPinDescuento, setErrorPinDescuento] = useState<string | null>(null)
+
+  const montoDescuento = activarDescuento ? +(total * (descuentoPct / 100)).toFixed(2) : 0
+  const totalConDescuento = +(total - montoDescuento).toFixed(2)
+  const requiereAutorizacion = activarDescuento && descuentoPct > 5 && !descuentoAutorizado
+
   const [pagos, setPagos] = useState<LineaPago[]>([{ metodo: 'efectivo', monto: total.toFixed(2), bancoId: null }])
 
   const usaCredito = pagos.some((p) => p.metodo === 'credito' && parseFloat(p.monto || '0') > 0)
@@ -58,7 +70,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
     .reduce((s, p) => s + (parseFloat(p.monto) || 0), 0)
 
   const sumaPagos = pagos.reduce((s, p) => s + (parseFloat(p.monto) || 0), 0)
-  const faltante = +(total - sumaPagos).toFixed(2)
+  const faltante = +(totalConDescuento - sumaPagos).toFixed(2)
 
   useEffect(() => {
     if (!pagos.some((p) => p.metodo === 'transferencia')) return
@@ -146,7 +158,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
       cajaId,
       bancoId: bancoPrincipal,
       items,
-      total,
+      total: totalConDescuento,
       metodoPago: pagos.length > 1 ? 'mixto' as MetodoPago : metodoPrincipal,
       pagos: pagos.map((p) => ({
         metodo: p.metodo,
@@ -207,6 +219,29 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
     setMostrarPin(false)
     setPinIngresado('')
     setErrorCredito(null)
+  }
+
+  async function handleValidarPinDescuento() {
+    setErrorPinDescuento(null)
+    if (!/^[0-9]{4,6}$/.test(pinDescuento)) { setErrorPinDescuento('Ingresa un PIN válido'); return }
+    setValidandoPinDescuento(true)
+    const { data, error } = await supabase.rpc('validar_pin_supervisor', {
+      p_establecimiento_id: establecimientoId,
+      p_pin: pinDescuento,
+    })
+    setValidandoPinDescuento(false)
+    if (error || !data?.autorizado) {
+      if (data?.bloqueado_hasta) {
+        const min = Math.ceil((new Date(data.bloqueado_hasta).getTime() - Date.now()) / 60000)
+        setErrorPinDescuento(`Bloqueado. Intenta en ${min} min.`)
+      } else {
+        setErrorPinDescuento('PIN incorrecto')
+      }
+      return
+    }
+    setDescuentoAutorizado(true)
+    setMostrarPinDescuento(false)
+    setPinDescuento('')
   }
 
   function handleImprimir() {
@@ -350,9 +385,89 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
           </div>
         </div>
 
-        <div className={`${t.cardTotal} rounded-xl p-5 flex justify-between items-baseline`}>
-          <span className={`${t.labelTotal} text-sm`}>Total a cobrar</span>
-          <span className={`${esOscuro ? 'text-emerald-400' : t.montoTotal} font-bold text-3xl tracking-tight`}>${total.toFixed(2)}</span>
+        <div className={`${t.cardTotal} rounded-xl p-5 space-y-3`}>
+          <div className="flex justify-between items-baseline">
+            <span className={`${t.labelTotal} text-sm`}>Total a cobrar</span>
+            <span className={`${esOscuro ? 'text-emerald-400' : t.montoTotal} font-bold text-3xl tracking-tight`}>
+              ${totalConDescuento.toFixed(2)}
+            </span>
+          </div>
+
+          {/* Sección descuento */}
+          <div className={`border-t pt-3 ${esOscuro ? 'border-zinc-700' : 'border-slate-200'}`}>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={activarDescuento}
+                onChange={e => {
+                  setActivarDescuento(e.target.checked)
+                  setDescuentoPct(0)
+                  setDescuentoAutorizado(false)
+                  setMostrarPinDescuento(false)
+                  setErrorPinDescuento(null)
+                }}
+                className="rounded" />
+              <span className={`text-xs font-medium ${esOscuro ? 'text-zinc-400' : 'text-slate-500'}`}>Aplicar descuento</span>
+            </label>
+
+            {activarDescuento && (
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input type="number" min="0" max="100" step="0.5" value={descuentoPct}
+                    onChange={e => {
+                      setDescuentoPct(parseFloat(e.target.value) || 0)
+                      setDescuentoAutorizado(false)
+                      setMostrarPinDescuento(false)
+                      setErrorPinDescuento(null)
+                      setPagos([{ metodo: pagos[0]?.metodo ?? 'efectivo', monto: (+(total * (1 - (parseFloat(e.target.value) || 0) / 100)).toFixed(2)).toString(), bancoId: null }])
+                    }}
+                    className={`w-24 text-sm rounded-lg px-2.5 py-2 outline-none text-right font-medium transition-colors ${t.select}`}
+                    placeholder="0"
+                  />
+                  <span className={`text-sm ${esOscuro ? 'text-zinc-400' : 'text-slate-500'}`}>%</span>
+                  {descuentoPct > 0 && (
+                    <span className="text-rose-500 text-sm font-medium ml-auto">-${montoDescuento.toFixed(2)}</span>
+                  )}
+                </div>
+
+                {descuentoPct > 5 && !descuentoAutorizado && (
+                  <div className="space-y-2">
+                    {!mostrarPinDescuento ? (
+                      <button onClick={() => setMostrarPinDescuento(true)}
+                        className="w-full bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-500 font-medium py-2 rounded-xl transition-colors text-xs">
+                        🔒 Descuento {'>'} 5% — requiere PIN de supervisor
+                      </button>
+                    ) : (
+                      <div className={`${t.pinCard} rounded-xl p-3 space-y-2`}>
+                        <p className={`${t.pinLabel} text-xs font-medium`}>PIN de supervisor para descuento</p>
+                        <input type="password" inputMode="numeric" maxLength={6}
+                          value={pinDescuento}
+                          onChange={e => setPinDescuento(e.target.value.replace(/\D/g, ''))}
+                          placeholder="••••"
+                          className={`w-full text-sm rounded-lg px-3 py-2.5 outline-none transition-all ${t.pinInput}`}
+                        />
+                        {errorPinDescuento && <p className="text-rose-500 text-xs">{errorPinDescuento}</p>}
+                        <div className="flex gap-2">
+                          <button onClick={handleValidarPinDescuento} disabled={validandoPinDescuento}
+                            className={`flex-1 font-medium py-2 rounded-lg transition-colors text-sm ${t.btnPrincipal}`}>
+                            {validandoPinDescuento ? 'Validando…' : 'Autorizar'}
+                          </button>
+                          <button onClick={() => { setMostrarPinDescuento(false); setPinDescuento(''); setErrorPinDescuento(null) }}
+                            className={`px-4 rounded-lg transition-colors text-sm ${t.btnSecundario}`}>
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {descuentoAutorizado && (
+                  <div className={`${t.success} text-xs rounded-xl px-3 py-2 flex items-center gap-1.5`}>
+                    ✅ Descuento autorizado por supervisor
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -491,7 +606,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
         {!solicitudEnviada && (
           <button
             onClick={handleConfirmar}
-            disabled={isProcesando || (excedeLimite && !autorizado)}
+            disabled={isProcesando || (excedeLimite && !autorizado) || requiereAutorizacion}
             className={`w-full font-semibold py-3.5 rounded-xl transition-colors text-sm ${t.btnPrincipal}`}
           >
             {isProcesando ? 'Procesando…' : 'Confirmar venta'}
