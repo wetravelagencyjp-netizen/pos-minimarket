@@ -300,7 +300,8 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
   )
 
   return (
-    <div className={`flex flex-col overflow-hidden h-screen ${esOscuro ? 'bg-zinc-950 text-zinc-100' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`flex flex-col overflow-hidden h-screen max-h-screen ${esOscuro ? 'bg-zinc-950 text-zinc-100' : 'bg-slate-50 text-slate-900'}`}
+      style={{ height: '100dvh' }}>
       {modulo.alertaSlot && <modulo.alertaSlot {...slotPropsConVenta} />}
       <TopBar {...slotPropsConVenta} />
       <div className={`flex flex-1 overflow-hidden ${esCajero ? 'pb-16' : ''}`}>
