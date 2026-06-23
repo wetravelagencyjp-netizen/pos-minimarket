@@ -305,7 +305,7 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
       <TopBar {...slotPropsConVenta} />
       <div className={`flex flex-1 overflow-hidden ${esCajero ? 'pb-16' : ''}`}>
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 overflow-hidden">
             <Catalogo {...slotPropsConVenta} ventaCount={ventaCount} />
           </div>
           {/* Desktop: carrito lateral */}

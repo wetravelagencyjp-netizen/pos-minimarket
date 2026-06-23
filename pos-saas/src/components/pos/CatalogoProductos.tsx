@@ -9,10 +9,22 @@ import type { SlotProps } from '@/core/types/modulos.types'
 export default function CatalogoProductos({ establecimiento, sucursalId, ventaCount = 0 }: SlotProps & { ventaCount?: number }) {
   const { productos, isLoading, error, recargar } = useProductos(establecimiento.id, sucursalId)
   useEffect(() => {
-    const handler = () => recargar()
+    const handler = () => {
+      recargar()
+      // En iOS PWA el evento puede llegar tarde — recargar dos veces
+      setTimeout(() => recargar(), 800)
+    }
     window.addEventListener('venta-completada', handler)
     return () => window.removeEventListener('venta-completada', handler)
   }, [recargar])
+
+  // Fallback: recargar cuando ventaCount cambia
+  useEffect(() => {
+    if (ventaCount > 0) {
+      recargar()
+      setTimeout(() => recargar(), 500)
+    }
+  }, [ventaCount])
   const { agregarItem, ultimoEscaneadoId } = useCarrito()
   const { tema } = useEstablecimiento()
   const esOscuro = tema === 'oscuro'
@@ -27,7 +39,7 @@ export default function CatalogoProductos({ establecimiento, sucursalId, ventaCo
 
   if (isLoading) {
     return (
-      <div className={`flex-1 overflow-y-auto p-4 ${bgFondo}`}>
+      <div className={`h-full overflow-y-auto p-4 ${bgFondo}`}>
         <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className={`${bgCard} rounded-xl aspect-square animate-pulse`} />
@@ -54,7 +66,7 @@ export default function CatalogoProductos({ establecimiento, sucursalId, ventaCo
   }
 
   return (
-    <div className={`flex-1 overflow-y-auto p-2 sm:p-4 ${bgFondo}`}>
+    <div className={`h-full overflow-y-auto p-2 sm:p-4 ${bgFondo}`}>
       <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {productos.map((producto) => {
           const precio = producto.lote_activo?.precio_venta_sugerido ?? producto.precio_venta
