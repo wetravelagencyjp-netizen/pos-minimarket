@@ -67,6 +67,20 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
   const [itemConFoco, setItemConFoco] = useState<number | null>(null)
   const seleccionandoSugerencia = useState(false)
 
+  // Cuentas financieras
+  const [cuentas, setCuentas] = useState<{ id: number; nombre: string; tipo: string }[]>([])
+
+  useEffect(() => {
+    supabase.from('cuentas_financieras').select('id, nombre, tipo')
+      .eq('establecimiento_id', establecimientoId).order('nombre')
+      .then(({ data }) => setCuentas(data ?? []))
+  }, [establecimientoId])
+
+  // Reserva
+  const [esReserva, setEsReserva] = useState(false)
+  const [montoAbonado, setMontoAbonado] = useState<string>('')
+  const [cuentaId, setCuentaId] = useState<number | null>(null)
+
   // Form
   const [cliente, setCliente] = useState({ nombre: '', identificacion: '', email: '', telefono: '', direccion: '' })
   const [items, setItems] = useState<ItemCot[]>([{ nombre: '', cantidad: 1, precioUnitario: 0, descuento: 0 }])
@@ -145,6 +159,20 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
     setClienteConFoco(false)
   }
 
+  const detectarBanco = (nombre: string): { icono: string; color: string } => {
+    const n = nombre.toLowerCase()
+    if (n.includes('pichincha')) return { icono: '🟡', color: 'text-yellow-600' }
+    if (n.includes('guayaquil')) return { icono: '🔵', color: 'text-blue-600' }
+    if (n.includes('produbanco') || n.includes('produ')) return { icono: '🟠', color: 'text-orange-600' }
+    if (n.includes('pacifico') || n.includes('pacífico')) return { icono: '🔷', color: 'text-cyan-600' }
+    if (n.includes('deuna') || n.includes('de una')) return { icono: '🟣', color: 'text-purple-600' }
+    if (n.includes('payphone')) return { icono: '📱', color: 'text-indigo-600' }
+    if (n.includes('jep')) return { icono: '🏦', color: 'text-emerald-600' }
+    if (n.includes('jardin') || n.includes('jardín') || n.includes('azuayo')) return { icono: '🌿', color: 'text-green-600' }
+    if (n.includes('efectivo') || n.includes('caja')) return { icono: '💵', color: 'text-green-700' }
+    return { icono: '🏦', color: 'text-zinc-500' }
+  }
+
   const calcTotales = () => {
     const subtotal = items.reduce((s, it) => s + (it.precioUnitario - it.descuento) * it.cantidad, 0)
     const montoDescGlobal = activarDescuento ? subtotal * (descuentoGlobal / 100) : 0
@@ -186,7 +214,16 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
     setGuardando(true)
     setMensaje(null)
     const { data: { user } } = await supabase.auth.getUser()
-    const { error } = await supabase.from('cotizaciones').insert({
+    const montoAbonadoNum = esReserva ? (parseFloat(montoAbonado) || 0) : 0
+    const montoPendienteNum = esReserva ? Math.max(0, total - montoAbonadoNum) : 0
+
+    if (esReserva && !cuentaId) {
+      setMensaje('❌ Selecciona la cuenta que recibirá el anticipo.')
+      setGuardando(false)
+      return
+    }
+
+    const { data: cotData, error } = await supabase.from('cotizaciones').insert({
       establecimiento_id: establecimientoId,
       numero: generarNumero(),
       cliente_nombre: cliente.nombre,
@@ -199,11 +236,24 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
       descuento_total: montoDescGlobal,
       descuento_porcentaje: activarDescuento ? descuentoGlobal : 0,
       total,
+      tipo: esReserva ? 'reserva' : 'cotizacion',
+      monto_abonado: esReserva ? montoAbonadoNum : null,
+      monto_pendiente: esReserva ? montoPendienteNum : null,
+      cuenta_id: esReserva ? cuentaId : null,
       estado: 'borrador',
       valido_hasta: new Date(validoHasta).toISOString(),
       notas: notas || null,
       creado_por: user?.id,
-    })
+    }).select('id').single()
+
+    // Si es reserva con abono, impactar cuenta financiera via RPC
+    if (!error && esReserva && montoAbonadoNum > 0 && cuentaId && cotData?.id) {
+      await supabase.rpc('registrar_abono_reserva', {
+        p_cotizacion_id: cotData.id,
+        p_monto_abonado: montoAbonadoNum,
+        p_cuenta_id: cuentaId,
+      })
+    }
     setGuardando(false)
     if (!error) {
       setMensaje('✅ Cotización guardada')
@@ -213,6 +263,9 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
       setDescuentoGlobal(0)
       setActivarDescuento(false)
       setNotas('')
+      setEsReserva(false)
+      setMontoAbonado('')
+      setCuentaId(null)
       cargar()
     } else {
       setMensaje(`❌ ${error.message}`)
@@ -451,6 +504,66 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
                   onChange={e => setDescuentoGlobal(e.target.value === '' ? 0 : parseFloat(e.target.value))}
                   className={`w-28 ${inputCls}`} placeholder="0" />
                 <span className={`text-sm ${t.sub}`}>% de descuento sobre subtotal</span>
+              </div>
+            )}
+          </div>
+
+          {/* Toggle Reserva */}
+          <div className={`rounded-xl border p-4 space-y-3 ${esOscuro ? 'border-zinc-700 bg-zinc-800/40' : 'border-indigo-50 bg-indigo-50/50'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm font-medium ${t.title}`}>¿Es una Reserva?</p>
+                <p className={`text-xs ${t.sub}`}>Registra un anticipo e impacta la cuenta al guardar</p>
+              </div>
+              {/* Toggle estilo Apple */}
+              <button
+                type="button"
+                onClick={() => { setEsReserva(!esReserva); setMontoAbonado(''); setCuentaId(null) }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${esReserva ? 'bg-indigo-600' : esOscuro ? 'bg-zinc-600' : 'bg-slate-300'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${esReserva ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
+            {esReserva && (
+              <div className="space-y-3 pt-1">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={`text-xs font-medium ${t.sub} mb-1 block`}>Monto del anticipo</label>
+                    <div className="relative">
+                      <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium ${esOscuro ? 'text-zinc-400' : 'text-slate-400'}`}>$</span>
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={montoAbonado}
+                        onChange={e => setMontoAbonado(e.target.value)}
+                        placeholder="0.00"
+                        className={`${inputCls} pl-7`}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={`text-xs font-medium ${t.sub} mb-1 block`}>Cuenta receptora</label>
+                    <select
+                      value={cuentaId ?? ''}
+                      onChange={e => setCuentaId(e.target.value ? Number(e.target.value) : null)}
+                      className={`w-full rounded-xl border px-3 py-2 text-sm outline-none transition-colors ${t.input}`}
+                    >
+                      <option value="">— Seleccionar —</option>
+                      {cuentas.map(c => {
+                        const { icono, color } = detectarBanco(c.nombre)
+                        return (
+                          <option key={c.id} value={c.id}>{icono} {c.nombre}</option>
+                        )
+                      })}
+                    </select>
+                  </div>
+                </div>
+                {parseFloat(montoAbonado) > 0 && total > 0 && (
+                  <div className={`rounded-lg px-3 py-2 text-xs flex justify-between ${esOscuro ? 'bg-zinc-700 text-zinc-300' : 'bg-white text-slate-600'}`}>
+                    <span>Saldo pendiente del cliente</span>
+                    <span className="font-semibold text-amber-500">{fmt(Math.max(0, total - (parseFloat(montoAbonado) || 0)))}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
