@@ -8,7 +8,7 @@ import SeccionContabilidad from '@/components/admin/SeccionContabilidad'
 import SeccionCotizaciones from '@/components/admin/SeccionCotizaciones'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 
-type Seccion = 'dashboard' | 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes' | 'contabilidad' | 'cotizaciones'
+type Seccion = 'dashboard' | 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes' | 'contabilidad' | 'cotizaciones' | 'cierres'
 
 export default function AdminPage() {
   const { usuario, logout } = useAuth()
@@ -118,6 +118,7 @@ export default function AdminPage() {
               <NavItem id="contabilidad" icono="📒" label="Contabilidad" onClick={() => setSeccion('contabilidad')} />
             </>
           )}
+          <NavItem id="cierres" icono="📊" label="Cierres y Reportes" onClick={() => setSeccion('cierres' as any)} />
           <Divider label="Sistema" />
           <NavItem icono="⚙️" label="Configuración" onClick={() => router.push('/admin/configuracion')} />
           <NavItem icono="👥" label="Usuarios" onClick={() => router.push('/admin/usuarios')} />
@@ -151,7 +152,8 @@ export default function AdminPage() {
                seccion === 'categorias' ? 'Categorías' :
                seccion === 'equipo' ? 'Mi equipo' :
                seccion === 'contabilidad' ? 'Contabilidad de GRPM' :
-               seccion === 'cotizaciones' ? 'Cotizaciones' : 'Reportes'}
+               seccion === 'cotizaciones' ? 'Cotizaciones' :
+               seccion === 'cierres' ? 'Cierres y Reportes' : 'Reportes'}
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -187,6 +189,7 @@ export default function AdminPage() {
           {seccion === 'categorias' && <SeccionCategorias establecimientoId={estabId} />}
           {seccion === 'equipo' && <SeccionEquipo establecimientoId={estabId} />}
           {seccion === 'reportes' && <SeccionReportes establecimientoId={estabId} />}
+          {seccion === 'cierres' && <SeccionCierres establecimientoId={estabId} />}
         </main>
       </div>
     </div>
@@ -282,7 +285,15 @@ function ResumenDiarioLive({ establecimientoId }: { establecimientoId: number })
       {/* Última actualización */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-zinc-500">Actualiza cada 30 segundos</p>
-        <p className="text-xs text-zinc-600">Última actualización: {datos?.ultimaActualizacion.toLocaleTimeString('es-EC')}</p>
+        <div className="flex items-center gap-3">
+          <p className="text-xs text-zinc-600">Última actualización: {datos?.ultimaActualizacion.toLocaleTimeString('es-EC')}</p>
+          <button
+            onClick={() => exportarCierrePDF(datos!, establecimientoId)}
+            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white transition-colors"
+          >
+            🖨️ Exportar cierre de hoy
+          </button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -1595,6 +1606,288 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
           onEmitido={() => { setVentaParaFactura(null); cargar() }}
         />
       )}
+    </div>
+  )
+}// ─── EXPORTAR PDF EJECUTIVO ────────────────────────────────
+function exportarCierrePDF(datos: any, establecimientoId: number) {
+  const ventana = window.open('', '_blank', 'width=900,height=700')
+  if (!ventana) return
+
+  const fmt = (n: number) => `$${Number(n).toFixed(2)}`
+  const hoy = new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+
+  const filasMetodos = Object.entries(datos.porMetodo ?? {}).map(([metodo, monto]: any) => `
+    <tr>
+      <td>${metodo.charAt(0).toUpperCase() + metodo.slice(1)}</td>
+      <td class="derecha">${fmt(monto)}</td>
+      <td class="derecha">${((monto / (datos.totalVentas || 1)) * 100).toFixed(1)}%</td>
+    </tr>
+  `).join('')
+
+  const filasBancos = Object.entries(datos.porBanco ?? {}).map(([banco, monto]: any) => `
+    <tr style="background:#f8f9ff">
+      <td style="padding-left:24px">🏦 ${banco}</td>
+      <td class="derecha">${fmt(monto)}</td>
+      <td class="derecha">—</td>
+    </tr>
+  `).join('')
+
+  const filasTop = (datos.topProductos ?? []).map((p: any, i: number) => `
+    <tr>
+      <td>${i + 1}. ${p.nombre}</td>
+      <td class="derecha">${p.cantidad} uds</td>
+      <td class="derecha">${fmt(p.total)}</td>
+    </tr>
+  `).join('')
+
+  ventana.document.write(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8"/>
+      <title>Cierre del día — ${hoy}</title>
+      <style>
+        @page { size: A4; margin: 15mm 18mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px; color: #1a1a1a; }
+        .header { border-bottom: 2px solid #4f46e5; padding-bottom: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .header-titulo { font-size: 22px; font-weight: 800; color: #4f46e5; }
+        .header-fecha { font-size: 11px; color: #888; text-align: right; }
+        .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .kpi { background: #f8f9ff; border: 1px solid #e0e0f0; border-radius: 10px; padding: 14px; text-align: center; }
+        .kpi-valor { font-size: 20px; font-weight: 800; color: #4f46e5; }
+        .kpi-label { font-size: 9px; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .seccion { margin-bottom: 18px; }
+        .seccion-titulo { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #4f46e5; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #e0e0f0; }
+        table { width: 100%; border-collapse: collapse; }
+        thead tr { background: #4f46e5; color: white; }
+        thead th { padding: 7px 10px; text-align: left; font-size: 9px; font-weight: 600; letter-spacing: 0.3px; }
+        th.derecha, td.derecha { text-align: right; }
+        tbody tr { border-bottom: 1px solid #f0f0f0; }
+        tbody tr:nth-child(even) { background: #fafafa; }
+        tbody td { padding: 6px 10px; font-size: 10px; }
+        .footer { margin-top: 24px; border-top: 1px solid #e0e0f0; padding-top: 12px; display: flex; justify-content: space-between; font-size: 9px; color: #aaa; }
+        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div>
+          <div class="header-titulo">CIERRE DEL DÍA</div>
+          <div style="font-size:12px;color:#555;margin-top:4px;">Reporte ejecutivo de operaciones</div>
+        </div>
+        <div class="header-fecha">
+          <div>${hoy}</div>
+          <div style="margin-top:2px;">Generado: ${new Date().toLocaleTimeString('es-EC')}</div>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-valor">${fmt(datos.totalVentas)}</div><div class="kpi-label">Ventas del día</div></div>
+        <div class="kpi"><div class="kpi-valor">${datos.numTransacciones}</div><div class="kpi-label">Transacciones</div></div>
+        <div class="kpi"><div class="kpi-valor">${fmt(datos.ticketPromedio)}</div><div class="kpi-label">Ticket promedio</div></div>
+        <div class="kpi"><div class="kpi-valor">${datos.comprobantesHoy}</div><div class="kpi-label">Comprobantes SRI</div></div>
+      </div>
+
+      <div class="seccion">
+        <div class="seccion-titulo">Métodos de pago</div>
+        <table>
+          <thead><tr><th>Método</th><th class="derecha">Monto</th><th class="derecha">% del total</th></tr></thead>
+          <tbody>${filasMetodos}${filasBancos}</tbody>
+        </table>
+      </div>
+
+      <div class="seccion">
+        <div class="seccion-titulo">Top 5 productos del día</div>
+        <table>
+          <thead><tr><th>Producto</th><th class="derecha">Cantidad</th><th class="derecha">Total</th></tr></thead>
+          <tbody>${filasTop}</tbody>
+        </table>
+      </div>
+
+      <div class="footer">
+        <span>POS de GRPM — Reporte de cierre diario</span>
+        <span>Establecimiento ID: ${establecimientoId}</span>
+      </div>
+    </body>
+    </html>
+  `)
+  ventana.document.close()
+  ventana.focus()
+  setTimeout(() => ventana.print(), 500)
+}
+
+// ─── SECCIÓN CIERRES Y REPORTES ────────────────────────────
+function SeccionCierres({ establecimientoId }: { establecimientoId: number }) {
+  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
+  const [datos, setDatos] = useState<any | null>(null)
+  const [cargando, setCargando] = useState(false)
+
+  const cargar = useCallback(async () => {
+    setCargando(true)
+    const fechaInicio = `${fecha}T00:00:00`
+    const fechaFin = `${fecha}T23:59:59`
+
+    const [{ data: ventas }, { data: detalle }, { data: pagos }, { data: egresos }] = await Promise.all([
+      supabase.from('ventas').select('id, total, metodo_pago, numero_comprobante, fecha_venta, descuento_total').eq('establecimiento_id', establecimientoId).gte('fecha_venta', fechaInicio).lte('fecha_venta', fechaFin),
+      supabase.from('detalle_ventas').select('cantidad, precio_unitario, producto:productos(nombre), venta:ventas!inner(establecimiento_id, fecha_venta)').eq('venta.establecimiento_id', establecimientoId).gte('venta.fecha_venta', fechaInicio).lte('venta.fecha_venta', fechaFin),
+      supabase.from('pagos_venta').select('metodo_pago, monto, bancos(nombre), venta:ventas!inner(establecimiento_id, fecha_venta)').eq('venta.establecimiento_id', establecimientoId).gte('venta.fecha_venta', fechaInicio).lte('venta.fecha_venta', fechaFin),
+      supabase.from('movimientos_caja').select('monto, motivo, creado_en').gte('creado_en', fechaInicio).lte('creado_en', fechaFin),
+    ])
+
+    const totalVentas = (ventas ?? []).reduce((s, v) => s + Number(v.total), 0)
+    const numTransacciones = (ventas ?? []).length
+    const porMetodo: Record<string, number> = {}
+    const porBanco: Record<string, number> = {}
+    for (const p of pagos ?? []) {
+      porMetodo[p.metodo_pago] = (porMetodo[p.metodo_pago] ?? 0) + Number(p.monto)
+      if (p.metodo_pago === 'transferencia') {
+        const banco = (p as any).bancos?.nombre ?? 'Sin banco'
+        porBanco[banco] = (porBanco[banco] ?? 0) + Number(p.monto)
+      }
+    }
+    const porProducto: Record<string, { nombre: string; cantidad: number; total: number }> = {}
+    for (const d of detalle ?? []) {
+      const nombre = (d.producto as any)?.nombre ?? 'Desconocido'
+      if (!porProducto[nombre]) porProducto[nombre] = { nombre, cantidad: 0, total: 0 }
+      porProducto[nombre].cantidad += d.cantidad
+      porProducto[nombre].total += d.precio_unitario * d.cantidad
+    }
+
+    setDatos({
+      totalVentas,
+      numTransacciones,
+      ticketPromedio: numTransacciones ? totalVentas / numTransacciones : 0,
+      comprobantesHoy: 0,
+      porMetodo,
+      porBanco,
+      topProductos: Object.values(porProducto).sort((a, b) => b.cantidad - a.cantidad).slice(0, 5),
+      ultimaActualizacion: new Date(),
+      ventas: ventas ?? [],
+      egresos: egresos ?? [],
+    })
+    setCargando(false)
+  }, [fecha, establecimientoId])
+
+  useEffect(() => { cargar() }, [cargar])
+
+  const exportarExcel = async () => {
+    if (!datos) return
+    const XLSX = await import('xlsx')
+    const fmt2 = (n: number) => Number(Number(n).toFixed(2))
+
+    // Hoja 1: Ventas
+    const ventas = (datos.ventas ?? []).map((v: any) => ({
+      'Comprobante': v.numero_comprobante,
+      'Fecha': new Date(v.fecha_venta).toLocaleString('es-EC'),
+      'Método': v.metodo_pago,
+      'Total': fmt2(v.total),
+      'Descuento': fmt2(v.descuento_total ?? 0),
+    }))
+
+    // Hoja 2: Métodos de pago
+    const metodos = Object.entries(datos.porMetodo ?? {}).map(([metodo, monto]: any) => ({
+      'Método de pago': metodo,
+      'Monto': fmt2(monto),
+      'Porcentaje': Number(((monto / (datos.totalVentas || 1)) * 100).toFixed(1)),
+    }))
+    const bancos = Object.entries(datos.porBanco ?? {}).map(([banco, monto]: any) => ({
+      'Método de pago': `Transferencia — ${banco}`,
+      'Monto': fmt2(monto),
+      'Porcentaje': Number(((monto / (datos.totalVentas || 1)) * 100).toFixed(1)),
+    }))
+
+    // Hoja 3: Egresos
+    const egresos = (datos.egresos ?? []).map((e: any) => ({
+      'Fecha': new Date(e.creado_en).toLocaleString('es-EC'),
+      'Motivo': e.motivo,
+      'Monto': fmt2(e.monto),
+    }))
+
+    const wb = XLSX.utils.book_new()
+    const ws1 = XLSX.utils.json_to_sheet(ventas)
+    const ws2 = XLSX.utils.json_to_sheet([...metodos, ...bancos])
+    const ws3 = XLSX.utils.json_to_sheet(egresos.length ? egresos : [{ 'Fecha': '—', 'Motivo': 'Sin egresos', 'Monto': 0 }])
+    ws1['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 14 }, { wch: 10 }, { wch: 10 }]
+    ws2['!cols'] = [{ wch: 28 }, { wch: 12 }, { wch: 12 }]
+    ws3['!cols'] = [{ wch: 18 }, { wch: 30 }, { wch: 10 }]
+    XLSX.utils.book_append_sheet(wb, ws1, 'Ventas')
+    XLSX.utils.book_append_sheet(wb, ws2, 'Métodos de Pago')
+    XLSX.utils.book_append_sheet(wb, ws3, 'Egresos de Caja')
+    XLSX.writeFile(wb, `cierre_${fecha}.xlsx`)
+  }
+
+  const fmt = (n: number) => `$${Number(n).toFixed(2)}`
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-4">
+        <div>
+          <label className="text-xs text-zinc-500 block mb-1">Seleccionar fecha</label>
+          <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
+            className="rounded-xl border border-zinc-700 bg-zinc-900 text-zinc-100 px-3 py-2 text-sm outline-none focus:border-indigo-500" />
+        </div>
+        <div className="flex gap-2 mt-5">
+          <button onClick={() => datos && exportarCierrePDF(datos, establecimientoId)}
+            disabled={!datos || cargando}
+            className="flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 px-4 py-2 text-sm font-medium text-white transition-colors">
+            🖨️ PDF Ejecutivo
+          </button>
+          <button onClick={exportarExcel} disabled={!datos || cargando}
+            className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 px-4 py-2 text-sm font-medium text-white transition-colors">
+            📊 Excel Contable
+          </button>
+        </div>
+      </div>
+
+      {cargando ? (
+        <div className="flex items-center justify-center h-48">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+        </div>
+      ) : datos ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Ventas del día', valor: fmt(datos.totalVentas), color: 'text-emerald-400' },
+              { label: 'Transacciones', valor: String(datos.numTransacciones), color: 'text-blue-400' },
+              { label: 'Ticket promedio', valor: fmt(datos.ticketPromedio), color: 'text-violet-400' },
+            ].map(kpi => (
+              <div key={kpi.label} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5">
+                <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.valor}</p>
+                <p className="text-xs text-zinc-500 mt-1">{kpi.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-white">💳 Desglose por método</h3>
+            {Object.entries(datos.porMetodo ?? {}).map(([metodo, monto]: any) => (
+              <div key={metodo} className="flex justify-between text-sm">
+                <span className="text-zinc-400 capitalize">{metodo}</span>
+                <span className="text-white font-medium">{fmt(monto)}</span>
+              </div>
+            ))}
+            {Object.entries(datos.porBanco ?? {}).map(([banco, monto]: any) => (
+              <div key={banco} className="flex justify-between text-xs pl-4">
+                <span className="text-zinc-500">🏦 {banco}</span>
+                <span className="text-violet-400">{fmt(monto)}</span>
+              </div>
+            ))}
+          </div>
+
+          {datos.ventas?.some((v: any) => (v.descuento_total ?? 0) > 0) && (
+            <div className="rounded-2xl bg-orange-500/10 border border-orange-500/20 p-5 space-y-2">
+              <h3 className="text-sm font-semibold text-orange-400">🏷️ Ventas con descuento</h3>
+              {datos.ventas.filter((v: any) => (v.descuento_total ?? 0) > 0).map((v: any) => (
+                <div key={v.id} className="flex justify-between text-xs">
+                  <span className="text-orange-300 font-mono">{v.numero_comprobante}</span>
+                  <span className="text-orange-400">-{fmt(v.descuento_total)} descuento · Total: {fmt(v.total)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   )
 }
