@@ -36,8 +36,23 @@ const METODO_LABEL: Record<string, string> = {
 }
 
 export function imprimirRecibo(d: DatosRecibo) {
-  const ventana = window.open('', '_blank', 'width=400,height=600')
-  if (!ventana) return
+  // En iOS PWA window.open está bloqueado — usamos iframe oculto
+  const esIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
+  let ventana: Window | null = null
+
+  if (!esIOS) {
+    ventana = window.open('', '_blank', 'width=400,height=600')
+    if (!ventana) return
+  } else {
+    // En iOS: crear iframe oculto para imprimir
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = 'none'
+    document.body.appendChild(iframe)
+    ventana = iframe.contentWindow
+    if (!ventana) return
 
   const fmt = (n: number) => `$${n.toFixed(2)}`
   const anchoPx = d.ancho === '58mm' ? '58mm' : '80mm'
@@ -126,6 +141,17 @@ export function imprimirRecibo(d: DatosRecibo) {
     </html>
   `)
   ventana.document.close()
-  ventana.focus()
-  setTimeout(() => ventana.print(), 300)
+
+  if (esIOS) {
+    setTimeout(() => {
+      ventana!.print()
+      setTimeout(() => {
+        const iframe = document.querySelector('iframe[style*="position: fixed"]')
+        if (iframe) document.body.removeChild(iframe)
+      }, 1000)
+    }, 300)
+  } else {
+    ventana.focus()
+    setTimeout(() => ventana!.print(), 300)
+  }
 }

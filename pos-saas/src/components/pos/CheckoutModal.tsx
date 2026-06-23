@@ -396,7 +396,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
             onClick={() => { vaciarCarrito(); onClose() }}
             className={`w-full font-medium py-3 rounded-xl transition-colors text-sm ${t.btnSecundario}`}
           >
-            Cerrar
+            ✅ Nueva venta
           </button>
         </div>
       </div>
