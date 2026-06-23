@@ -250,6 +250,14 @@ export function PosShell() {
 
   const esCajero = usuario.rol !== 'admin' && !(usuario as any).es_superadmin
   const [bloqueado, setBloqueado] = useState(false)
+  const [verificadoBloqueo, setVerificadoBloqueo] = useState(false)
+
+  useEffect(() => {
+    if (sessionStorage.getItem('caja_bloqueado') === 'true') {
+      setBloqueado(true)
+    }
+    setVerificadoBloqueo(true)
+  }, [])
   const [pin, setPin] = useState('')
   const [errorPin, setErrorPin] = useState<string | null>(null)
   const [validando, setValidando] = useState(false)
@@ -275,7 +283,10 @@ export function PosShell() {
     if (!esCajero) return
     const reset = () => {
       if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => setBloqueado(true), 5 * 60 * 1000)
+      timerRef.current = setTimeout(() => {
+    sessionStorage.setItem('caja_bloqueado', 'true')
+    setBloqueado(true)
+  }, 5 * 60 * 1000)
     }
     const eventos = ['mousedown', 'keydown', 'touchstart']
     eventos.forEach(e => window.addEventListener(e, reset))
@@ -302,6 +313,7 @@ export function PosShell() {
       setPin('')
       return
     }
+    sessionStorage.removeItem('caja_bloqueado')
     setBloqueado(false)
     setPin('')
     setErrorPin(null)
@@ -313,6 +325,12 @@ export function PosShell() {
     { label: 'Historial', icono: FileText, ruta: '/caja/historial' },
     { label: 'Solicitudes', icono: Bell, ruta: '/caja/solicitudes', badge: solicitudesPendientes },
   ]
+
+  if (esCajero && !verificadoBloqueo) return (
+    <div className="flex h-screen items-center justify-center bg-zinc-950">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-700 border-t-zinc-400" />
+    </div>
+  )
 
   return (
     <div className={`flex flex-col overflow-hidden ${esOscuro ? 'bg-zinc-950 text-zinc-100' : 'bg-slate-50 text-slate-900'} ${esCajero ? 'h-screen' : 'h-screen'}`}>
@@ -345,7 +363,7 @@ export function PosShell() {
                 </button>
               )
             })}
-            <button onClick={() => setBloqueado(true)}
+            <button onClick={() => { sessionStorage.setItem('caja_bloqueado', 'true'); setBloqueado(true) }}
               className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl transition-all">
               <div className="p-1.5 rounded-xl">
                 <Lock size={18} className="text-zinc-600 hover:text-zinc-400 transition-colors" />
