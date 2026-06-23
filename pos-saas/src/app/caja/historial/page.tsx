@@ -50,7 +50,7 @@ export default function HistorialPage() {
       .from('ventas')
       .select(`
         id, numero_comprobante, total, metodo_pago, fecha_venta, sri_comprobante_id,
-        sri_comprobantes(estado, numero_comprobante),
+        sri_comprobantes(estsri_comprobantes!ventas_sri_comprobante_id_fkey(estado, numero_comprobante),
         detalle_ventas(cantidad, precio_unitario, productos(nombre))
       `)
       .eq('establecimiento_id', establecimiento.id)
