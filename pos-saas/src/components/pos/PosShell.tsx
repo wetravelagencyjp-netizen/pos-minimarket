@@ -175,12 +175,16 @@ function CarritoMovil({ slotProps, Carrito, esOscuro, onCobrar }: { slotProps: S
     if (items.length === 0) setAbierto(false)
   }, [items.length])
 
+  useEffect(() => {
+    return () => setAbierto(false)
+  }, [])
+
   return (
     <>
       {items.length > 0 && (
         <button
           onClick={() => setAbierto(true)}
-          className="fixed bottom-20 right-4 z-30 flex items-center gap-2 rounded-2xl bg-indigo-600 text-white px-4 py-3 shadow-lg transition-all"
+          className="fixed bottom-24 right-4 z-30 flex items-center gap-2 rounded-2xl bg-indigo-600 text-white px-4 py-3 shadow-lg transition-all"
         >
           <ShoppingCart size={18} />
           <span className="font-semibold text-sm">{items.length}</span>
@@ -264,6 +268,7 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
   const { bloqueado, verificado, bloquear, desbloquear, resetTimer } = useBloqueoPIN(esCajero)
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
   const [mostrarCheckout, setMostrarCheckout] = useState(false)
+  const [ultimaVenta, setUltimaVenta] = useState(0)
 
   useEffect(() => {
     if (!esCajero) return
@@ -368,7 +373,7 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
         <div className="fixed inset-0 z-[99999]">
           <CheckoutModal
             establecimientoId={slotProps.establecimiento.id}
-            onClose={() => { setMostrarCheckout(false); vaciarCarrito() }}
+            onClose={() => { setMostrarCheckout(false); vaciarCarrito(); setUltimaVenta(v => v + 1) }}
           />
         </div>
       )}
