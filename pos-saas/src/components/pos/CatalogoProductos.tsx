@@ -26,7 +26,7 @@ export default function CatalogoProductos({ establecimiento, sucursalId, ventaCo
       setTimeout(() => recargar(), 500)
     }
   }, [ventaCount])
-  const { agregarItem, ultimoEscaneadoId } = useCarrito()
+  const { agregarItem, ultimoEscaneadoId, ventasRegistradas } = useCarrito()
   const { tema } = useEstablecimiento()
   const esOscuro = tema === 'oscuro'
 
