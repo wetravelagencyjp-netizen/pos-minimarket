@@ -87,17 +87,6 @@ export function useProductos(establecimientoId: number | undefined, sucursalId: 
 
   useEffect(() => {
     cargarProductos()
-    // Escuchar cambios en lotes para actualizar stock en tiempo real
-    const canalId = `lotes-cambios-${establecimientoId}-${Math.random().toString(36).slice(2)}`
-    const canal = supabase
-      .channel(canalId)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'lotes_productos',
-      }, () => cargarProductos())
-      .subscribe()
-    return () => { supabase.removeChannel(canal) }
   }, [cargarProductos])
 
   const buscarPorCodigoBarras = useCallback(
