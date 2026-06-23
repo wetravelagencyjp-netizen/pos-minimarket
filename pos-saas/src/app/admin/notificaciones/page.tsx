@@ -14,7 +14,8 @@ interface Solicitud {
   estado: string
   creado_en: string
   cajero_id: string
-  cliente_id: number
+  cliente_id: number | null
+  items_json: any
   nombre_cajero?: string
   nombre_cliente?: string
 }
@@ -147,11 +148,28 @@ export default function NotificacionesPage() {
                   {new Date(s.creado_en).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <div className={`${t.excedente} rounded-xl p-3 flex justify-between text-sm`}>
-                <span className={t.excedenteText}>Excedente solicitado</span>
-                <span className={`font-bold ${t.excedenteValor}`}>{fmt(s.monto_excedente)}</span>
-              </div>
+              {/* Tipo de solicitud */}
+              {s.items_json?.tipo === 'descuento' ? (
+                <div className={`${esOscuro ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-50 border border-indigo-100'} rounded-xl p-3 space-y-1`}>
+                  <div className="flex justify-between text-sm">
+                    <span className={esOscuro ? 'text-indigo-300' : 'text-indigo-700'}>Descuento solicitado</span>
+                    <span className={`font-bold ${esOscuro ? 'text-indigo-300' : 'text-indigo-700'}`}>{s.items_json?.descuentoPct ?? 0}%</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className={t.cardSub}>Monto del descuento</span>
+                    <span className="text-rose-500 font-medium">-{fmt(s.monto_excedente)}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className={`${t.excedente} rounded-xl p-3 flex justify-between text-sm`}>
+                  <span className={t.excedenteText}>Excedente crédito</span>
+                  <span className={`font-bold ${t.excedenteValor}`}>{fmt(s.monto_excedente)}</span>
+                </div>
+              )}
               <p className={`text-xs ${t.cardSub}`}>Total de la venta: {fmt(s.total_venta)}</p>
+              {!s.cliente_id && s.items_json?.tipo === 'descuento' && (
+                <p className={`text-xs ${t.cardSub}`}>Sin cliente asignado</p>
+              )}
               <div className="flex gap-2">
                 <button
                   onClick={() => resolver(s.id, 'rechazada')}
