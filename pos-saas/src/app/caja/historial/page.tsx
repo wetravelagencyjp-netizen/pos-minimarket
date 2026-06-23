@@ -57,6 +57,7 @@ export default function HistorialPage() {
       .gte('fecha_venta', fechaHoy)
       .order('fecha_venta', { ascending: false })
 
+    console.log('🔵 Ventas resultado:', data, 'establecimiento_id:', establecimiento.id, 'fechaHoy:', fechaHoy)
     setVentas((data ?? []) as any)
     setCargando(false)
   }, [establecimiento])
