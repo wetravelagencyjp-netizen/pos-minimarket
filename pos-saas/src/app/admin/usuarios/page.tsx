@@ -104,14 +104,24 @@ export default function UsuariosPage() {
   }
 
   const actualizarRol = async (id: string, rol: Rol) => {
-    await supabase.from('usuarios').update({ rol }).eq('id', id)
-    setUsuarios(prev => prev.map(u => u.id === id ? { ...u, rol } : u))
+    const { error } = await supabase.rpc('actualizar_rol_usuario', {
+      p_usuario_id: id,
+      p_rol: rol,
+      p_establecimiento_id: estabId,
+    })
+    if (!error) setUsuarios(prev => prev.map(u => u.id === id ? { ...u, rol } : u))
   }
 
   const actualizarSucursal = async (id: string, sucursal_id: number | null) => {
-    await supabase.from('usuarios').update({ sucursal_id }).eq('id', id)
-    const sucursal = sucursales.find(s => s.id === sucursal_id) ?? null
-    setUsuarios(prev => prev.map(u => u.id === id ? { ...u, sucursal_id, sucursal: sucursal ? { nombre: sucursal.nombre } : null } : u))
+    const { error } = await supabase.rpc('actualizar_sucursal_usuario', {
+      p_usuario_id: id,
+      p_sucursal_id: sucursal_id,
+      p_establecimiento_id: estabId,
+    })
+    if (!error) {
+      const sucursal = sucursales.find(s => s.id === sucursal_id) ?? null
+      setUsuarios(prev => prev.map(u => u.id === id ? { ...u, sucursal_id, sucursal: sucursal ? { nombre: sucursal.nombre } : null } : u))
+    }
   }
 
   const guardarPin = async () => {
