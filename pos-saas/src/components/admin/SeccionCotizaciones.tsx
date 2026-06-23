@@ -258,13 +258,18 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
 
   const fmt = (n: number) => `$${Number(n).toFixed(2)}`
 
-  const ESTADOS_COLOR: Record<string, string> = {
-  borrador: 'bg-slate-100 text-slate-600',
-  enviada: 'bg-blue-50 text-blue-700',
-  aceptada: 'bg-emerald-50 text-emerald-700',
-  rechazada: 'bg-rose-50 text-rose-600',
-  vencida: 'bg-amber-50 text-amber-700',
-}
+  // ESTADOS_COLOR se movió fuera del componente (ver arriba del export default)
+
+  const handleFacturar = async (c: Cotizacion) => {
+    await supabase.from('cotizaciones').update({ estado: 'facturada' }).eq('id', c.id)
+    cargarDesdeCotizacion(
+      c.detalles,
+      Number(c.monto_abonado ?? 0),
+      c.id
+    )
+    router.push('/pos')
+  }
+
 
   return (
     <>
