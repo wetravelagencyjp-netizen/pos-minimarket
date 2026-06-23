@@ -30,8 +30,8 @@ const METODOS: { id: MetodoPago; label: string; icono: string }[] = [
 ]
 
 export default function CheckoutModal({ establecimientoId, onClose }: CheckoutModalProps) {
-  const { items, const { items, total, vaciarCarrito, anticipoReserva, cotizacionId } = useCarrito()
-  const { registrarVenta, isProcesando } = useRegistrarVenta()
+  
+  const { registrarVenta, isconst { items, total, vaciarCarrito, anticipoReserva, cotizacionId } = useCarrito()Procesando } = useRegistrarVenta()
   const [resultado, setResultado] = useState<{ numeroComprobante: string; ventaId?: number } | null>(null)
   const [cliente, setCliente] = useState<ClienteConCredito | null>(null)
   const [errorCredito, setErrorCredito] = useState<string | null>(null)
