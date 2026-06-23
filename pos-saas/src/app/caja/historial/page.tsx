@@ -61,7 +61,9 @@ export default function HistorialPage() {
     setCargando(false)
   }, [establecimiento])
 
-  useEffect(() => { cargar() }, [cargar])
+  useEffect(() => { 
+    if (establecimiento) cargar() 
+  }, [cargar, establecimiento])
 
   const handleImprimir = (v: Venta) => {
     imprimirRecibo({
