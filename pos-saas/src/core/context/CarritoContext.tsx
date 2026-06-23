@@ -30,6 +30,7 @@ interface CarritoContextValue {
   quitarItem: (productoId: number) => void
   cambiarCantidad: (productoId: number, cantidad: number, permitirSinStock?: boolean) => void
   vaciarCarrito: () => void
+  registrarVentaCompletada: () => void
   cargarDesdeCotizacion: (items: ItemCotizacion[], anticipo: number, cotizacionId: number) => void
 }
 
@@ -98,6 +99,9 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
     setItems([])
     setAnticipoReserva(0)
     setCotizacionId(null)
+  }, [])
+
+  const registrarVentaCompletada = useCallback(() => {
     setVentasRegistradas(v => v + 1)
   }, [])
 
@@ -118,7 +122,7 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
 
   return (
     <CarritoContext.Provider
-      value={{ items, total, ultimoEscaneadoId, anticipoReserva, cotizacionId, ventasRegistradas, agregarItem, quitarItem, cambiarCantidad, vaciarCarrito, cargarDesdeCotizacion }}
+      value={{ items, total, ultimoEscaneadoId, anticipoReserva, cotizacionId, ventasRegistradas, agregarItem, quitarItem, cambiarCantidad, vaciarCarrito, registrarVentaCompletada, cargarDesdeCotizacion }}
     >
       {children}
     </CarritoContext.Provider>

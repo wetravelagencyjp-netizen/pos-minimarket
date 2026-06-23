@@ -264,7 +264,7 @@ export function PosShell() {
 
 // ─── Componente interno con hooks ─────────────────────────────
 function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCajero, usuario, router, modulo }: any) {
-  const { vaciarCarrito } = useCarrito()
+  const { vaciarCarrito, registrarVentaCompletada } = useCarrito()
   const [ventaCount, setVentaCount] = useState(0)
   const { bloqueado, verificado, bloquear, desbloquear, resetTimer } = useBloqueoPIN(esCajero)
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
@@ -362,12 +362,9 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
           <CheckoutModal
             establecimientoId={slotProps.establecimiento.id}
             onClose={() => {
-              window.dispatchEvent(new CustomEvent('venta-completada'))
-              setTimeout(() => {
-                setMostrarCheckout(false)
-                vaciarCarrito()
-                setVentaCount(v => v + 1)
-              }, 50)
+              registrarVentaCompletada()
+              setMostrarCheckout(false)
+              vaciarCarrito()
             }}
           />
         </div>
