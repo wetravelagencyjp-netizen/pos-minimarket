@@ -57,6 +57,8 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const [pinDescuento, setPinDescuento] = useState('')
   const [validandoPinDescuento, setValidandoPinDescuento] = useState(false)
   const [errorPinDescuento, setErrorPinDescuento] = useState<string | null>(null)
+  const [notificandoDescuento, setNotificandoDescuento] = useState(false)
+  const [solicitudDescuentoEnviada, setSolicitudDescuentoEnviada] = useState(false)
 
   const montoDescuento = activarDescuento ? +(total * (descuentoPct / 100)).toFixed(2) : 0
   const totalConDescuento = +(total - montoDescuento).toFixed(2)
@@ -219,6 +221,30 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
     setMostrarPin(false)
     setPinIngresado('')
     setErrorCredito(null)
+  }
+
+  async function handleNotificarDescuento() {
+    if (!cliente && !items.length) return
+    setNotificandoDescuento(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { error } = await supabase.from('solicitudes_autorizacion').insert({
+      establecimiento_id: establecimientoId,
+      cajero_id: user?.id,
+      cliente_id: cliente?.id ?? null,
+      monto_excedente: montoDescuento,
+      total_venta: totalConDescuento,
+      items_json: {
+        items,
+        pagos,
+        clienteId: cliente?.id ?? null,
+        total: totalConDescuento,
+        descuentoPct,
+        montoDescuento,
+        tipo: 'descuento',
+      },
+    })
+    setNotificandoDescuento(false)
+    if (!error) setSolicitudDescuentoEnviada(true)
   }
 
   async function handleValidarPinDescuento() {
@@ -428,13 +454,19 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
                   )}
                 </div>
 
-                {descuentoPct > 5 && !descuentoAutorizado && (
+                {descuentoPct > 5 && !descuentoAutorizado && !solicitudDescuentoEnviada && (
                   <div className="space-y-2">
                     {!mostrarPinDescuento ? (
-                      <button onClick={() => setMostrarPinDescuento(true)}
-                        className="w-full bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-500 font-medium py-2 rounded-xl transition-colors text-xs">
-                        🔒 Descuento {'>'} 5% — requiere PIN de supervisor
-                      </button>
+                      <div className="space-y-1.5">
+                        <button onClick={() => setMostrarPinDescuento(true)}
+                          className="w-full bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-500 font-medium py-2 rounded-xl transition-colors text-xs">
+                          🔒 Autorizar con PIN de supervisor
+                        </button>
+                        <button onClick={handleNotificarDescuento} disabled={notificandoDescuento}
+                          className="w-full bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-blue-400 disabled:opacity-50 font-medium py-2 rounded-xl transition-colors text-xs">
+                          {notificandoDescuento ? 'Enviando…' : '📲 Notificar al dueño'}
+                        </button>
+                      </div>
                     ) : (
                       <div className={`${t.pinCard} rounded-xl p-3 space-y-2`}>
                         <p className={`${t.pinLabel} text-xs font-medium`}>PIN de supervisor para descuento</p>
@@ -457,6 +489,13 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {solicitudDescuentoEnviada && (
+                  <div className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs rounded-xl px-3 py-2 text-center space-y-0.5">
+                    <p className="font-medium">📲 Solicitud enviada al dueño</p>
+                    <p className="opacity-80">Cuando apruebe, completa la venta desde Caja → Solicitudes</p>
                   </div>
                 )}
 
@@ -606,7 +645,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
         {!solicitudEnviada && (
           <button
             onClick={handleConfirmar}
-            disabled={isProcesando || (excedeLimite && !autorizado) || requiereAutorizacion}
+            disabled={isProcesando || (excedeLimite && !autorizado) || requiereAutorizacion || solicitudDescuentoEnviada}
             className={`w-full font-semibold py-3.5 rounded-xl transition-colors text-sm ${t.btnPrincipal}`}
           >
             {isProcesando ? 'Procesando…' : 'Confirmar venta'}
