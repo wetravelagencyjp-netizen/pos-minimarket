@@ -93,7 +93,7 @@ function CarritoDefault(_props: SlotProps) {
 
   if (items.length === 0) {
     return (
-      <div className={`w-80 flex flex-col ${c.fondo} border-l h-full`}>
+      <div className={`w-full md:w-80 flex flex-col ${c.fondo} md:border-l h-full`}>
         {Header}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -118,7 +118,7 @@ function CarritoDefault(_props: SlotProps) {
   }
 
   return (
-    <div className={`w-80 flex flex-col ${c.fondo} border-l h-full`}>
+    <div className={`w-full md:w-80 flex flex-col ${c.fondo} md:border-l h-full`}>
       {Header}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {items.map((item) => (
@@ -154,7 +154,9 @@ function CarritoDefault(_props: SlotProps) {
           Cobrar
         </button>
         {mostrarCheckout && (
-          <CheckoutModal establecimientoId={_props.establecimiento.id} onClose={() => setMostrarCheckout(false)} />
+          <div className="fixed inset-0 z-[9999]">
+            <CheckoutModal establecimientoId={_props.establecimiento.id} onClose={() => setMostrarCheckout(false)} />
+          </div>
         )}
       </div>
     </div>
