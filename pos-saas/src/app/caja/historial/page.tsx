@@ -46,7 +46,7 @@ export default function HistorialPage() {
     const ahora = new Date()
     const fechaHoy = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}`
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('ventas')
       .select(`
         id, numero_comprobante, total, metodo_pago, fecha_venta, sri_comprobante_id,
@@ -57,7 +57,7 @@ export default function HistorialPage() {
       .gte('fecha_venta', fechaHoy)
       .order('fecha_venta', { ascending: false })
 
-    console.log('🔵 Ventas resultado:', data, 'establecimiento_id:', establecimiento.id, 'fechaHoy:', fechaHoy)
+    console.log('🔵 Ventas resultado:', data, 'error:', error, 'establecimiento_id:', establecimiento.id, 'fechaHoy:', fechaHoy)
     setVentas((data ?? []) as any)
     setCargando(false)
   }, [establecimiento])
