@@ -55,14 +55,18 @@ export default function CatalogoProductos({ establecimiento, sucursalId }: SlotP
           const stock = producto.lote_activo?.stock_lote ?? producto.stock_actual
           const resaltado = ultimoEscaneadoId === producto.id
 
+          const sinStock = stock <= 0 && !establecimiento.permite_venta_sin_stock
           return (
             <button
               key={producto.id}
-              onClick={() => agregarItem(producto, establecimiento.permite_venta_sin_stock)}
+              onClick={() => { if (!sinStock) agregarItem(producto, establecimiento.permite_venta_sin_stock) }}
+              disabled={sinStock}
               className={`text-left ${bgCard} rounded-xl p-4 border transition-all duration-200 ${
+                sinStock ? 'opacity-40 cursor-not-allowed' : ''
+              } ${
                 resaltado
                   ? `${esOscuro ? 'border-emerald-500 ring-2 ring-emerald-500/30' : 'border-indigo-500 ring-2 ring-indigo-500/50'} scale-[1.02]`
-                  : borderHover
+                  : sinStock ? '' : borderHover
               }`}
             >
               <div className={`w-full aspect-square ${bgImagen} rounded-lg mb-3 flex items-center justify-center text-3xl overflow-hidden`}>
