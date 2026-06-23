@@ -153,8 +153,8 @@ function CarritoDefault(_props: SlotProps) {
           className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-all duration-200 text-sm tracking-wide">
           Cobrar
         </button>
-        {mostrarCheckout && (
-          <div className="fixed inset-0 z-[9999]">
+        {mostrarCheckout && typeof document !== 'undefined' && (
+          <div className="fixed inset-0 z-[99999]" style={{ position: 'fixed', inset: 0, zIndex: 99999 }}>
             <CheckoutModal establecimientoId={_props.establecimiento.id} onClose={() => setMostrarCheckout(false)} />
           </div>
         )}
@@ -167,6 +167,11 @@ function CarritoDefault(_props: SlotProps) {
 function CarritoMovil({ slotProps, Carrito, esOscuro }: { slotProps: SlotProps; Carrito: any; esOscuro: boolean }) {
   const { items, total } = useCarrito()
   const [abierto, setAbierto] = useState(false)
+
+  // Cerrar drawer cuando el carrito se vacía (después de cobrar)
+  useEffect(() => {
+    if (items.length === 0) setAbierto(false)
+  }, [items.length])
 
   return (
     <>
