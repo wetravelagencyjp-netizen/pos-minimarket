@@ -43,7 +43,8 @@ export default function HistorialPage() {
   const cargar = useCallback(async () => {
     if (!usuario) return
     setCargando(true)
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+    const ahora = new Date()
+    const fechaHoy = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}`
 
     const { data } = await supabase
       .from('ventas')
@@ -53,7 +54,7 @@ export default function HistorialPage() {
         detalle_ventas(cantidad, precio_unitario, productos(nombre))
       `)
       .eq('establecimiento_id', usuario.establecimiento_id)
-      .gte('fecha_venta', hoy.toISOString())
+      .gte('fecha_venta', fechaHoy)
       .order('fecha_venta', { ascending: false })
 
     setVentas((data ?? []) as any)
