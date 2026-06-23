@@ -32,6 +32,8 @@ interface Cotizacion {
   valido_hasta: string
   notas: string | null
   created_at: string
+  monto_abonado: number | null
+  monto_pendiente: number | null
 }
 
 const ESTADOS_COLOR: Record<string, string> = {
