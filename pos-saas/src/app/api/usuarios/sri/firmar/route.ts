@@ -119,7 +119,7 @@ function simularFirma(xmlOriginal: string): string {
   return xmlOriginal.replace(/(<\/factura>)\s*$/, `${sigSimulado}</factura>`)
 }
 
-async function obtenerSolicitanteAdmin(request: NextRequest) {
+async function obtenerSolicitante(request: NextRequest) {
   const authHeader = request.headers.get('authorization') ?? ''
   const token = authHeader.replace('Bearer ', '')
   if (!token) return null
@@ -134,7 +134,7 @@ async function obtenerSolicitanteAdmin(request: NextRequest) {
     .single()
 
   if (!perfil) return null
-  if (perfil.rol !== 'admin' && !perfil.es_superadmin) return null
+  if (perfil.rol !== 'admin' && perfil.rol !== 'cajero' && !perfil.es_superadmin) return null
   return perfil
 }
 
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
   const log = (msg: string) => { logs.push(`[${new Date().toISOString()}] ${msg}`); console.log(msg) }
 
   try {
-    const solicitante = await obtenerSolicitanteAdmin(request)
+    const solicitante = await obtenerSolicitante(request)
     if (!solicitante) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
