@@ -76,10 +76,16 @@ export default function BarcodeScanner({ establecimiento, sucursalId }: SlotProp
                 key={p.id}
                 type="button"
                 onPointerDown={e => { e.preventDefault(); seleccionar(p) }}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-slate-700 text-slate-200 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-slate-700 text-slate-200 transition-colors"
               >
-                <span className="truncate">{p.nombre}</span>
-                <span className="ml-2 flex-shrink-0 text-indigo-400 font-semibold">
+                <div className="w-8 h-8 rounded-lg bg-slate-700 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                  {p.imagen_url
+                    ? <img src={p.imagen_url} alt={p.nombre} className="w-full h-full object-cover" />
+                    : <span className="text-base">📦</span>
+                  }
+                </div>
+                <span className="flex-1 truncate text-left">{p.nombre}</span>
+                <span className="flex-shrink-0 text-indigo-400 font-semibold">
                   ${(p.lote_activo?.precio_venta_sugerido ?? p.precio_venta).toFixed(2)}
                 </span>
               </button>
