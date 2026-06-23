@@ -16,7 +16,10 @@ export default function CajaLayout({ children }: { children: React.ReactNode }) 
   const { tema } = useEstablecimiento()
   const esOscuro = tema === 'oscuro'
 
-  const [bloqueado, setBloqueado] = useState(false)
+  const [bloqueado, setBloqueado] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return sessionStorage.getItem('caja_bloqueado') === 'true'
+  })
   const [pin, setPin] = useState('')
   const [errorPin, setErrorPin] = useState<string | null>(null)
   const [validando, setValidando] = useState(false)
@@ -42,7 +45,10 @@ export default function CajaLayout({ children }: { children: React.ReactNode }) 
   // Timer de inactividad
   const resetTimer = useCallback(() => {
     if (timerInactividad.current) clearTimeout(timerInactividad.current)
-    timerInactividad.current = setTimeout(() => setBloqueado(true), INACTIVIDAD_MS)
+    timerInactividad.current = setTimeout(() => {
+    sessionStorage.setItem('caja_bloqueado', 'true')
+    setBloqueado(true)
+  }, INACTIVIDAD_MS)
   }, [])
 
   useEffect(() => {
@@ -77,6 +83,7 @@ export default function CajaLayout({ children }: { children: React.ReactNode }) 
       setPin('')
       return
     }
+    sessionStorage.removeItem('caja_bloqueado')
     setBloqueado(false)
     setPin('')
     setErrorPin(null)
@@ -137,7 +144,7 @@ export default function CajaLayout({ children }: { children: React.ReactNode }) 
 
           {/* Botón bloqueo */}
           <button
-            onClick={() => setBloqueado(true)}
+            onClick={() => { sessionStorage.setItem('caja_bloqueado', 'true'); setBloqueado(true) }}
             className="flex flex-col items-center gap-1 px-4 py-1.5 rounded-2xl transition-all"
           >
             <div className="p-1.5 rounded-xl">
