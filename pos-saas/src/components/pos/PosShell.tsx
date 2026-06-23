@@ -241,7 +241,7 @@ export function PosShell() {
   }
 
   const modulo = getModulo(establecimiento.business_type)
-  const slotProps: SlotProps = { establecimiento: { ...establecimiento, _ventaCount: ventaCount } as any, usuario, sucursalId }
+  const slotProps: SlotProps = { establecimiento, usuario, sucursalId }
   const esOscuro = tema === 'oscuro'
   const esCajero = usuario.rol !== 'admin' && !(usuario as any).es_superadmin
 
@@ -269,7 +269,7 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
   const { bloqueado, verificado, bloquear, desbloquear, resetTimer } = useBloqueoPIN(esCajero)
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
   const [mostrarCheckout, setMostrarCheckout] = useState(false)
-  const [ultimaVenta, setUltimaVenta] = useState(0)
+  const slotPropsConVenta = { ...slotProps, establecimiento: { ...slotProps.establecimiento, _ventaCount: ventaCount } as any }
 
   useEffect(() => {
     if (!esCajero) return
@@ -301,39 +301,26 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
 
   return (
     <div className={`flex flex-col overflow-hidden h-screen ${esOscuro ? 'bg-zinc-950 text-zinc-100' : 'bg-slate-50 text-slate-900'}`}>
-      {modulo.alertaSlot && <modulo.alertaSlot {...slotProps} />}
-      <TopBar {...slotProps} />
+      {modulo.alertaSlot && <modulo.alertaSlot {...slotPropsConVenta} />}
+      <TopBar {...slotPropsConVenta} />
       <div className={`flex flex-1 overflow-hidden ${esCajero ? 'pb-16' : ''}`}>
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden h-full">
           <div className="flex-1 overflow-hidden h-full">
-            <Catalogo {...slotProps} />
+            <Catalogo {...slotPropsConVenta} />
           </div>
           {/* Desktop: carrito lateral */}
           <div className="hidden md:block">
-            <Carrito {...slotProps} onCobrar={() => setMostrarCheckout(true)} />
+            <Carrito {...slotPropsConVenta} onCobrar={() => setMostrarCheckout(true)} />
           </div>
-          {/* Móvil: drawer solo para cajeros */}
-          {esCajero && (
-            <div className="md:hidden">
-              <CarritoMovil
-                slotProps={slotProps}
-                Carrito={Carrito}
-                esOscuro={esOscuro}
-                onCobrar={() => setMostrarCheckout(true)}
-              />
-            </div>
-          )}
-          {/* Móvil: drawer para admin también */}
-          {!esCajero && (
-            <div className="md:hidden">
-              <CarritoMovil
-                slotProps={slotProps}
-                Carrito={Carrito}
-                esOscuro={esOscuro}
-                onCobrar={() => setMostrarCheckout(true)}
-              />
-            </div>
-          )}
+          {/* Móvil: drawer */}
+          <div className="md:hidden">
+            <CarritoMovil
+              slotProps={slotPropsConVenta}
+              Carrito={Carrito}
+              esOscuro={esOscuro}
+              onCobrar={() => setMostrarCheckout(true)}
+            />
+          </div>
         </div>
       </div>
 
