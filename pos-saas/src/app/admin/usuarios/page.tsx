@@ -39,6 +39,10 @@ export default function UsuariosPage() {
   const [form, setForm]             = useState({ nombre: '', email: '', password: '', rol: 'cajero' as Rol, sucursal_id: '' })
   const [creando,    setCreando]    = useState(false)
   const [mensaje,    setMensaje]    = useState<{ texto: string; tipo: 'ok' | 'error' } | null>(null)
+  const [pinUsuario, setPinUsuario] = useState<UsuarioFila | null>(null)
+  const [pinValor,   setPinValor]   = useState('')
+  const [guardandoPin, setGuardandoPin] = useState(false)
+  const [mensajePin, setMensajePin] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
     setLoading(true)
@@ -110,6 +114,30 @@ export default function UsuariosPage() {
     setUsuarios(prev => prev.map(u => u.id === id ? { ...u, sucursal_id, sucursal: sucursal ? { nombre: sucursal.nombre } : null } : u))
   }
 
+  const guardarPin = async () => {
+    if (!/^[0-9]{4,6}$/.test(pinValor)) {
+      setMensajePin('❌ El PIN debe tener entre 4 y 6 dígitos numéricos')
+      return
+    }
+    setGuardandoPin(true)
+    setMensajePin(null)
+    const { data, error } = await supabase.rpc('configurar_pin_cajero', {
+      p_usuario_id: pinUsuario!.id,
+      p_pin: pinValor,
+    })
+    setGuardandoPin(false)
+    if (error || !data?.ok) {
+      setMensajePin(`❌ ${error?.message ?? data?.error ?? 'Error al guardar PIN'}`)
+    } else {
+      setMensajePin('✅ PIN configurado correctamente')
+      setTimeout(() => {
+        setPinUsuario(null)
+        setPinValor('')
+        setMensajePin(null)
+      }, 1500)
+    }
+  }
+
   const eliminar = async (id: string, nombre: string) => {
     if (!confirm(`¿Eliminar a "${nombre}"?`)) return
     const { data: { session } } = await supabase.auth.getSession()
@@ -126,6 +154,45 @@ export default function UsuariosPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+
+      {/* Modal PIN */}
+      {pinUsuario && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
+            <h2 className="text-sm font-semibold text-slate-900">🔒 Configurar PIN — {pinUsuario.nombre}</h2>
+            <p className="text-xs text-slate-500">El cajero usará este PIN para desbloquear su pantalla.</p>
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              value={pinValor}
+              onChange={e => setPinValor(e.target.value.replace(/\D/g, ''))}
+              placeholder="PIN de 4 a 6 dígitos"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10"
+            />
+            {mensajePin && (
+              <p className={`text-xs ${mensajePin.startsWith('✅') ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {mensajePin}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setPinUsuario(null); setPinValor(''); setMensajePin(null) }}
+                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm text-slate-500 hover:bg-slate-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarPin}
+                disabled={guardandoPin || pinValor.length < 4}
+                className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {guardandoPin ? 'Guardando…' : 'Guardar PIN'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
         <div className="flex items-center gap-3">
           <button onClick={() => router.push('/admin')}
@@ -270,11 +337,20 @@ export default function UsuariosPage() {
                     </td>
                     <td className="px-6 py-3 text-right">
                       {!u.es_superadmin && (
-                        <button
-                          onClick={() => eliminar(u.id, u.nombre ?? 'este usuario')}
-                          className="text-xs font-medium text-rose-500 hover:text-rose-600 transition-colors">
-                          Eliminar
-                        </button>
+                        <div className="flex items-center justify-end gap-3">
+                          {u.rol === 'cajero' && (
+                            <button
+                              onClick={() => { setPinUsuario(u); setPinValor(''); setMensajePin(null) }}
+                              className="text-xs font-medium text-amber-600 hover:text-amber-700 transition-colors">
+                              🔒 PIN
+                            </button>
+                          )}
+                          <button
+                            onClick={() => eliminar(u.id, u.nombre ?? 'este usuario')}
+                            className="text-xs font-medium text-rose-500 hover:text-rose-600 transition-colors">
+                            Eliminar
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
