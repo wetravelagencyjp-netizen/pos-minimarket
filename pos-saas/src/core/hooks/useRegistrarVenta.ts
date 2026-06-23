@@ -12,6 +12,7 @@ interface RegistrarVentaParams {
   clienteId: number | null
   items: ItemCarrito[]
   total: number
+  descuentoTotal?: number
   metodoPago: MetodoPago
   cajaId: number | null
   bancoId: number | null
@@ -48,6 +49,7 @@ export function useRegistrarVenta() {
         p_pagos: params.pagos
           ? params.pagos.map((p) => ({ metodo: p.metodo, monto: p.monto, banco_id: p.bancoId }))
           : null,
+        p_descuento_total: params.descuentoTotal ?? 0,
       })
 
       if (rpcError) throw new Error(rpcError.message)

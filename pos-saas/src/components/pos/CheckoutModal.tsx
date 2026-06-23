@@ -162,6 +162,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
       bancoId: bancoPrincipal,
       items,
       total: totalConDescuento,
+      descuentoTotal: montoDescuento,
       metodoPago: pagos.length > 1 ? 'mixto' as MetodoPago : metodoPrincipal,
       pagos: pagos.map((p) => ({
         metodo: p.metodo,
