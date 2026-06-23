@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useProductos } from '@/core/hooks/useProductos'
 import { useCarrito } from '@/core/context/CarritoContext'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
@@ -8,14 +8,11 @@ import type { SlotProps } from '@/core/types/modulos.types'
 
 export default function CatalogoProductos({ establecimiento, sucursalId, ventaCount = 0 }: SlotProps & { ventaCount?: number }) {
   const { productos, isLoading, error, recargar } = useProductos(establecimiento.id, sucursalId)
-  const ventaCountRef = useRef(ventaCount)
-
   useEffect(() => {
-    if (ventaCount !== ventaCountRef.current) {
-      ventaCountRef.current = ventaCount
-      recargar()
-    }
-  }, [ventaCount, recargar])
+    const handler = () => recargar()
+    window.addEventListener('venta-completada', handler)
+    return () => window.removeEventListener('venta-completada', handler)
+  }, [recargar])
   const { agregarItem, ultimoEscaneadoId } = useCarrito()
   const { tema } = useEstablecimiento()
   const esOscuro = tema === 'oscuro'

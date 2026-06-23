@@ -361,7 +361,12 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
         <div className="fixed inset-0 z-[99999]">
           <CheckoutModal
             establecimientoId={slotProps.establecimiento.id}
-            onClose={() => { setMostrarCheckout(false); vaciarCarrito(); setVentaCount(v => v + 1) }}
+            onClose={() => {
+              setMostrarCheckout(false)
+              vaciarCarrito()
+              setVentaCount(v => v + 1)
+              window.dispatchEvent(new CustomEvent('venta-completada'))
+            }}
           />
         </div>
       )}
