@@ -9,24 +9,11 @@ import type { SlotProps } from '@/core/types/modulos.types'
 export default function CatalogoProductos({ establecimiento, sucursalId, ventaCount = 0 }: SlotProps & { ventaCount?: number }) {
   const [productoSeleccionado, setProductoSeleccionado] = useState<number | null>(null)
   const { productos, isLoading, error, recargar } = useProductos(establecimiento.id, sucursalId)
-  useEffect(() => {
-    const handler = () => {
-      recargar()
-      // En iOS PWA el evento puede llegar tarde — recargar dos veces
-      setTimeout(() => recargar(), 800)
-    }
-    window.addEventListener('venta-completada', handler)
-    return () => window.removeEventListener('venta-completada', handler)
-  }, [recargar])
-
-  // Fallback: recargar cuando ventaCount cambia
-  useEffect(() => {
-    if (ventaCount > 0) {
-      recargar()
-      setTimeout(() => recargar(), 500)
-    }
-  }, [ventaCount])
   const { agregarItem, ultimoEscaneadoId, ventasRegistradas } = useCarrito()
+
+  useEffect(() => {
+    if (ventasRegistradas > 0) recargar()
+  }, [ventasRegistradas])
   const { tema } = useEstablecimiento()
   const esOscuro = tema === 'oscuro'
 
