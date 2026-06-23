@@ -6,8 +6,7 @@ import { useCarrito } from '@/core/context/CarritoContext'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import type { SlotProps } from '@/core/types/modulos.types'
 
-export default function CatalogoProductos({ establecimiento, sucursalId }: SlotProps) {
-  const ventaCount = (establecimiento as any)._ventaCount ?? 0
+export default function CatalogoProductos({ establecimiento, sucursalId, ventaCount = 0 }: SlotProps & { ventaCount?: number }) {
   const { productos, isLoading, error, recargar } = useProductos(establecimiento.id, sucursalId)
 
   useEffect(() => {
