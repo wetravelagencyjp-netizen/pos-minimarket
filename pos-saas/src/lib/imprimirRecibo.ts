@@ -36,24 +36,7 @@ const METODO_LABEL: Record<string, string> = {
 }
 
 export function imprimirRecibo(d: DatosRecibo) {
-  // En iOS PWA window.open está bloqueado — usamos iframe oculto
   const esIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
-  let ventana: Window | null = null
-
-  if (!esIOS) {
-    ventana = window.open('', '_blank', 'width=400,height=600')
-    if (!ventana) return
-  } else {
-    // En iOS: crear iframe oculto para imprimir
-    const iframe = document.createElement('iframe')
-    iframe.style.position = 'fixed'
-    iframe.style.width = '0'
-    iframe.style.height = '0'
-    iframe.style.border = 'none'
-    document.body.appendChild(iframe)
-    ventana = iframe.contentWindow
-    if (!ventana) return
-
   const fmt = (n: number) => `$${n.toFixed(2)}`
   const anchoPx = d.ancho === '58mm' ? '58mm' : '80mm'
 
@@ -74,7 +57,7 @@ export function imprimirRecibo(d: DatosRecibo) {
     ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(d.claveAcceso)}`
     : null
 
-  ventana.document.write(`
+  const html = `
     <html>
     <head>
       <title>Recibo ${d.numeroComprobante}</title>
@@ -130,7 +113,7 @@ export function imprimirRecibo(d: DatosRecibo) {
       <hr/>
       ${d.anticipoReserva && d.anticipoReserva > 0 ? `<div class="linea"><span>Anticipo reserva</span><span>${fmt(d.anticipoReserva)}</span></div>` : ''}
       ${filasPagos}
-      ${d.anticipoReserva && d.anticipoReserva > 0 ? `<div class="linea" style="font-weight:700"><span>Saldo cobrado hoy</span><span>${fmt(d.pagos.reduce((s,p) => s + p.monto, 0))}</span></div>` : ''}
+      ${d.anticipoReserva && d.anticipoReserva > 0 ? `<div class="linea" style="font-weight:700"><span>Saldo cobrado hoy</span><span>${fmt(d.pagos.reduce((s, p) => s + p.monto, 0))}</span></div>` : ''}
       ${qrUrl ? `<div class="qr"><img src="${qrUrl}" width="120" height="120" /></div>` : ''}
       ${d.claveAcceso ? `<div class="clave">${d.claveAcceso}</div>` : ''}
       <div class="footer">
@@ -139,19 +122,26 @@ export function imprimirRecibo(d: DatosRecibo) {
       </div>
     </body>
     </html>
-  `)
-  ventana.document.close()
+  `
 
   if (esIOS) {
+    const iframe = document.createElement('iframe')
+    iframe.style.cssText = 'position:fixed;width:0;height:0;border:none;'
+    document.body.appendChild(iframe)
+    const win = iframe.contentWindow
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
     setTimeout(() => {
-      ventana!.print()
-      setTimeout(() => {
-        const iframe = document.querySelector('iframe[style*="position: fixed"]')
-        if (iframe) document.body.removeChild(iframe)
-      }, 1000)
+      win.print()
+      setTimeout(() => document.body.removeChild(iframe), 1000)
     }, 300)
   } else {
+    const ventana = window.open('', '_blank', 'width=400,height=600')
+    if (!ventana) return
+    ventana.document.write(html)
+    ventana.document.close()
     ventana.focus()
-    setTimeout(() => ventana!.print(), 300)
+    setTimeout(() => ventana.print(), 300)
   }
 }
