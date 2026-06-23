@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useProductos } from '@/core/hooks/useProductos'
 import { useCarrito } from '@/core/context/CarritoContext'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import type { SlotProps } from '@/core/types/modulos.types'
 
 export default function CatalogoProductos({ establecimiento, sucursalId, ventaCount = 0 }: SlotProps & { ventaCount?: number }) {
+  const [productoSeleccionado, setProductoSeleccionado] = useState<number | null>(null)
   const { productos, isLoading, error, recargar } = useProductos(establecimiento.id, sucursalId)
   useEffect(() => {
     const handler = () => {
@@ -74,16 +75,24 @@ export default function CatalogoProductos({ establecimiento, sucursalId, ventaCo
           const resaltado = ultimoEscaneadoId === producto.id
 
           const sinStock = stock <= 0 && !establecimiento.permite_venta_sin_stock
+          const estaSeleccionado = productoSeleccionado === producto.id
           return (
             <button
               key={producto.id}
               id={`producto-${producto.id}`}
-              onClick={() => { if (!sinStock) agregarItem(producto, establecimiento.permite_venta_sin_stock) }}
+              onClick={() => {
+                if (!sinStock) {
+                  agregarItem(producto, establecimiento.permite_venta_sin_stock)
+                  setProductoSeleccionado(producto.id)
+                }
+              }}
               disabled={sinStock}
               className={`text-left ${bgCard} rounded-xl p-4 border transition-all duration-200 ${
                 sinStock ? 'opacity-40 cursor-not-allowed' : ''
               } ${
-                resaltado
+                estaSeleccionado
+                  ? `${esOscuro ? 'border-indigo-500 ring-2 ring-indigo-500/40' : 'border-indigo-500 ring-2 ring-indigo-500/50'}`
+                  : resaltado
                   ? `${esOscuro ? 'border-emerald-500 ring-2 ring-emerald-500/30' : 'border-indigo-500 ring-2 ring-indigo-500/50'} scale-[1.02]`
                   : sinStock ? '' : borderHover
               }`}

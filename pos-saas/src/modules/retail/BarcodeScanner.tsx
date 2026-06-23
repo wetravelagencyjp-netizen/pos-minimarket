@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useProductos } from '@/core/hooks/useProductos'
 import { useCarrito } from '@/core/context/CarritoContext'
 import type { SlotProps } from '@/core/types/modulos.types'
@@ -34,10 +34,12 @@ export default function BarcodeScanner({ establecimiento, sucursalId }: SlotProp
     setCodigo('')
     setSugerencias([])
     setMostrarSugerencias(false)
-    // Scroll al producto en el catálogo y resaltarlo
     setTimeout(() => {
       const el = document.getElementById(`producto-${producto.id}`)
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.click()
+      }
     }, 100)
     inputRef.current?.focus()
   }
