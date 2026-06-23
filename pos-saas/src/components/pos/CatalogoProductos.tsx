@@ -77,6 +77,7 @@ export default function CatalogoProductos({ establecimiento, sucursalId, ventaCo
           return (
             <button
               key={producto.id}
+              id={`producto-${producto.id}`}
               onClick={() => { if (!sinStock) agregarItem(producto, establecimiento.permite_venta_sin_stock) }}
               disabled={sinStock}
               className={`text-left ${bgCard} rounded-xl p-4 border transition-all duration-200 ${

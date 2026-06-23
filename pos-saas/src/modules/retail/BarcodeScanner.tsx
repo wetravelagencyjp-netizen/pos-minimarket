@@ -34,6 +34,11 @@ export default function BarcodeScanner({ establecimiento, sucursalId }: SlotProp
     setCodigo('')
     setSugerencias([])
     setMostrarSugerencias(false)
+    // Scroll al producto en el catálogo y resaltarlo
+    setTimeout(() => {
+      const el = document.getElementById(`producto-${producto.id}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
     inputRef.current?.focus()
   }
 
