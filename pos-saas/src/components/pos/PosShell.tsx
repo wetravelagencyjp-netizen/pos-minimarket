@@ -241,7 +241,7 @@ export function PosShell() {
   }
 
   const modulo = getModulo(establecimiento.business_type)
-  const slotProps: SlotProps = { establecimiento, usuario, sucursalId }
+  const slotProps: SlotProps = { establecimiento: { ...establecimiento, _ventaCount: ventaCount } as any, usuario, sucursalId }
   const esOscuro = tema === 'oscuro'
   const esCajero = usuario.rol !== 'admin' && !(usuario as any).es_superadmin
 
@@ -265,6 +265,7 @@ export function PosShell() {
 // ─── Componente interno con hooks ─────────────────────────────
 function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCajero, usuario, router, modulo }: any) {
   const { vaciarCarrito } = useCarrito()
+  const [ventaCount, setVentaCount] = useState(0)
   const { bloqueado, verificado, bloquear, desbloquear, resetTimer } = useBloqueoPIN(esCajero)
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
   const [mostrarCheckout, setMostrarCheckout] = useState(false)
@@ -373,7 +374,7 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
         <div className="fixed inset-0 z-[99999]">
           <CheckoutModal
             establecimientoId={slotProps.establecimiento.id}
-            onClose={() => { setMostrarCheckout(false); vaciarCarrito(); setUltimaVenta(v => v + 1) }}
+            onClose={() => { setMostrarCheckout(false); vaciarCarrito(); setVentaCount(v => v + 1) }}
           />
         </div>
       )}

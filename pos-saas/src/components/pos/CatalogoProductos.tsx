@@ -1,12 +1,18 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useProductos } from '@/core/hooks/useProductos'
 import { useCarrito } from '@/core/context/CarritoContext'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import type { SlotProps } from '@/core/types/modulos.types'
 
 export default function CatalogoProductos({ establecimiento, sucursalId }: SlotProps) {
-  const { productos, isLoading, error } = useProductos(establecimiento.id, sucursalId)
+  const ventaCount = (establecimiento as any)._ventaCount ?? 0
+  const { productos, isLoading, error, recargar } = useProductos(establecimiento.id, sucursalId)
+
+  useEffect(() => {
+    if (ventaCount > 0) recargar()
+  }, [ventaCount])
   const { agregarItem, ultimoEscaneadoId } = useCarrito()
   const { tema } = useEstablecimiento()
   const esOscuro = tema === 'oscuro'
