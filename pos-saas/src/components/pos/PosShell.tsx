@@ -13,12 +13,20 @@ import CheckoutModal from './CheckoutModal'
 import type { SlotProps } from '@/core/types/modulos.types'
 
 // ─── Slot genérico: Barra superior ────────────────────────────
-function TopBarDefault({ establecimiento }: SlotProps) {
+function TopBarDefault({ establecimiento, usuario }: SlotProps) {
+  const router = useRouter()
+  const esAdmin = (usuario as any).rol === 'admin' || (usuario as any).es_superadmin
   return (
-    <div className="flex items-center gap-3 px-4 py-2 bg-slate-800 border-b border-slate-700">
-      <input type="text" placeholder="Buscar producto o escanear código..."
-        className="flex-1 bg-slate-700 text-slate-100 placeholder-slate-400 text-sm rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
-      <span className="text-xs text-slate-400 font-medium tracking-wide uppercase">{establecimiento.nombre}</span>
+    <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 border-b border-slate-700">
+      <input type="text" placeholder="Escanear código..."
+        className="flex-1 bg-slate-700 text-slate-100 placeholder-slate-400 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
+      <span className="text-xs text-slate-400 font-medium tracking-wide uppercase hidden sm:block">{establecimiento.nombre}</span>
+      {esAdmin && (
+        <button onClick={() => router.push('/admin')}
+          className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap">
+          ⚙️ Admin
+        </button>
+      )}
     </div>
   )
 }
@@ -169,18 +177,16 @@ function CarritoMovil({ slotProps, Carrito, esOscuro, onCobrar }: { slotProps: S
 
   return (
     <>
-      <button
-        onClick={() => setAbierto(true)}
-        className="fixed bottom-20 right-4 z-30 flex items-center gap-2 rounded-2xl bg-indigo-600 text-white px-4 py-3 shadow-lg transition-all"
-      >
-        <ShoppingCart size={18} />
-        {items.length > 0 && (
-          <>
-            <span className="font-semibold text-sm">{items.length}</span>
-            <span className="font-bold text-sm">${total.toFixed(2)}</span>
-          </>
-        )}
-      </button>
+      {items.length > 0 && (
+        <button
+          onClick={() => setAbierto(true)}
+          className="fixed bottom-20 right-4 z-30 flex items-center gap-2 rounded-2xl bg-indigo-600 text-white px-4 py-3 shadow-lg transition-all"
+        >
+          <ShoppingCart size={18} />
+          <span className="font-semibold text-sm">{items.length}</span>
+          <span className="font-bold text-sm">${total.toFixed(2)}</span>
+        </button>
+      )}
 
       {abierto && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
@@ -300,15 +306,23 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
           <div className="hidden md:block">
             <Carrito {...slotProps} onCobrar={() => setMostrarCheckout(true)} />
           </div>
-          {/* Móvil: drawer */}
-          <div className="md:hidden">
-            <CarritoMovil
-              slotProps={slotProps}
-              Carrito={Carrito}
-              esOscuro={esOscuro}
-              onCobrar={() => setMostrarCheckout(true)}
-            />
-          </div>
+          {/* Móvil: drawer solo para cajeros */}
+          {esCajero && (
+            <div className="md:hidden">
+              <CarritoMovil
+                slotProps={slotProps}
+                Carrito={Carrito}
+                esOscuro={esOscuro}
+                onCobrar={() => setMostrarCheckout(true)}
+              />
+            </div>
+          )}
+          {/* Móvil: carrito normal para admin */}
+          {!esCajero && (
+            <div className="md:hidden w-full">
+              <Carrito {...slotProps} onCobrar={() => setMostrarCheckout(true)} />
+            </div>
+          )}
         </div>
       </div>
 
