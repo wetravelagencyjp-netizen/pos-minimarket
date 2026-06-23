@@ -197,7 +197,7 @@ export default function AdminPage() {
         </header>
 
         {/* Secciones */}
-        <main className={`flex-1 overflow-y-auto p-6 ${esOscuro ? 'bg-zinc-950' : 'bg-slate-50'}`}>
+        <main className={`flex-1 overflow-y-auto p-3 sm:p-6 ${esOscuro ? 'bg-zinc-950' : 'bg-slate-50'}`}>
           {seccion === 'dashboard' && <ResumenDiarioLive establecimientoId={estabId} />}
           {seccion === 'contabilidad' && <SeccionContabilidad establecimientoId={estabId} />}
           {seccion === 'cotizaciones' && <SeccionCotizaciones establecimientoId={estabId} />}
@@ -314,7 +314,7 @@ function ResumenDiarioLive({ establecimientoId }: { establecimientoId: number })
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Ventas del día', valor: fmt(datos?.totalVentas ?? 0), icono: '💰', color: 'text-emerald-400' },
           { label: 'Transacciones', valor: String(datos?.numTransacciones ?? 0), icono: '🧾', color: 'text-blue-400' },
@@ -329,7 +329,7 @@ function ResumenDiarioLive({ establecimientoId }: { establecimientoId: number })
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Métodos de pago */}
         <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-4">
           <h2 className="text-sm font-semibold text-white">💳 Desglose por método de pago</h2>

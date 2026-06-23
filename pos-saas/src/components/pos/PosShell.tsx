@@ -317,10 +317,15 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
               />
             </div>
           )}
-          {/* Móvil: carrito normal para admin */}
+          {/* Móvil: drawer para admin también */}
           {!esCajero && (
-            <div className="md:hidden w-full">
-              <Carrito {...slotProps} onCobrar={() => setMostrarCheckout(true)} />
+            <div className="md:hidden">
+              <CarritoMovil
+                slotProps={slotProps}
+                Carrito={Carrito}
+                esOscuro={esOscuro}
+                onCobrar={() => setMostrarCheckout(true)}
+              />
             </div>
           )}
         </div>
