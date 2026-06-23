@@ -88,8 +88,9 @@ export function useProductos(establecimientoId: number | undefined, sucursalId: 
   useEffect(() => {
     cargarProductos()
     // Escuchar cambios en lotes para actualizar stock en tiempo real
+    const canalId = `lotes-cambios-${establecimientoId}-${Math.random().toString(36).slice(2)}`
     const canal = supabase
-      .channel('lotes-cambios')
+      .channel(canalId)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
