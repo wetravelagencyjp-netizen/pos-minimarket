@@ -65,7 +65,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const totalConDescuento = +(total - montoDescuento - anticipoReserva).toFixed(2)
   const requiereAutorizacion = activarDescuento && descuentoPct > 5 && !descuentoAutorizado
 
-  const [pagos, setPagos] = useState<LineaPago[]>([{ metodo: 'efectivo', monto: total.toFixed(2), bancoId: null }])
+  const [pagos, setPagos] = useState<LineaPago[]>([{ metodo: 'efectivo', monto: (total - anticipoReserva).toFixed(2), bancoId: null }])
 
   const usaCredito = pagos.some((p) => p.metodo === 'credito' && parseFloat(p.monto || '0') > 0)
   const montoCredito = pagos
