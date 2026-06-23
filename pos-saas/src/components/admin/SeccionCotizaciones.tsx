@@ -49,6 +49,10 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState<string | null>(null)
 
+  // Clientes para autocomplete
+  const [sugerenciasCliente, setSugerenciasCliente] = useState<{ id: number; razon_social: string; identificacion: string | null; email: string | null; telefono: string | null; direccion: string | null }[]>([])
+  const [clienteConFoco, setClienteConFoco] = useState(false)
+
   // Productos para autocomplete
   const [productos, setProductos] = useState<{ id: number; nombre: string; precio_venta: number }[]>([])
   const [sugerencias, setSugerencias] = useState<{ id: number; nombre: string; precio_venta: number }[]>([])
@@ -109,6 +113,29 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
     document.addEventListener('mousedown', cerrar)
     return () => document.removeEventListener('mousedown', cerrar)
   }, [])
+
+  const buscarClientes = async (texto: string) => {
+    if (texto.length < 2) { setSugerenciasCliente([]); return }
+    const { data } = await supabase
+      .from('clientes')
+      .select('id, razon_social, identificacion, email, telefono, direccion')
+      .eq('establecimiento_id', establecimientoId)
+      .or(`razon_social.ilike.%${texto}%,identificacion.ilike.%${texto}%`)
+      .limit(6)
+    setSugerenciasCliente(data ?? [])
+  }
+
+  const seleccionarCliente = (c: { razon_social: string; identificacion: string | null; email: string | null; telefono: string | null; direccion: string | null }) => {
+    setCliente({
+      nombre: c.razon_social,
+      identificacion: c.identificacion ?? '',
+      email: c.email ?? '',
+      telefono: c.telefono ?? '',
+      direccion: c.direccion ?? '',
+    })
+    setSugerenciasCliente([])
+    setClienteConFoco(false)
+  }
 
   const calcTotales = () => {
     const subtotal = items.reduce((s, it) => s + (it.precioUnitario - it.descuento) * it.cantidad, 0)
@@ -255,8 +282,56 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
           <div className="space-y-2">
             <p className={`text-xs font-semibold uppercase tracking-wide ${t.sub}`}>Datos del cliente</p>
             <div className="grid grid-cols-2 gap-3">
-              <input placeholder="Nombre / Razón social *" value={cliente.nombre} onChange={e => setCliente(f => ({ ...f, nombre: e.target.value }))} className={inputCls} />
-              <input placeholder="CI / RUC" value={cliente.identificacion} onChange={e => setCliente(f => ({ ...f, identificacion: e.target.value }))} className={inputCls} />
+              <div className="relative autocomplete-wrap">
+                <input
+                  placeholder="Nombre / Razón social *"
+                  value={cliente.nombre}
+                  onChange={e => { setCliente(f => ({ ...f, nombre: e.target.value })); buscarClientes(e.target.value) }}
+                  onFocus={() => { setClienteConFoco(true); if (cliente.nombre.length >= 2) buscarClientes(cliente.nombre) }}
+                  onBlur={() => setTimeout(() => setSugerenciasCliente([]), 150)}
+                  className={inputCls}
+                  autoComplete="off"
+                />
+                {sugerenciasCliente.length > 0 && clienteConFoco && (
+                  <div className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-[999] max-h-48 overflow-y-auto ${esOscuro ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-slate-200'}`}>
+                    {sugerenciasCliente.map(c => (
+                      <button
+                        key={c.id}
+                        onPointerDown={e => { e.preventDefault(); seleccionarCliente(c) }}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${esOscuro ? 'hover:bg-zinc-800 text-zinc-200' : 'hover:bg-slate-50 text-slate-700'}`}
+                      >
+                        <span className="truncate font-medium">{c.razon_social}</span>
+                        {c.identificacion && <span className={`ml-2 flex-shrink-0 ${esOscuro ? 'text-zinc-500' : 'text-slate-400'}`}>{c.identificacion}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="relative autocomplete-wrap">
+                <input
+                  placeholder="CI / RUC"
+                  value={cliente.identificacion}
+                  onChange={e => { setCliente(f => ({ ...f, identificacion: e.target.value })); buscarClientes(e.target.value) }}
+                  onFocus={() => { setClienteConFoco(true); if (cliente.identificacion.length >= 2) buscarClientes(cliente.identificacion) }}
+                  onBlur={() => setTimeout(() => setSugerenciasCliente([]), 150)}
+                  className={inputCls}
+                  autoComplete="off"
+                />
+                {sugerenciasCliente.length > 0 && clienteConFoco && (
+                  <div className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-[999] max-h-48 overflow-y-auto ${esOscuro ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-slate-200'}`}>
+                    {sugerenciasCliente.map(c => (
+                      <button
+                        key={c.id}
+                        onPointerDown={e => { e.preventDefault(); seleccionarCliente(c) }}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${esOscuro ? 'hover:bg-zinc-800 text-zinc-200' : 'hover:bg-slate-50 text-slate-700'}`}
+                      >
+                        <span className="truncate font-medium">{c.razon_social}</span>
+                        {c.identificacion && <span className={`ml-2 flex-shrink-0 ${esOscuro ? 'text-zinc-500' : 'text-slate-400'}`}>{c.identificacion}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <input placeholder="Email" type="email" value={cliente.email} onChange={e => setCliente(f => ({ ...f, email: e.target.value }))} className={inputCls} />
               <input placeholder="Teléfono" value={cliente.telefono} onChange={e => setCliente(f => ({ ...f, telefono: e.target.value }))} className={inputCls} />
               <input placeholder="Dirección" value={cliente.direccion} onChange={e => setCliente(f => ({ ...f, direccion: e.target.value }))} className={`${inputCls} col-span-2`} />
