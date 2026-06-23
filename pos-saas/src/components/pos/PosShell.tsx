@@ -3,7 +3,7 @@
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import { getModulo } from '@/modules/_registry'
 import { useCarrito } from '@/core/context/CarritoContext'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShoppingCart, Clock, FileText, Bell, Lock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -27,7 +27,7 @@ function TopBarDefault({ establecimiento }: SlotProps) {
 function CatalogoDefault({ establecimiento, sucursalId }: SlotProps) {
   return (
     <div className="flex-1 overflow-y-auto p-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-indigo-500 cursor-pointer transition-all duration-200">
             <div className="w-full aspect-square bg-slate-700 rounded-lg mb-3 flex items-center justify-center text-3xl">📦</div>
@@ -41,10 +41,9 @@ function CatalogoDefault({ establecimiento, sucursalId }: SlotProps) {
 }
 
 // ─── Slot genérico: Panel de carrito ──────────────────────────
-function CarritoDefault(_props: SlotProps) {
+function CarritoDefault(_props: SlotProps & { onCobrar?: () => void }) {
   const { items, total, cambiarCantidad, quitarItem } = useCarrito()
   const { tema, cambiarTema } = useEstablecimiento()
-  const [mostrarCheckout, setMostrarCheckout] = useState(false)
   const router = useRouter()
   const esOscuro = tema === 'oscuro'
 
@@ -149,38 +148,30 @@ function CarritoDefault(_props: SlotProps) {
           <span className={`${c.totalLabel} text-sm`}>Total</span>
           <span className={`${c.totalMonto} font-bold text-xl`}>${total.toFixed(2)}</span>
         </div>
-        <button onClick={() => setMostrarCheckout(true)}
+        <button
+          onClick={() => _props.onCobrar?.()}
           className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-all duration-200 text-sm tracking-wide">
           Cobrar
         </button>
-        {mostrarCheckout && typeof document !== 'undefined' && (
-          <div className="fixed inset-0 z-[99999]" style={{ position: 'fixed', inset: 0, zIndex: 99999 }}>
-            <CheckoutModal establecimientoId={_props.establecimiento.id} onClose={() => setMostrarCheckout(false)} />
-          </div>
-        )}
       </div>
     </div>
   )
 }
 
 // ─── Carrito móvil (drawer) ────────────────────────────────────
-function CarritoMovil({ slotProps, Carrito, esOscuro }: { slotProps: SlotProps; Carrito: any; esOscuro: boolean }) {
+function CarritoMovil({ slotProps, Carrito, esOscuro, onCobrar }: { slotProps: SlotProps; Carrito: any; esOscuro: boolean; onCobrar: () => void }) {
   const { items, total } = useCarrito()
   const [abierto, setAbierto] = useState(false)
 
-  // Cerrar drawer cuando el carrito se vacía (después de cobrar)
   useEffect(() => {
     if (items.length === 0) setAbierto(false)
   }, [items.length])
 
   return (
     <>
-      {/* Botón flotante sobre navbar */}
       <button
         onClick={() => setAbierto(true)}
-        className={`fixed bottom-20 right-4 z-30 flex items-center gap-2 rounded-2xl px-4 py-3 shadow-lg transition-all ${
-          esOscuro ? 'bg-indigo-600 text-white' : 'bg-indigo-600 text-white'
-        }`}
+        className="fixed bottom-20 right-4 z-30 flex items-center gap-2 rounded-2xl bg-indigo-600 text-white px-4 py-3 shadow-lg transition-all"
       >
         <ShoppingCart size={18} />
         {items.length > 0 && (
@@ -191,7 +182,6 @@ function CarritoMovil({ slotProps, Carrito, esOscuro }: { slotProps: SlotProps; 
         )}
       </button>
 
-      {/* Drawer */}
       {abierto && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setAbierto(false)} />
@@ -199,7 +189,7 @@ function CarritoMovil({ slotProps, Carrito, esOscuro }: { slotProps: SlotProps; 
             <div className="sticky top-0 flex justify-center pt-3 pb-1">
               <div className={`w-10 h-1 rounded-full ${esOscuro ? 'bg-zinc-700' : 'bg-slate-300'}`} />
             </div>
-            <Carrito {...slotProps} />
+            <Carrito {...slotProps} onCobrar={() => { setAbierto(false); onCobrar() }} />
           </div>
         </div>
       )}
@@ -262,10 +252,12 @@ export function PosShell() {
   />
 }
 
-// Componente interno que puede usar hooks sin condicionales
+// ─── Componente interno con hooks ─────────────────────────────
 function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCajero, usuario, router, modulo }: any) {
+  const { vaciarCarrito } = useCarrito()
   const { bloqueado, verificado, bloquear, desbloquear, resetTimer } = useBloqueoPIN(esCajero)
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
+  const [mostrarCheckout, setMostrarCheckout] = useState(false)
 
   useEffect(() => {
     if (!esCajero) return
@@ -300,21 +292,27 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
       {modulo.alertaSlot && <modulo.alertaSlot {...slotProps} />}
       <TopBar {...slotProps} />
       <div className={`flex flex-1 overflow-hidden ${esCajero ? 'pb-16' : ''}`}>
-        {/* En móvil: columna (catálogo arriba, carrito abajo). En desktop: fila */}
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
           <div className="flex-1 overflow-hidden">
             <Catalogo {...slotProps} />
           </div>
-          <div className="md:block hidden">
-            <Carrito {...slotProps} />
+          {/* Desktop: carrito lateral */}
+          <div className="hidden md:block">
+            <Carrito {...slotProps} onCobrar={() => setMostrarCheckout(true)} />
           </div>
-          {/* Carrito móvil — drawer inferior fijo */}
+          {/* Móvil: drawer */}
           <div className="md:hidden">
-            <CarritoMovil slotProps={slotProps} Carrito={Carrito} esOscuro={esOscuro} />
+            <CarritoMovil
+              slotProps={slotProps}
+              Carrito={Carrito}
+              esOscuro={esOscuro}
+              onCobrar={() => setMostrarCheckout(true)}
+            />
           </div>
         </div>
       </div>
 
+      {/* Navbar cajero */}
       {esCajero && (
         <nav className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/90 backdrop-blur-md border-t border-zinc-800">
           <div className="flex items-center justify-around px-2 py-2 max-w-2xl mx-auto">
@@ -344,6 +342,16 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
             </button>
           </div>
         </nav>
+      )}
+
+      {/* CheckoutModal al nivel raíz — por encima de todo */}
+      {mostrarCheckout && (
+        <div className="fixed inset-0 z-[99999]">
+          <CheckoutModal
+            establecimientoId={slotProps.establecimiento.id}
+            onClose={() => { setMostrarCheckout(false); vaciarCarrito() }}
+          />
+        </div>
       )}
 
       {bloqueado && (
