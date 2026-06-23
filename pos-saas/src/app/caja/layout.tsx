@@ -16,10 +16,13 @@ export default function CajaLayout({ children }: { children: React.ReactNode }) 
   const { tema } = useEstablecimiento()
   const esOscuro = tema === 'oscuro'
 
-  const [bloqueado, setBloqueado] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return sessionStorage.getItem('caja_bloqueado') === 'true'
-  })
+  const [bloqueado, setBloqueado] = useState(false)
+
+  useEffect(() => {
+    if (sessionStorage.getItem('caja_bloqueado') === 'true') {
+      setBloqueado(true)
+    }
+  }, [])
   const [pin, setPin] = useState('')
   const [errorPin, setErrorPin] = useState<string | null>(null)
   const [validando, setValidando] = useState(false)
