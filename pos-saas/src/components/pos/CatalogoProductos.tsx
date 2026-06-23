@@ -58,7 +58,7 @@ export default function CatalogoProductos({ establecimiento, sucursalId, ventaCo
       <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {productos.map((producto) => {
           const precio = producto.lote_activo?.precio_venta_sugerido ?? producto.precio_venta
-          const stock = producto.lote_activo?.stock_lote ?? producto.stock_actual
+          const stock = producto.lote_activo ? producto.lote_activo.stock_lote : 0
           const resaltado = ultimoEscaneadoId === producto.id
 
           const sinStock = stock <= 0 && !establecimiento.permite_venta_sin_stock
