@@ -1728,11 +1728,12 @@ function SeccionCierres({ establecimientoId }: { establecimientoId: number }) {
     const fechaInicio = `${fecha}T00:00:00`
     const fechaFin = `${fecha}T23:59:59`
 
-    const [{ data: ventas }, { data: detalle }, { data: pagos }, { data: egresos }] = await Promise.all([
+    const [{ data: ventas }, { data: detalle }, { data: pagos }, { data: egresos }, { data: reservas }] = await Promise.all([
       supabase.from('ventas').select('id, total, metodo_pago, numero_comprobante, fecha_venta, descuento_total').eq('establecimiento_id', establecimientoId).gte('fecha_venta', fechaInicio).lte('fecha_venta', fechaFin),
       supabase.from('detalle_ventas').select('cantidad, precio_unitario, producto:productos(nombre), venta:ventas!inner(establecimiento_id, fecha_venta)').eq('venta.establecimiento_id', establecimientoId).gte('venta.fecha_venta', fechaInicio).lte('venta.fecha_venta', fechaFin),
       supabase.from('pagos_venta').select('metodo_pago, monto, bancos(nombre), venta:ventas!inner(establecimiento_id, fecha_venta)').eq('venta.establecimiento_id', establecimientoId).gte('venta.fecha_venta', fechaInicio).lte('venta.fecha_venta', fechaFin),
       supabase.from('movimientos_caja').select('monto, motivo, creado_en').gte('creado_en', fechaInicio).lte('creado_en', fechaFin),
+      supabase.from('cotizaciones').select('id, numero, cliente_nombre, monto_abonado, total').eq('establecimiento_id', establecimientoId).eq('tipo', 'reserva').not('monto_abonado', 'is', null).gte('created_at', fechaInicio).lte('created_at', fechaFin),
     ])
 
     const totalVentas = (ventas ?? []).reduce((s, v) => s + Number(v.total), 0)
@@ -1754,6 +1755,8 @@ function SeccionCierres({ establecimientoId }: { establecimientoId: number }) {
       porProducto[nombre].total += d.precio_unitario * d.cantidad
     }
 
+    const totalAnticipos = (reservas ?? []).reduce((s, r) => s + Number(r.monto_abonado ?? 0), 0)
+
     setDatos({
       totalVentas,
       numTransacciones,
@@ -1765,6 +1768,8 @@ function SeccionCierres({ establecimientoId }: { establecimientoId: number }) {
       ultimaActualizacion: new Date(),
       ventas: ventas ?? [],
       egresos: egresos ?? [],
+      reservas: reservas ?? [],
+      totalAnticipos,
     })
     setCargando(false)
   }, [fecha, establecimientoId])
@@ -1798,6 +1803,13 @@ function SeccionCierres({ establecimientoId }: { establecimientoId: number }) {
     }))
 
     // Hoja 3: Egresos
+    const anticipos = (datos.reservas ?? []).map((r: any) => ({
+      'Número': r.numero,
+      'Cliente': r.cliente_nombre,
+      'Anticipo recibido': fmt2(r.monto_abonado),
+      'Total proforma': fmt2(r.total),
+      'Saldo pendiente': fmt2(Number(r.total) - Number(r.monto_abonado)),
+    }))
     const egresos = (datos.egresos ?? []).map((e: any) => ({
       'Fecha': new Date(e.creado_en).toLocaleString('es-EC'),
       'Motivo': e.motivo,
@@ -1811,9 +1823,12 @@ function SeccionCierres({ establecimientoId }: { establecimientoId: number }) {
     ws1['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 14 }, { wch: 10 }, { wch: 10 }]
     ws2['!cols'] = [{ wch: 28 }, { wch: 12 }, { wch: 12 }]
     ws3['!cols'] = [{ wch: 18 }, { wch: 30 }, { wch: 10 }]
+    const ws4 = XLSX.utils.json_to_sheet(anticipos.length ? anticipos : [{ 'Número': '—', 'Cliente': 'Sin anticipos hoy', 'Anticipo recibido': 0, 'Total proforma': 0, 'Saldo pendiente': 0 }])
+    ws4['!cols'] = [{ wch: 16 }, { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 16 }]
     XLSX.utils.book_append_sheet(wb, ws1, 'Ventas')
     XLSX.utils.book_append_sheet(wb, ws2, 'Métodos de Pago')
     XLSX.utils.book_append_sheet(wb, ws3, 'Egresos de Caja')
+    XLSX.utils.book_append_sheet(wb, ws4, 'Anticipos Reservas')
     XLSX.writeFile(wb, `cierre_${fecha}.xlsx`)
   }
 
@@ -1874,6 +1889,22 @@ function SeccionCierres({ establecimientoId }: { establecimientoId: number }) {
               </div>
             ))}
           </div>
+
+          {datos.totalAnticipos > 0 && (
+            <div className="rounded-2xl bg-indigo-500/10 border border-indigo-500/20 p-5 space-y-2">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-semibold text-indigo-400">📋 Ingresos por Anticipos de Reservas</h3>
+                <span className="text-indigo-300 font-bold text-base">{fmt(datos.totalAnticipos)}</span>
+              </div>
+              <p className="text-xs text-indigo-400/70">Dinero recibido hoy como anticipo — pendiente de facturación final</p>
+              {datos.reservas.map((r: any) => (
+                <div key={r.id} className="flex justify-between text-xs">
+                  <span className="text-indigo-300 font-mono">{r.numero} — {r.cliente_nombre}</span>
+                  <span className="text-indigo-400 font-medium">{fmt(Number(r.monto_abonado))} / {fmt(Number(r.total))}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {datos.ventas?.some((v: any) => (v.descuento_total ?? 0) > 0) && (
             <div className="rounded-2xl bg-orange-500/10 border border-orange-500/20 p-5 space-y-2">
