@@ -42,6 +42,7 @@ const ESTADOS_COLOR: Record<string, string> = {
   aceptada: 'bg-emerald-50 text-emerald-700',
   rechazada: 'bg-rose-50 text-rose-600',
   vencida: 'bg-amber-50 text-amber-700',
+  facturada: 'bg-purple-50 text-purple-700',
 }
 
 export default function SeccionCotizaciones({ establecimientoId }: { establecimientoId: number }) {
@@ -257,14 +258,13 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
 
   const fmt = (n: number) => `$${Number(n).toFixed(2)}`
 
-  const handleFacturar = (c: Cotizacion) => {
-    cargarDesdeCotizacion(
-      c.detalles,
-      Number(c.monto_abonado ?? 0),
-      c.id
-    )
-    router.push('/pos')
-  }
+  const ESTADOS_COLOR: Record<string, string> = {
+  borrador: 'bg-slate-100 text-slate-600',
+  enviada: 'bg-blue-50 text-blue-700',
+  aceptada: 'bg-emerald-50 text-emerald-700',
+  rechazada: 'bg-rose-50 text-rose-600',
+  vencida: 'bg-amber-50 text-amber-700',
+}
 
   return (
     <>
@@ -528,6 +528,7 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
                       <option value="aceptada">Aceptada</option>
                       <option value="rechazada">Rechazada</option>
                       <option value="vencida">Vencida</option>
+                      <option value="facturada">Facturada</option>
                     </select>
                   </td>
                   <td className="px-5 py-3 text-right">
