@@ -16,6 +16,7 @@ export default function AdminPage() {
   const estabId = Number(usuario?.establecimiento_id ?? 1)
   const [seccion, setSeccion] = useState<Seccion>('dashboard')
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
+  const [sidebarAbierto, setSidebarAbierto] = useState(false)
   const { establecimiento, tema, cambiarTema } = useEstablecimiento()
   const tieneContabilidad = establecimiento?.modulo_contabilidad ?? false
   const esOscuro = tema === 'oscuro'
@@ -47,7 +48,7 @@ export default function AdminPage() {
     const activo = id ? seccion === id : false
     return (
       <button
-        onClick={onClick}
+        onClick={() => { onClick(); setSidebarAbierto(false) }}
         className={`w-full flex items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-all ${
           activo
             ? esOscuro ? 'bg-white/10 text-white font-medium shadow-sm' : 'bg-indigo-50 text-indigo-700 font-medium'
@@ -79,8 +80,18 @@ export default function AdminPage() {
   return (
     <div className={`flex h-screen ${esOscuro ? 'bg-zinc-950' : 'bg-slate-50'}`}>
 
+      {/* ── Sidebar overlay móvil ── */}
+      {sidebarAbierto && (
+        <div className="fixed inset-0 z-40 md:hidden bg-black/50" onClick={() => setSidebarAbierto(false)} />
+      )}
+
       {/* ── Sidebar ── */}
-      <aside className={`w-56 flex flex-col border-r ${esOscuro ? 'bg-zinc-950 border-zinc-800/60' : 'bg-white border-slate-200'}`}>
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-56 flex flex-col border-r transform transition-transform duration-200
+        md:relative md:translate-x-0
+        ${sidebarAbierto ? 'translate-x-0' : '-translate-x-full'}
+        ${esOscuro ? 'bg-zinc-950 border-zinc-800/60' : 'bg-white border-slate-200'}
+      `}>
 
         {/* Logo / Marca */}
         <div className={`px-4 py-5 border-b ${esOscuro ? 'border-zinc-800/60' : 'border-slate-200'}`}>
@@ -143,8 +154,14 @@ export default function AdminPage() {
       <div className="flex flex-1 flex-col overflow-hidden">
 
         {/* Topbar */}
-        <header className={`flex items-center justify-between border-b px-6 py-3.5 ${esOscuro ? 'border-zinc-800/60 bg-zinc-900' : 'border-slate-200 bg-white'}`}>
-          <div>
+        <header className={`flex items-center justify-between border-b px-4 py-3.5 ${esOscuro ? 'border-zinc-800/60 bg-zinc-900' : 'border-slate-200 bg-white'}`}>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarAbierto(!sidebarAbierto)}
+              className={`md:hidden p-2 rounded-lg transition-colors ${esOscuro ? 'text-zinc-400 hover:bg-zinc-800' : 'text-slate-500 hover:bg-slate-100'}`}
+            >
+              ☰
+            </button>
             <h1 className={`text-sm font-semibold capitalize ${esOscuro ? 'text-white' : 'text-slate-900'}`}>
               {seccion === 'dashboard' ? 'Dashboard' :
                seccion === 'productos' ? 'Productos' :
