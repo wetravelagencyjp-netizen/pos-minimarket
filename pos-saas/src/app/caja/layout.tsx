@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import { supabase } from '@/lib/supabase'
 import { useState } from 'react'
-import { ShoppingCart, Clock, FileText, Bell, Lock } from 'lucide-react'
+import { ShoppingCart, Clock, FileText, Bell, Lock, ClipboardList } from 'lucide-react'
 import { useBloqueoPIN } from '@/core/hooks/useBloqueoPIN'
 import PantallaBloqueoPIN from '@/components/PantallaBloqueoPIN'
 
@@ -38,6 +38,7 @@ export default function CajaLayout({ children }: { children: React.ReactNode }) 
     { label: 'Vender', icono: ShoppingCart, ruta: '/pos' },
     { label: 'Turno', icono: Clock, ruta: '/caja' },
     { label: 'Historial', icono: FileText, ruta: '/caja/historial' },
+    { label: 'Cotizaciones', icono: ClipboardList, ruta: '/caja/cotizaciones' },
     { label: 'Solicitudes', icono: Bell, ruta: '/caja/solicitudes', badge: solicitudesPendientes },
   ]
 
