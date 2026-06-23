@@ -12,14 +12,24 @@ export interface ItemCarrito {
   esReserva?: boolean
 }
 
+export interface ItemCotizacion {
+  nombre: string
+  cantidad: number
+  precioUnitario: number
+  descuento: number
+}
+
 interface CarritoContextValue {
   items: ItemCarrito[]
   total: number
   ultimoEscaneadoId: number | null
+  anticipoReserva: number
+  cotizacionId: number | null
   agregarItem: (producto: ProductoConStock, permitirSinStock?: boolean) => void
   quitarItem: (productoId: number) => void
   cambiarCantidad: (productoId: number, cantidad: number, permitirSinStock?: boolean) => void
   vaciarCarrito: () => void
+  cargarDesdeCotizacion: (items: ItemCotizacion[], anticipo: number, cotizacionId: number) => void
 }
 
 const CarritoContext = createContext<CarritoContextValue | null>(null)
@@ -27,6 +37,8 @@ const CarritoContext = createContext<CarritoContextValue | null>(null)
 export function CarritoProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ItemCarrito[]>([])
   const [ultimoEscaneadoId, setUltimoEscaneadoId] = useState<number | null>(null)
+  const [anticipoReserva, setAnticipoReserva] = useState(0)
+  const [cotizacionId, setCotizacionId] = useState<number | null>(null)
 
   const agregarItem = useCallback((producto: ProductoConStock, permitirSinStock = false) => {
     const precio = producto.lote_activo?.precio_venta_sugerido ?? producto.precio_venta
@@ -79,13 +91,30 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
-  const vaciarCarrito = useCallback(() => setItems([]), [])
+  const vaciarCarrito = useCallback(() => {
+    setItems([])
+    setAnticipoReserva(0)
+    setCotizacionId(null)
+  }, [])
+
+  const cargarDesdeCotizacion = useCallback((itemsCot: ItemCotizacion[], anticipo: number, idCotizacion: number) => {
+    setItems(itemsCot.map((it, idx) => ({
+      productoId: -(idx + 1), // IDs negativos = items de cotización sin producto real
+      nombre: it.nombre,
+      precioUnitario: it.precioUnitario - it.descuento,
+      cantidad: it.cantidad,
+      stockDisponible: 9999,
+      esReserva: false,
+    })))
+    setAnticipoReserva(anticipo)
+    setCotizacionId(idCotizacion)
+  }, [])
 
   const total = items.reduce((sum, i) => sum + i.precioUnitario * i.cantidad, 0)
 
   return (
     <CarritoContext.Provider
-      value={{ items, total, ultimoEscaneadoId, agregarItem, quitarItem, cambiarCantidad, vaciarCarrito }}
+      value={{ items, total, ultimoEscaneadoId, anticipoReserva, cotizacionId, agregarItem, quitarItem, cambiarCantidad, vaciarCarrito, cargarDesdeCotizacion }}
     >
       {children}
     </CarritoContext.Provider>

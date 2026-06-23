@@ -30,7 +30,7 @@ const METODOS: { id: MetodoPago; label: string; icono: string }[] = [
 ]
 
 export default function CheckoutModal({ establecimientoId, onClose }: CheckoutModalProps) {
-  const { items, total, vaciarCarrito } = useCarrito()
+  const { items, const { items, total, vaciarCarrito, anticipoReserva, cotizacionId } = useCarrito()
   const { registrarVenta, isProcesando } = useRegistrarVenta()
   const [resultado, setResultado] = useState<{ numeroComprobante: string; ventaId?: number } | null>(null)
   const [cliente, setCliente] = useState<ClienteConCredito | null>(null)
@@ -61,7 +61,7 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
   const [solicitudDescuentoEnviada, setSolicitudDescuentoEnviada] = useState(false)
 
   const montoDescuento = activarDescuento ? +(total * (descuentoPct / 100)).toFixed(2) : 0
-  const totalConDescuento = +(total - montoDescuento).toFixed(2)
+  const totalConDescuento = +(total - montoDescuento - anticipoReserva).toFixed(2)
   const requiereAutorizacion = activarDescuento && descuentoPct > 5 && !descuentoAutorizado
 
   const [pagos, setPagos] = useState<LineaPago[]>([{ metodo: 'efectivo', monto: total.toFixed(2), bancoId: null }])
@@ -412,8 +412,14 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
         </div>
 
         <div className={`${t.cardTotal} rounded-xl p-5 space-y-3`}>
+          {anticipoReserva > 0 && (
+            <div className={`rounded-lg px-3 py-2 text-xs flex justify-between mb-1 ${esOscuro ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+              <span>Anticipo recibido (reserva)</span>
+              <span className="font-semibold">-${anticipoReserva.toFixed(2)}</span>
+            </div>
+          )}
           <div className="flex justify-between items-baseline">
-            <span className={`${t.labelTotal} text-sm`}>Total a cobrar</span>
+            <span className={`${t.labelTotal} text-sm`}>{anticipoReserva > 0 ? 'Saldo a cobrar' : 'Total a cobrar'}</span>
             <span className={`${esOscuro ? 'text-emerald-400' : t.montoTotal} font-bold text-3xl tracking-tight`}>
               ${totalConDescuento.toFixed(2)}
             </span>

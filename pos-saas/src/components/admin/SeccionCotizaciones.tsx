@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import { generarCotizacionPDF } from '@/lib/generarCotizacionPDF'
-import { Plus, Printer, Trash2, FileText, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Printer, Trash2, FileText, ChevronDown, ChevronUp, ShoppingCart, X } from 'lucide-react'
+import { useCarrito } from '@/core/context/CarritoContext'
+import { useRouter } from 'next/navigation'
 
 interface ItemCot {
   nombre: string
@@ -42,8 +44,11 @@ const ESTADOS_COLOR: Record<string, string> = {
 
 export default function SeccionCotizaciones({ establecimientoId }: { establecimientoId: number }) {
   const { establecimiento, tema } = useEstablecimiento()
+  const { cargarDesdeCotizacion } = useCarrito()
+  const router = useRouter()
   const esOscuro = tema === 'oscuro'
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([])
+  const [cotizacionAFacturar, setCotizacionAFacturar] = useState<Cotizacion | null>(null)
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [guardando, setGuardando] = useState(false)
@@ -249,6 +254,15 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
   }
 
   const fmt = (n: number) => `$${Number(n).toFixed(2)}`
+
+  const handleFacturar = (c: Cotizacion) => {
+    cargarDesdeCotizacion(
+      c.detalles,
+      Number(c.monto_abonado ?? 0),
+      c.id
+    )
+    router.push('/pos')
+  }
 
   return (
     <div className="space-y-5">
@@ -517,12 +531,10 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
                     <div className="flex items-center justify-end gap-2">
                       {c.estado === 'aceptada' && (
                         <button
-                          onClick={() => {
-                            alert(`Cotización ${c.numero} lista para facturar.\nTotal: $${Number(c.total).toFixed(2)}`)
-                          }}
+                          onClick={() => setCotizacionAFacturar(c)}
                           className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-2.5 py-1 rounded-lg transition-colors"
                         >
-                          ✓ Facturar
+                          <ShoppingCart size={11} /> Facturar
                         </button>
                       )}
                       <button onClick={() => imprimirCotizacion(c)} className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 font-medium transition-colors">
@@ -540,5 +552,60 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
         </div>
       )}
     </div>
+
+    {/* Modal confirmar facturación */}
+    {cotizacionAFacturar && (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+        <div className={`rounded-2xl border shadow-xl w-full max-w-sm p-6 space-y-4 ${esOscuro ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-slate-200'}`}>
+          <div className="flex items-center justify-between">
+            <h3 className={`text-sm font-semibold ${esOscuro ? 'text-zinc-100' : 'text-slate-900'}`}>
+              Cargar al POS — {cotizacionAFacturar.numero}
+            </h3>
+            <button onClick={() => setCotizacionAFacturar(null)} className={`${esOscuro ? 'text-zinc-500 hover:text-zinc-300' : 'text-slate-400 hover:text-slate-600'}`}>
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className={`rounded-xl border divide-y text-sm ${esOscuro ? 'border-zinc-700 divide-zinc-700' : 'border-slate-200 divide-slate-100'}`}>
+            {cotizacionAFacturar.detalles.map((it, i) => (
+              <div key={i} className="flex justify-between px-3 py-2">
+                <span className={esOscuro ? 'text-zinc-300' : 'text-slate-700'}>{it.cantidad}× {it.nombre}</span>
+                <span className={`font-medium ${esOscuro ? 'text-zinc-100' : 'text-slate-900'}`}>{fmt((it.precioUnitario - it.descuento) * it.cantidad)}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className={`rounded-xl p-3 space-y-1.5 ${esOscuro ? 'bg-zinc-800' : 'bg-slate-50'}`}>
+            <div className={`flex justify-between text-sm ${esOscuro ? 'text-zinc-400' : 'text-slate-500'}`}>
+              <span>Total cotización</span>
+              <span>{fmt(Number(cotizacionAFacturar.total))}</span>
+            </div>
+            {Number(cotizacionAFacturar.monto_abonado ?? 0) > 0 && (
+              <>
+                <div className="flex justify-between text-sm text-emerald-500">
+                  <span>Anticipo recibido</span>
+                  <span>-{fmt(Number(cotizacionAFacturar.monto_abonado))}</span>
+                </div>
+                <div className={`flex justify-between text-sm font-bold border-t pt-1.5 ${esOscuro ? 'border-zinc-700 text-zinc-100' : 'border-slate-200 text-slate-900'}`}>
+                  <span>Saldo a cobrar</span>
+                  <span className="text-indigo-500">{fmt(Number(cotizacionAFacturar.total) - Number(cotizacionAFacturar.monto_abonado ?? 0))}</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          <p className={`text-xs ${esOscuro ? 'text-zinc-500' : 'text-slate-400'}`}>
+            Los productos se cargarán al carrito del POS. Puedes agregar más items antes de cobrar.
+          </p>
+
+          <button
+            onClick={() => handleFacturar(cotizacionAFacturar)}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+          >
+            <ShoppingCart size={15} /> Ir al POS con este carrito
+          </button>
+        </div>
+      </div>
+    )}
   )
 }
