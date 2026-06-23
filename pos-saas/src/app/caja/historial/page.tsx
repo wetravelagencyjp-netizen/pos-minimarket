@@ -23,8 +23,8 @@ interface Venta {
 }
 
 export default function HistorialPage() {
-  const { usuario } = useAuth()
-  const { establecimiento, tema, cambiarTema } = useEstablecimiento()
+  const { usuario: usuarioAuth } = useAuth()
+  const { establecimiento, usuario, tema, cambiarTema } = useEstablecimiento()
   const esOscuro = tema === 'oscuro'
   const [ventas, setVentas] = useState<Venta[]>([])
   const [cargando, setCargando] = useState(true)
@@ -41,7 +41,7 @@ export default function HistorialPage() {
   }
 
   const cargar = useCallback(async () => {
-    if (!usuario) return
+    if (!establecimiento) return
     setCargando(true)
     const ahora = new Date()
     const fechaHoy = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}`
@@ -53,13 +53,13 @@ export default function HistorialPage() {
         sri_comprobantes(estado, numero_comprobante),
         detalle_ventas(cantidad, precio_unitario, productos(nombre))
       `)
-      .eq('establecimiento_id', usuario.establecimiento_id)
+      .eq('establecimiento_id', establecimiento.id)
       .gte('fecha_venta', fechaHoy)
       .order('fecha_venta', { ascending: false })
 
     setVentas((data ?? []) as any)
     setCargando(false)
-  }, [usuario])
+  }, [establecimiento])
 
   useEffect(() => { cargar() }, [cargar])
 
@@ -71,7 +71,7 @@ export default function HistorialPage() {
       numeroComprobante: v.numero_comprobante,
       claveAcceso: v.sri_comprobantes?.numero_comprobante ?? null,
       fecha: new Date(v.fecha_venta).toLocaleString('es-EC'),
-      cajero: usuario?.nombre ?? null,
+      cajero: usuarioAuth?.nombre ?? null,
       items: v.detalle_ventas.map(d => ({
         nombre: (d.productos as any)?.nombre ?? '—',
         cantidad: d.cantidad,
