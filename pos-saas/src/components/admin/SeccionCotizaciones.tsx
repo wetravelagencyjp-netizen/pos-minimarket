@@ -425,8 +425,8 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
             </label>
             {activarDescuento && (
               <div className="flex items-center gap-3">
-                <input type="number" min="0" max="100" step="0.5" value={descuentoGlobal}
-                  onChange={e => setDescuentoGlobal(parseFloat(e.target.value) || 0)}
+                <input type="number" min="0" max="100" step="0.5" value={descuentoGlobal === 0 ? '' : descuentoGlobal}
+                  onChange={e => setDescuentoGlobal(e.target.value === '' ? 0 : parseFloat(e.target.value))}
                   className={`w-28 ${inputCls}`} placeholder="0" />
                 <span className={`text-sm ${t.sub}`}>% de descuento sobre subtotal</span>
               </div>
@@ -515,6 +515,16 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      {c.estado === 'aceptada' && (
+                        <button
+                          onClick={() => {
+                            alert(`Cotización ${c.numero} lista para facturar.\nTotal: $${Number(c.total).toFixed(2)}`)
+                          }}
+                          className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-2.5 py-1 rounded-lg transition-colors"
+                        >
+                          ✓ Facturar
+                        </button>
+                      )}
                       <button onClick={() => imprimirCotizacion(c)} className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 font-medium transition-colors">
                         <Printer size={13} /> Imprimir
                       </button>
