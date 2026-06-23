@@ -1,16 +1,26 @@
 {
-  "name": "POS Minimarket",
-  "short_name": "POS",
-  "description": "Sistema de punto de venta",
-  "start_url": "/",
+  "name": "GRPM Business OS",
+  "short_name": "GRPM",
+  "description": "Sistema de Punto de Venta para GRPM",
+  "start_url": "/caja",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
+  "orientation": "portrait",
+  "background_color": "#09090b",
   "theme_color": "#4f46e5",
-  "orientation": "any",
+  "lang": "es",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }
