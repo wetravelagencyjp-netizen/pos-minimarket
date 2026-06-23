@@ -17,11 +17,13 @@ export default function CajaLayout({ children }: { children: React.ReactNode }) 
   const esOscuro = tema === 'oscuro'
 
   const [bloqueado, setBloqueado] = useState(false)
+  const [verificado, setVerificado] = useState(false)
 
   useEffect(() => {
     if (sessionStorage.getItem('caja_bloqueado') === 'true') {
       setBloqueado(true)
     }
+    setVerificado(true)
   }, [])
   const [pin, setPin] = useState('')
   const [errorPin, setErrorPin] = useState<string | null>(null)
@@ -112,6 +114,12 @@ export default function CajaLayout({ children }: { children: React.ReactNode }) 
     if (ruta === '/caja') return pathname === '/caja'
     return pathname.startsWith(ruta)
   }
+
+  if (!verificado) return (
+    <div className="flex h-screen items-center justify-center bg-zinc-950">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-700 border-t-zinc-400" />
+    </div>
+  )
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950">
