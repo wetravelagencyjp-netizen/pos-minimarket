@@ -290,7 +290,8 @@ export default function CheckoutModal({ establecimientoId, onClose }: CheckoutMo
         metodo: p.metodo,
         monto: parseFloat(p.monto) || 0,
       })),
-      total,
+      total: totalConDescuento + anticipoReserva,
+      anticipoReserva: anticipoReserva > 0 ? anticipoReserva : undefined,
       ancho: (establecimiento?.ancho_recibo as '80mm' | '58mm') ?? '80mm',
     })
   }

@@ -20,6 +20,7 @@ interface DatosRecibo {
   items: ItemRecibo[]
   pagos: PagoRecibo[]
   total: number
+  anticipoReserva?: number
   subtotalSinIva?: number
   subtotalIva?: number
   iva?: number
@@ -110,9 +111,11 @@ export function imprimirRecibo(d: DatosRecibo) {
       <hr/>
       ${d.subtotalSinIva != null ? `<div class="linea"><span>Subtotal</span><span>${fmt(d.subtotalSinIva)}</span></div>` : ''}
       ${d.iva != null ? `<div class="linea"><span>IVA</span><span>${fmt(d.iva)}</span></div>` : ''}
-      <div class="total-grande"><span>TOTAL</span><span>${fmt(d.total)}</span></div>
+      <div class="total-grande"><span>TOTAL</span><span>${fmt(d.total + (d.anticipoReserva ?? 0))}</span></div>
       <hr/>
+      ${d.anticipoReserva && d.anticipoReserva > 0 ? `<div class="linea"><span>Anticipo reserva</span><span>${fmt(d.anticipoReserva)}</span></div>` : ''}
       ${filasPagos}
+      ${d.anticipoReserva && d.anticipoReserva > 0 ? `<div class="linea" style="font-weight:700"><span>Saldo cobrado hoy</span><span>${fmt(d.pagos.reduce((s,p) => s + p.monto, 0))}</span></div>` : ''}
       ${qrUrl ? `<div class="qr"><img src="${qrUrl}" width="120" height="120" /></div>` : ''}
       ${d.claveAcceso ? `<div class="clave">${d.claveAcceso}</div>` : ''}
       <div class="footer">
