@@ -265,6 +265,7 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
   }
 
   return (
+    <>
     <div className="space-y-5">
       {/* Header acciones */}
       <div className="flex items-center justify-between">
@@ -607,5 +608,6 @@ export default function SeccionCotizaciones({ establecimientoId }: { establecimi
         </div>
       </div>
     )}
+    </>
   )
 }
