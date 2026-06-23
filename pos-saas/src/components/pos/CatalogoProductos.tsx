@@ -22,7 +22,7 @@ export default function CatalogoProductos({ establecimiento, sucursalId }: SlotP
   if (isLoading) {
     return (
       <div className={`flex-1 overflow-y-auto p-4 ${bgFondo}`}>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className={`${bgCard} rounded-xl aspect-square animate-pulse`} />
           ))}
@@ -48,8 +48,8 @@ export default function CatalogoProductos({ establecimiento, sucursalId }: SlotP
   }
 
   return (
-    <div className={`flex-1 overflow-y-auto p-4 ${bgFondo}`}>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+    <div className={`flex-1 overflow-y-auto p-2 sm:p-4 ${bgFondo}`}>
+      <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {productos.map((producto) => {
           const precio = producto.lote_activo?.precio_venta_sugerido ?? producto.precio_venta
           const stock = producto.lote_activo?.stock_lote ?? producto.stock_actual

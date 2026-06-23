@@ -161,6 +161,45 @@ function CarritoDefault(_props: SlotProps) {
   )
 }
 
+// ─── Carrito móvil (drawer) ────────────────────────────────────
+function CarritoMovil({ slotProps, Carrito, esOscuro }: { slotProps: SlotProps; Carrito: any; esOscuro: boolean }) {
+  const { items, total } = useCarrito()
+  const [abierto, setAbierto] = useState(false)
+
+  return (
+    <>
+      {/* Botón flotante sobre navbar */}
+      <button
+        onClick={() => setAbierto(true)}
+        className={`fixed bottom-20 right-4 z-30 flex items-center gap-2 rounded-2xl px-4 py-3 shadow-lg transition-all ${
+          esOscuro ? 'bg-indigo-600 text-white' : 'bg-indigo-600 text-white'
+        }`}
+      >
+        <ShoppingCart size={18} />
+        {items.length > 0 && (
+          <>
+            <span className="font-semibold text-sm">{items.length}</span>
+            <span className="font-bold text-sm">${total.toFixed(2)}</span>
+          </>
+        )}
+      </button>
+
+      {/* Drawer */}
+      {abierto && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setAbierto(false)} />
+          <div className={`relative rounded-t-3xl max-h-[85vh] overflow-y-auto shadow-2xl ${esOscuro ? 'bg-zinc-900' : 'bg-white'}`}>
+            <div className="sticky top-0 flex justify-center pt-3 pb-1">
+              <div className={`w-10 h-1 rounded-full ${esOscuro ? 'bg-zinc-700' : 'bg-slate-300'}`} />
+            </div>
+            <Carrito {...slotProps} />
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 // ─── Skeleton Loader ───────────────────────────────────────────
 function PosSkeletonLoader() {
   return (
@@ -254,8 +293,19 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
       {modulo.alertaSlot && <modulo.alertaSlot {...slotProps} />}
       <TopBar {...slotProps} />
       <div className={`flex flex-1 overflow-hidden ${esCajero ? 'pb-16' : ''}`}>
-        <Catalogo {...slotProps} />
-        <Carrito {...slotProps} />
+        {/* En móvil: columna (catálogo arriba, carrito abajo). En desktop: fila */}
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden">
+            <Catalogo {...slotProps} />
+          </div>
+          <div className="md:block hidden">
+            <Carrito {...slotProps} />
+          </div>
+          {/* Carrito móvil — drawer inferior fijo */}
+          <div className="md:hidden">
+            <CarritoMovil slotProps={slotProps} Carrito={Carrito} esOscuro={esOscuro} />
+          </div>
+        </div>
       </div>
 
       {esCajero && (
