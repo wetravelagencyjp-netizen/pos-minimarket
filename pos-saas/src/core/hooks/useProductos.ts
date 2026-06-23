@@ -92,7 +92,7 @@ export function useProductos(establecimientoId: number | undefined, sucursalId: 
     const canal = supabase
       .channel(canalId)
       .on('postgres_changes', {
-        event: 'UPDATE',
+        event: '*',
         schema: 'public',
         table: 'lotes_productos',
       }, () => cargarProductos())

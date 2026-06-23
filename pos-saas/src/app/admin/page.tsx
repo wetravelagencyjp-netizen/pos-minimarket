@@ -1627,9 +1627,7 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
   )
 }// ─── EXPORTAR PDF EJECUTIVO ────────────────────────────────
 function exportarCierrePDF(datos: any, establecimientoId: number) {
-  const ventana = window.open('', '_blank', 'width=900,height=700')
-  if (!ventana) return
-
+  const esIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
   const fmt = (n: number) => `$${Number(n).toFixed(2)}`
   const hoy = new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
@@ -1657,7 +1655,7 @@ function exportarCierrePDF(datos: any, establecimientoId: number) {
     </tr>
   `).join('')
 
-  ventana.document.write(`
+  const html = `
     <!DOCTYPE html>
     <html lang="es">
     <head>
@@ -1728,10 +1726,28 @@ function exportarCierrePDF(datos: any, establecimientoId: number) {
       </div>
     </body>
     </html>
-  `)
-  ventana.document.close()
-  ventana.focus()
-  setTimeout(() => ventana.print(), 500)
+  `
+
+  if (esIOS) {
+    const iframe = document.createElement('iframe')
+    iframe.style.cssText = 'position:fixed;width:0;height:0;border:none;'
+    document.body.appendChild(iframe)
+    const win = iframe.contentWindow
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    setTimeout(() => {
+      win.print()
+      setTimeout(() => document.body.removeChild(iframe), 1000)
+    }, 500)
+  } else {
+    const ventana = window.open('', '_blank', 'width=900,height=700')
+    if (!ventana) return
+    ventana.document.write(html)
+    ventana.document.close()
+    ventana.focus()
+    setTimeout(() => ventana.print(), 500)
+  }
 }
 
 // ─── SECCIÓN CIERRES Y REPORTES ────────────────────────────

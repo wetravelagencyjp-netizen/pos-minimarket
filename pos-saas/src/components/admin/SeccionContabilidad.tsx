@@ -532,7 +532,7 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
         <div className="space-y-4">
           <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-4">
             <h2 className="text-sm font-semibold text-white">➕ Nueva cuenta</h2>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <input placeholder="Nombre (ej: Banco Pichincha)" value={formCuenta.nombre}
                 onChange={e => setFormCuenta(f => ({ ...f, nombre: e.target.value }))} className={inputCls} />
               <select value={formCuenta.tipo} onChange={e => setFormCuenta(f => ({ ...f, tipo: e.target.value }))} className={inputCls}>
