@@ -14,7 +14,6 @@ interface Venta {
   metodo_pago: string
   fecha_venta: string
   sri_comprobante_id: number | null
-  sri_comprobantes: { estado: string; numero_comprobante: string } | null
   detalle_ventas: {
     cantidad: number
     precio_unitario: number
@@ -24,7 +23,7 @@ interface Venta {
 
 export default function HistorialPage() {
   const { usuario: usuarioAuth } = useAuth()
-  const { establecimiento, usuario, tema, cambiarTema } = useEstablecimiento()
+  const { establecimiento, tema, cambiarTema } = useEstablecimiento()
   const esOscuro = tema === 'oscuro'
   const [ventas, setVentas] = useState<Venta[]>([])
   const [cargando, setCargando] = useState(true)
@@ -48,22 +47,18 @@ export default function HistorialPage() {
 
     const { data, error } = await supabase
       .from('ventas')
-      .select(`
-        id, numero_comprobante, total, metodo_pago, fecha_venta, sri_comprobante_id,
-        sri_comprobantes(estsri_comprobantes!ventas_sri_comprobante_id_fkey(estado, numero_comprobante),
-        detalle_ventas(cantidad, precio_unitario, productos(nombre))
-      `)
+      .select('id, numero_comprobante, total, metodo_pago, fecha_venta, sri_comprobante_id, detalle_ventas(cantidad, precio_unitario, productos(nombre))')
       .eq('establecimiento_id', establecimiento.id)
       .gte('fecha_venta', fechaHoy)
       .order('fecha_venta', { ascending: false })
 
-    console.log('🔵 Ventas resultado:', data, 'error:', error, 'establecimiento_id:', establecimiento.id, 'fechaHoy:', fechaHoy)
+    if (error) console.error('Error historial:', error)
     setVentas((data ?? []) as any)
     setCargando(false)
   }, [establecimiento])
 
-  useEffect(() => { 
-    if (establecimiento) cargar() 
+  useEffect(() => {
+    if (establecimiento) cargar()
   }, [cargar, establecimiento])
 
   const handleImprimir = (v: Venta) => {
@@ -72,7 +67,7 @@ export default function HistorialPage() {
       ruc: establecimiento?.ruc_nit ?? null,
       direccion: establecimiento?.direccion ?? null,
       numeroComprobante: v.numero_comprobante,
-      claveAcceso: v.sri_comprobantes?.numero_comprobante ?? null,
+      claveAcceso: null,
       fecha: new Date(v.fecha_venta).toLocaleString('es-EC'),
       cajero: usuarioAuth?.nombre ?? null,
       items: v.detalle_ventas.map(d => ({
@@ -97,7 +92,8 @@ export default function HistorialPage() {
             <h1 className={`text-sm font-semibold ${t.headerText}`}>Historial del día</h1>
             <p className={`text-xs ${t.sub} mt-0.5`}>{ventas.length} ventas · {fmt(totalDia)}</p>
           </div>
-          <button onClick={() => cambiarTema(esOscuro ? 'claro' : 'oscuro')} className={`p-1.5 rounded-xl transition-colors ${esOscuro ? 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
+          <button onClick={() => cambiarTema(esOscuro ? 'claro' : 'oscuro')}
+            className={`p-1.5 rounded-xl transition-colors ${esOscuro ? 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
             {esOscuro ? <Sun size={14} /> : <Moon size={14} />}
           </button>
         </div>
@@ -127,7 +123,6 @@ export default function HistorialPage() {
                 </div>
               </div>
 
-              {/* Productos */}
               <div className={`space-y-1 border-t ${t.divider} pt-2`}>
                 {v.detalle_ventas.slice(0, 3).map((d, i) => (
                   <div key={i} className="flex justify-between text-xs">
@@ -141,14 +136,11 @@ export default function HistorialPage() {
               </div>
 
               <div className={`flex items-center justify-between border-t ${t.divider} pt-2`}>
-                {/* Estado SRI */}
                 <div className="flex items-center gap-1.5">
                   {v.sri_comprobante_id ? (
                     <>
                       <CheckCircle size={12} className="text-emerald-500" />
-                      <span className="text-xs text-emerald-500">
-                        {v.sri_comprobantes?.estado === 'AUTORIZADO' ? 'Facturada' : 'SRI Pendiente'}
-                      </span>
+                      <span className="text-xs text-emerald-500">Facturada</span>
                     </>
                   ) : (
                     <>
@@ -157,10 +149,8 @@ export default function HistorialPage() {
                     </>
                   )}
                 </div>
-                <button
-                  onClick={() => handleImprimir(v)}
-                  className="flex items-center gap-1.5 text-xs text-indigo-500 hover:text-indigo-400 font-medium transition-colors"
-                >
+                <button onClick={() => handleImprimir(v)}
+                  className="flex items-center gap-1.5 text-xs text-indigo-500 hover:text-indigo-400 font-medium transition-colors">
                   <Printer size={13} /> Reimprimir
                 </button>
               </div>
