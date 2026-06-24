@@ -3,6 +3,7 @@
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 import { getModulo } from '@/modules/_registry'
 import { useCarrito } from '@/core/context/CarritoContext'
+import { useAuth } from '@/lib/auth-context'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShoppingCart, Clock, FileText, Bell, Lock, LogOut } from 'lucide-react'
@@ -267,7 +268,7 @@ export function PosShell() {
 // ─── Componente interno con hooks ─────────────────────────────
 function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCajero, usuario, router, modulo }: any) {
   const { vaciarCarrito, registrarVentaCompletada } = useCarrito()
-  const { logout } = useEstablecimiento()
+  const { logout } = useAuth()
   const [ventaCount, setVentaCount] = useState(0)
   const { bloqueado, verificado, bloquear, desbloquear, resetTimer } = useBloqueoPIN(esCajero)
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
