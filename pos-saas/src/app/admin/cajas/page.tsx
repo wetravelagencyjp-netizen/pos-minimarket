@@ -71,14 +71,14 @@ export default function CajasAdminPage() {
 
       <main className="mx-auto max-w-5xl p-6 space-y-4">
         {cierres.length > 0 && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/50">
               <p className="text-xs text-slate-400 mb-1">Total cierres</p>
               <p className="text-2xl font-bold text-slate-900">{cierres.length}</p>
             </div>
             <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm shadow-slate-200/50">
               <p className="text-xs text-slate-400 mb-1">Diferencia acumulada</p>
-              <p className={`text-2xl font-bold ${colorDiferencia(cierres.reduce((s, c) => s + Number(c.diferencia), 0))}`}>
+              <p className={`font-bold break-all ${colorDiferencia(cierres.reduce((s, c) => s + Number(c.diferencia), 0))} ${fmt(cierres.reduce((s, c) => s + Number(c.diferencia), 0)).length > 8 ? 'text-lg' : 'text-2xl'}`}>
                 {fmt(cierres.reduce((s, c) => s + Number(c.diferencia), 0))}
               </p>
             </div>
@@ -104,25 +104,25 @@ export default function CajasAdminPage() {
             <table className="w-full text-sm">
               <thead className="border-b border-slate-100 text-xs text-slate-400">
                 <tr>
-                  <th className="px-5 py-4 text-left font-medium">Fecha / Hora</th>
-                  <th className="px-5 py-4 text-left font-medium">Cajero</th>
-                  <th className="px-5 py-4 text-right font-medium">Apertura</th>
-                  <th className="px-5 py-4 text-right font-medium">Esperado</th>
-                  <th className="px-5 py-4 text-right font-medium">Declarado</th>
-                  <th className="px-5 py-4 text-right font-medium">Diferencia</th>
-                  <th className="px-5 py-4 text-right font-medium">Exportar</th>
+                  <th className="px-3 py-4 text-left font-medium hidden sm:table-cell">Fecha / Hora</th>
+                  <th className="px-3 py-4 text-left font-medium">Cajero</th>
+                  <th className="px-3 py-4 text-right font-medium hidden sm:table-cell">Apertura</th>
+                  <th className="px-3 py-4 text-right font-medium hidden sm:table-cell">Esperado</th>
+                  <th className="px-3 py-4 text-right font-medium hidden sm:table-cell">Declarado</th>
+                  <th className="px-3 py-4 text-right font-medium">Diferencia</th>
+                  <th className="px-3 py-4 text-right font-medium">Exportar</th>
                 </tr>
               </thead>
               <tbody>
                 {cierres.map((c) => (
                   <tr key={c.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors">
-                    <td className="px-5 py-4 text-xs text-slate-600">
+                    <td className="px-3 py-4 text-xs text-slate-600 hidden sm:table-cell">
                       {new Date(c.fecha_cierre).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })}
                     </td>
-                    <td className="px-5 py-4 font-medium text-slate-900">{c.nombre_cajero}</td>
-                    <td className="px-5 py-4 text-right text-slate-700">{fmt(c.monto_inicial)}</td>
-                    <td className="px-5 py-4 text-right text-slate-700">{fmt(c.monto_final_sistema)}</td>
-                    <td className="px-5 py-4 text-right text-slate-700">{fmt(c.monto_final_fisico)}</td>
+                    <td className="px-3 py-4 font-medium text-slate-900">{c.nombre_cajero}</td>
+                    <td className="px-3 py-4 text-right text-slate-700 hidden sm:table-cell">{fmt(c.monto_inicial)}</td>
+                    <td className="px-3 py-4 text-right text-slate-700 hidden sm:table-cell">{fmt(c.monto_final_sistema)}</td>
+                    <td className="px-3 py-4 text-right text-slate-700 hidden sm:table-cell">{fmt(c.monto_final_fisico)}</td>
                     <td className="px-5 py-4 text-right">
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${bgDiferencia(c.diferencia)} ${colorDiferencia(c.diferencia)}`}>
                         {c.diferencia > 0 ? '+' : ''}{fmt(c.diferencia)}
