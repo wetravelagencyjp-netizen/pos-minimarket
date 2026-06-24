@@ -5,7 +5,7 @@ import { getModulo } from '@/modules/_registry'
 import { useCarrito } from '@/core/context/CarritoContext'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ShoppingCart, Clock, FileText, Bell, Lock } from 'lucide-react'
+import { ShoppingCart, Clock, FileText, Bell, Lock, LogOut } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useBloqueoPIN } from '@/core/hooks/useBloqueoPIN'
 import PantallaBloqueoPIN from '@/components/PantallaBloqueoPIN'
@@ -267,6 +267,7 @@ export function PosShell() {
 // ─── Componente interno con hooks ─────────────────────────────
 function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCajero, usuario, router, modulo }: any) {
   const { vaciarCarrito, registrarVentaCompletada } = useCarrito()
+  const { logout } = useEstablecimiento()
   const [ventaCount, setVentaCount] = useState(0)
   const { bloqueado, verificado, bloquear, desbloquear, resetTimer } = useBloqueoPIN(esCajero)
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
@@ -354,6 +355,12 @@ function PosShellCajero({ slotProps, TopBar, Catalogo, Carrito, esOscuro, esCaje
                 <Lock size={18} className="text-zinc-600 hover:text-zinc-400 transition-colors" />
               </div>
               <span className="text-[10px] font-medium text-zinc-600">Bloquear</span>
+            </button>
+            <button onClick={() => { if (confirm('¿Cerrar sesión?')) logout() }} className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl transition-all">
+              <div className="p-1.5 rounded-xl">
+                <LogOut size={18} className="text-zinc-600 hover:text-rose-400 transition-colors" />
+              </div>
+              <span className="text-[10px] font-medium text-zinc-600">Salir</span>
             </button>
           </div>
         </nav>
