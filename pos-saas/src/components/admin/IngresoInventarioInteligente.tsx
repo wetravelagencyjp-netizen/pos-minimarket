@@ -124,16 +124,28 @@ function ModalCrearProducto({
   onCreado: (producto: ProductoCatalogo) => void
   onCerrar: () => void
 }) {
-  const [form, setForm] = useState({ nombre: nombreSugerido, precio_venta: '', precio_costo: '', stock_actual: '0' })
+  const [form, setForm] = useState({ nombre: nombreSugerido, precio_costo: '', stock_actual: '0' })
+  const [modoPrecio, setModoPrecio] = useState<'manual' | 'margen'>('manual')
+  const [precioVenta, setPrecioVenta] = useState('')
+  const [margen, setMargen] = useState('')
   const [guardando, setGuardando] = useState(false)
 
+  // Calcular precio venta por margen
+  useEffect(() => {
+    if (modoPrecio !== 'margen') return
+    const costo = parseFloat(form.precio_costo)
+    const m = parseFloat(margen)
+    if (!costo || isNaN(m)) return
+    setPrecioVenta((costo * (1 + m / 100)).toFixed(2))
+  }, [modoPrecio, form.precio_costo, margen])
+
   const guardar = async () => {
-    if (!form.nombre || !form.precio_venta) return
+    if (!form.nombre || !precioVenta) return
     setGuardando(true)
     const { data, error } = await supabase.from('productos').insert({
       establecimiento_id: establecimientoId,
       nombre: form.nombre,
-      precio_venta: parseFloat(form.precio_venta),
+      precio_venta: parseFloat(precioVenta),
       precio_costo: form.precio_costo ? parseFloat(form.precio_costo) : null,
       stock_actual: parseInt(form.stock_actual) || 0,
       visible_en_catalogo: true,
@@ -153,15 +165,44 @@ function ModalCrearProducto({
         </div>
         <input placeholder="Nombre del producto *" value={form.nombre}
           onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} className={inputCls} />
-        <input type="number" placeholder="Precio de venta *" value={form.precio_venta}
-          onChange={e => setForm(f => ({ ...f, precio_venta: e.target.value }))} className={inputCls} />
         <input type="number" placeholder="Precio de costo" value={form.precio_costo}
           onChange={e => setForm(f => ({ ...f, precio_costo: e.target.value }))} className={inputCls} />
+
+        {/* Modo precio */}
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setModoPrecio('manual')}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${modoPrecio === 'manual' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 border border-zinc-700 text-zinc-400 hover:bg-zinc-700'}`}>
+              💰 Precio fijo
+            </button>
+            <button type="button" onClick={() => setModoPrecio('margen')}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${modoPrecio === 'margen' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 border border-zinc-700 text-zinc-400 hover:bg-zinc-700'}`}>
+              📊 Por margen %
+            </button>
+          </div>
+          {modoPrecio === 'manual' ? (
+            <input type="number" placeholder="Precio de venta *" value={precioVenta}
+              onChange={e => setPrecioVenta(e.target.value)} className={inputCls} />
+          ) : (
+            <div className="space-y-2">
+              <div className="relative">
+                <input type="number" placeholder="Margen de ganancia %" value={margen}
+                  onChange={e => setMargen(e.target.value)}
+                  className="rounded-xl bg-zinc-800 border border-zinc-700 px-3 py-2.5 pr-8 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-500 w-full" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">%</span>
+              </div>
+              {precioVenta && (
+                <p className="text-xs text-zinc-400">Precio de venta calculado: <span className="text-white font-medium">${precioVenta}</span></p>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-2">
           <button onClick={onCerrar} className="flex-1 rounded-xl border border-zinc-700 px-4 py-2.5 text-sm text-zinc-400 hover:bg-zinc-800">
             Cancelar
           </button>
-          <button onClick={guardar} disabled={guardando || !form.nombre || !form.precio_venta}
+          <button onClick={guardar} disabled={guardando || !form.nombre || !precioVenta}
             className="flex-1 rounded-xl bg-white text-zinc-950 px-4 py-2.5 text-sm font-medium hover:bg-zinc-200 disabled:opacity-50">
             {guardando ? 'Creando…' : 'Crear producto'}
           </button>
@@ -573,15 +614,26 @@ export default function IngresoInventarioInteligente({ establecimientoId }: { es
                       <p className="text-xs font-medium text-zinc-200 truncate">{item.nombre}</p>
                       <p className="text-[10px] text-zinc-600 font-mono">Código XML: {item.codigoXML || '—'}</p>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-xs text-zinc-400">{fmt(item.precioUnitario)} × </p>
-                      <input
-                        type="number"
-                        value={item.cantidad}
-                        onChange={e => actualizarItem(i, 'cantidad', parseFloat(e.target.value) || 1)}
-                        className="w-16 text-right rounded-lg bg-zinc-800 border border-zinc-700 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-indigo-500"
-                      />
-                      <p className="text-xs text-white font-bold mt-0.5">{fmt(item.precioUnitario * item.cantidad)}</p>
+                    <div className="text-right flex-shrink-0 space-y-1">
+                      <p className="text-[10px] text-zinc-500">Total lote: {fmt(item.precioUnitario * item.cantidad)}</p>
+                      <div className="flex items-center gap-1 justify-end">
+                        <span className="text-[10px] text-zinc-500">Uds:</span>
+                        <input
+                          type="number"
+                          value={item.cantidad}
+                          onChange={e => {
+                            const nuevaCantidad = parseFloat(e.target.value) || 1
+                            const totalLote = item.precioUnitario * item.cantidad
+                            const nuevoPrecioUnitario = parseFloat((totalLote / nuevaCantidad).toFixed(4))
+                            setItemsXML(prev => prev.map((it, idx) => idx === i
+                              ? { ...it, cantidad: nuevaCantidad, precioUnitario: nuevoPrecioUnitario }
+                              : it
+                            ))
+                          }}
+                          className="w-16 text-right rounded-lg bg-zinc-800 border border-zinc-700 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <p className="text-xs text-white font-bold">{fmt(item.precioUnitario)} c/u</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
