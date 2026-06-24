@@ -86,13 +86,15 @@ function CarritoDefault(_props: SlotProps & { onCobrar?: () => void }) {
     <div className={`px-4 py-3 border-b ${c.header} flex items-center justify-between gap-2`}>
       <h2 className={`${c.titulo} font-semibold text-sm tracking-wide`}>Venta actual</h2>
       <div className="flex items-center gap-1">
-        {_props.usuario.rol === 'admin' && (
-          <button onClick={() => router.push('/admin')} className={`${c.btnNav} text-xs transition-colors px-1.5 py-1 rounded-lg`}>⚙️ Admin</button>
-        )}
-        {(_props.usuario as any).es_superadmin && (
-          <button onClick={() => router.push('/superadmin')} className={`text-xs px-1.5 py-1 rounded-lg transition-colors ${esOscuro ? 'text-zinc-500 hover:text-amber-400' : 'text-slate-400 hover:text-amber-600'}`}>⚡ Super</button>
-        )}
-        <button onClick={() => router.push('/caja')} className={`${c.btnNav} text-xs transition-colors px-1.5 py-1 rounded-lg`}>💰 Caja</button>
+        <div className="hidden md:flex items-center gap-1">
+          {_props.usuario.rol === 'admin' && (
+            <button onClick={() => router.push('/admin')} className={`${c.btnNav} text-xs transition-colors px-1.5 py-1 rounded-lg`}>⚙️ Admin</button>
+          )}
+          {(_props.usuario as any).es_superadmin && (
+            <button onClick={() => router.push('/superadmin')} className={`text-xs px-1.5 py-1 rounded-lg transition-colors ${esOscuro ? 'text-zinc-500 hover:text-amber-400' : 'text-slate-400 hover:text-amber-600'}`}>⚡ Super</button>
+          )}
+          <button onClick={() => router.push('/caja')} className={`${c.btnNav} text-xs transition-colors px-1.5 py-1 rounded-lg`}>💰 Caja</button>
+        </div>
         {ToggleTema}
       </div>
     </div>
