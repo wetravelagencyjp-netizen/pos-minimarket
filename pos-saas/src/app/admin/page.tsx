@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import ModalEmitirFactura from '@/components/pos/ModalEmitirFactura'
 import SeccionContabilidad from '@/components/admin/SeccionContabilidad'
 import SeccionCotizaciones from '@/components/admin/SeccionCotizaciones'
+import IngresoInventarioInteligente from '@/components/admin/IngresoInventarioInteligente'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 
 type Seccion = 'dashboard' | 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes' | 'contabilidad' | 'cotizaciones' | 'cierres'
@@ -115,6 +116,7 @@ export default function AdminPage() {
           <NavItem id="reportes" icono="📊" label="Ventas" onClick={() => setSeccion('reportes')} />
 
           <Divider label="Gestión" />
+          <NavItem id="inventario" icono="📥" label="Inventario" onClick={() => setSeccion('inventario' as any)} />
           <NavItem id="productos" icono="📦" label="Productos" onClick={() => setSeccion('productos')} />
           <NavItem id="cotizaciones" icono="📋" label="Cotizaciones" onClick={() => setSeccion('cotizaciones')} />
           <NavItem id="categorias" icono="🏷️" label="Categorías" onClick={() => setSeccion('categorias')} />
@@ -170,7 +172,8 @@ export default function AdminPage() {
                seccion === 'equipo' ? 'Mi equipo' :
                seccion === 'contabilidad' ? 'Contabilidad de GRPM' :
                seccion === 'cotizaciones' ? 'Cotizaciones' :
-               seccion === 'cierres' ? 'Cierres y Reportes' : 'Reportes'}
+               seccion === 'cierres' ? 'Cierres y Reportes' :
+               seccion === 'inventario' ? 'Ingreso de Inventario' : 'Reportes'}
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -207,6 +210,7 @@ export default function AdminPage() {
           {seccion === 'equipo' && <SeccionEquipo establecimientoId={estabId} />}
           {seccion === 'reportes' && <SeccionReportes establecimientoId={estabId} />}
           {seccion === 'cierres' && <SeccionCierres establecimientoId={estabId} />}
+          {seccion === 'inventario' && <IngresoInventarioInteligente establecimientoId={estabId} />}
         </main>
       </div>
     </div>
