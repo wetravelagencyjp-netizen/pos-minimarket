@@ -1,11 +1,14 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useProductos } from '@/core/hooks/useProductos'
 import { useCarrito } from '@/core/context/CarritoContext'
 import type { SlotProps } from '@/core/types/modulos.types'
 
-export default function BarcodeScanner({ establecimiento, sucursalId }: SlotProps) {
+export default function BarcodeScanner({ establecimiento, sucursalId, usuario }: SlotProps) {
+  const router = useRouter()
+  const esAdmin = (usuario as any)?.rol === 'admin' || (usuario as any)?.es_superadmin
   const [codigo, setCodigo] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -103,6 +106,12 @@ export default function BarcodeScanner({ establecimiento, sucursalId }: SlotProp
       <span className="text-xs text-slate-400 font-medium tracking-wide uppercase hidden sm:block">
         {establecimiento.nombre}
       </span>
+      {esAdmin && (
+        <button onClick={() => router.push('/admin')}
+          className="flex-shrink-0 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded-lg transition-colors">
+          ⚙️ Admin
+        </button>
+      )}
     </div>
   )
 }
