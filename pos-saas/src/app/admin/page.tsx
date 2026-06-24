@@ -566,7 +566,7 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
               {subiendoImagen ? 'Subiendo…' : form.imagen_url ? 'Cambiar foto' : '📷 Subir foto'}
             </label>
           </div>
-          <div className="grid flex-1 grid-cols-2 gap-3">
+          <div className="grid flex-1 grid-cols-1 sm:grid-cols-2 gap-3">
             <input placeholder="Nombre del producto *" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
               className="rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10" />
             <input placeholder="Código de barras" value={form.codigo_barras} onChange={e => setForm(f => ({ ...f, codigo_barras: e.target.value }))}
@@ -634,13 +634,13 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 text-xs font-medium uppercase tracking-wide text-slate-400">
               <tr>
-                <th className="px-6 py-3 text-left">Foto</th>
-                <th className="px-6 py-3 text-left">Nombre</th>
-                <th className="px-6 py-3 text-left">Vendedor</th>
-                <th className="px-6 py-3 text-left">Categoría</th>
-                <th className="px-6 py-3 text-right">Precio</th>
-                <th className="px-6 py-3 text-right">Stock</th>
-                <th className="px-6 py-3 text-right">Acciones</th>
+                <th className="px-3 py-3 text-left">Foto</th>
+                <th className="px-3 py-3 text-left">Nombre</th>
+                <th className="px-3 py-3 text-left hidden sm:table-cell">Vendedor</th>
+                <th className="px-3 py-3 text-left hidden sm:table-cell">Categoría</th>
+                <th className="px-3 py-3 text-right">Precio</th>
+                <th className="px-3 py-3 text-right hidden sm:table-cell">Stock</th>
+                <th className="px-3 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -655,11 +655,11 @@ function SeccionProductos({ establecimientoId }: { establecimientoId: number }) 
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-3 font-medium text-slate-900">{p.nombre}</td>
-                  <td className="px-6 py-3 text-slate-500">{p.vendedor?.nombre ?? '—'}</td>
-                  <td className="px-6 py-3 text-slate-500">{p.categoria?.nombre ?? '—'}</td>
-                  <td className="px-6 py-3 text-right text-slate-900">${p.precio_venta.toFixed(2)}</td>
-                  <td className="px-6 py-3 text-right text-slate-900">{p.stock_actual}</td>
+                  <td className="px-3 py-3 font-medium text-slate-900">{p.nombre}</td>
+                  <td className="px-3 py-3 text-slate-500 hidden sm:table-cell">{p.vendedor?.nombre ?? '—'}</td>
+                  <td className="px-3 py-3 text-slate-500 hidden sm:table-cell">{p.categoria?.nombre ?? '—'}</td>
+                  <td className="px-3 py-3 text-right text-slate-900">${p.precio_venta.toFixed(2)}</td>
+                  <td className="px-3 py-3 text-right text-slate-900 hidden sm:table-cell">{p.stock_actual}</td>
                   <td className="px-6 py-3 text-right">
                     <button onClick={() => setLoteParaProducto(p)} className="mr-3 text-xs font-medium text-emerald-600 hover:text-emerald-700">📦 Stock</button>
                     <button onClick={() => editar(p)} className="mr-3 text-xs font-medium text-indigo-600 hover:text-indigo-700">Editar</button>
