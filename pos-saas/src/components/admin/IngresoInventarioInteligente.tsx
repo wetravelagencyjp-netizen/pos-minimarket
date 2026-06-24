@@ -52,6 +52,7 @@ export default function IngresoInventarioInteligente({ establecimientoId }: { es
       const parser = new DOMParser()
       const doc = parser.parseFromString(texto, 'text/xml')
 
+      // Estructura SRI: <autorizacion><numeroAutorizacion> o <claveAcceso>
       const autorizacion =
         doc.querySelector('numeroAutorizacion')?.textContent?.trim() ??
         doc.querySelector('claveAcceso')?.textContent?.trim() ?? ''
@@ -70,25 +71,30 @@ export default function IngresoInventarioInteligente({ establecimientoId }: { es
         .maybeSingle()
 
       if (existente) {
-        setMensaje({ texto: `⚠️ Esta factura ya fue procesada anteriormente (autorización: ${autorizacion.slice(-10)})`, tipo: 'error' })
+        setMensaje({ texto: `⚠️ Esta factura ya fue procesada anteriormente (autorización: …${autorizacion.slice(-12)})`, tipo: 'error' })
         setProcesando(false)
         return
       }
 
+      // Estructura SRI Ecuador: infoTributaria > razonSocial, ruc
       const rucProveedor =
-        doc.querySelector('rucEmisor')?.textContent?.trim() ??
-        doc.querySelector('identificacionComprador')?.textContent?.trim() ?? ''
+        doc.querySelector('infoTributaria > ruc')?.textContent?.trim() ??
+        doc.querySelector('ruc')?.textContent?.trim() ?? ''
       const nombreProveedor =
-        doc.querySelector('razonSocialEmisor')?.textContent?.trim() ??
-        doc.querySelector('razonSocialComprador')?.textContent?.trim() ?? 'Proveedor'
+        doc.querySelector('infoTributaria > razonSocial')?.textContent?.trim() ??
+        doc.querySelector('razonSocial')?.textContent?.trim() ??
+        doc.querySelector('razonSocialEmisor')?.textContent?.trim() ?? 'Proveedor'
       const fechaEmision =
+        doc.querySelector('infoFactura > fechaEmision')?.textContent?.trim() ??
         doc.querySelector('fechaEmision')?.textContent?.trim() ??
         new Date().toLocaleDateString('es-EC')
 
       setMetaXML({ ruc: rucProveedor, nombre: nombreProveedor, autorizacion, fecha: fechaEmision })
 
-      // Extraer detalles
-      const detalles = Array.from(doc.querySelectorAll('detalle'))
+      // Extraer detalles — estructura SRI: <detalles><detalle>
+      const detalles = Array.from(doc.querySelectorAll('detalles > detalle'))
+        .concat(Array.from(doc.querySelectorAll('detalle')))
+        .filter((el, idx, arr) => arr.indexOf(el) === idx) // deduplicar
       if (detalles.length === 0) {
         setMensaje({ texto: 'No se encontraron ítems en el XML', tipo: 'error' })
         setProcesando(false)
