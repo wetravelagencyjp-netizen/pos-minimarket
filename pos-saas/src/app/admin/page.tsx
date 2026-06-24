@@ -1470,20 +1470,20 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-gray-200 bg-white p-5">
-              <div className="text-2xl mb-2">💰</div>
-              <div className="text-3xl font-bold text-gray-900">{fmt(totalVentas)}</div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="text-xl mb-2">💰</div>
+              <div className={`font-bold text-gray-900 ${fmt(totalVentas).length > 7 ? 'text-base' : 'text-2xl'} break-all`}>{fmt(totalVentas)}</div>
               <div className="text-xs text-gray-400 mt-1">Total vendido</div>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-white p-5">
-              <div className="text-2xl mb-2">🧾</div>
-              <div className="text-3xl font-bold text-gray-900">{numVentas}</div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="text-xl mb-2">🧾</div>
+              <div className={`font-bold text-gray-900 ${String(numVentas).length > 4 ? 'text-base' : 'text-2xl'} break-all`}>{numVentas}</div>
               <div className="text-xs text-gray-400 mt-1">Transacciones</div>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-white p-5">
-              <div className="text-2xl mb-2">📊</div>
-              <div className="text-3xl font-bold text-gray-900">{fmt(numVentas ? totalVentas / numVentas : 0)}</div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="text-xl mb-2">📊</div>
+              <div className={`font-bold text-gray-900 ${fmt(totalVentas/Math.max(numVentas,1)).length > 7 ? 'text-base' : 'text-2xl'} break-all`}>{fmt(numVentas ? totalVentas/numVentas : 0)}</div>
               <div className="text-xs text-gray-400 mt-1">Ticket promedio</div>
             </div>
           </div>
@@ -1502,7 +1502,7 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
               </div>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="rounded-2xl border border-gray-200 bg-white p-5">
               <h2 className="mb-4 text-sm font-semibold text-gray-900">👤 Liquidación por vendedor</h2>
               {ventasPorVendedor.length === 0 ? <p className="text-sm text-gray-400">Sin ventas en este período</p> : (
@@ -1568,11 +1568,11 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
               <table className="w-full text-sm">
                 <thead className="border-b border-gray-100 text-xs text-gray-400">
                   <tr>
-                    <th className="px-5 py-3 text-left">Comprobante</th>
-                    <th className="px-5 py-3 text-left">Fecha</th>
-                    <th className="px-5 py-3 text-left">Pago</th>
-                    <th className="px-5 py-3 text-right">Total</th>
-                    <th className="px-5 py-3 text-right">SRI</th>
+                    <th className="px-3 py-3 text-left hidden sm:table-cell">Comprobante</th>
+                    <th className="px-3 py-3 text-left hidden sm:table-cell">Fecha</th>
+                    <th className="px-3 py-3 text-left hidden sm:table-cell">Pago</th>
+                    <th className="px-3 py-3 text-right">Total</th>
+                    <th className="px-3 py-3 text-right">SRI</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1580,13 +1580,13 @@ function SeccionReportes({ establecimientoId }: { establecimientoId: number }) {
                     const tieneDescuento = (venta.descuento_total ?? 0) > 0
                     return (
                       <tr key={venta.id} className={`border-b border-gray-50 hover:bg-gray-50 ${tieneDescuento ? 'bg-orange-50' : ''}`}>
-                        <td className={`px-5 py-3 font-mono text-xs ${tieneDescuento ? 'font-bold text-orange-600' : 'text-gray-600'}`}>
+                        <td className={`px-3 py-3 font-mono text-xs hidden sm:table-cell ${tieneDescuento ? 'font-bold text-orange-600' : 'text-gray-600'}`}>
                           {venta.numero_comprobante}
                         </td>
-                        <td className={`px-5 py-3 text-xs ${tieneDescuento ? 'font-bold text-orange-600' : 'text-gray-500'}`}>
+                        <td className={`px-3 py-3 text-xs hidden sm:table-cell ${tieneDescuento ? 'font-bold text-orange-600' : 'text-gray-500'}`}>
                           {new Date(venta.fecha_venta).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })}
                         </td>
-                        <td className={`px-5 py-3 text-xs capitalize ${tieneDescuento ? 'font-bold text-orange-600' : 'text-gray-500'}`}>
+                        <td className={`px-3 py-3 text-xs capitalize hidden sm:table-cell ${tieneDescuento ? 'font-bold text-orange-600' : 'text-gray-500'}`}>
                           {venta.metodo_pago}
                         </td>
                         <td className={`px-5 py-3 text-right ${tieneDescuento ? 'font-bold text-orange-600' : 'font-medium text-gray-900'}`}>
@@ -1894,7 +1894,7 @@ function SeccionCierres({ establecimientoId }: { establecimientoId: number }) {
         </div>
       ) : datos ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { label: 'Ventas del día', valor: fmt(datos.totalVentas), color: 'text-emerald-400' },
               { label: 'Transacciones', valor: String(datos.numTransacciones), color: 'text-blue-400' },
