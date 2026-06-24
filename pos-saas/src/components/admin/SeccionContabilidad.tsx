@@ -419,11 +419,11 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
       )}
 
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-1 bg-zinc-800/50 rounded-2xl p-1 flex-wrap">
+        <div className="flex gap-1 bg-zinc-800/50 rounded-2xl p-1 flex-wrap overflow-x-auto">
           <Tab id="resumen" label="📊 Resumen" />
           <Tab id="cuentas" label="💰 Cuentas" />
           <Tab id="egresos" label="💸 Egresos" />
-          <Tab id="transferencias" label="🔄 Transferencias" />
+          <Tab id="transferencias" label="🔄 Transf." />
           <Tab id="balance" label="📈 Balance" />
         </div>
         <button
@@ -437,7 +437,7 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
       {/* ── RESUMEN ── */}
       {tab === 'resumen' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { label: 'Saldo total actual', valor: fmt(totalSaldoActual), icono: '🏦', color: 'text-emerald-400' },
               { label: 'Total egresos', valor: fmt(totalEgresos), icono: '💸', color: 'text-rose-400' },
@@ -445,13 +445,13 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
             ].map(kpi => (
               <div key={kpi.label} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5">
                 <p className="text-2xl mb-3">{kpi.icono}</p>
-                <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.valor}</p>
+                <p className={`font-bold ${kpi.color} ${kpi.valor.length > 8 ? 'text-lg' : 'text-2xl'} break-all`}>{kpi.valor}</p>
                 <p className="text-xs text-zinc-500 mt-1">{kpi.label}</p>
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-3">
               <h2 className="text-sm font-semibold text-white">💳 Saldos por cuenta</h2>
               {cuentas.length === 0 ? (
@@ -593,7 +593,7 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
 
           <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 space-y-5">
             <h2 className="text-sm font-semibold text-white">🏷️ Categorías de egreso</h2>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <input placeholder="Nombre (ej: Nómina)" value={formCategoria.nombre}
                 onChange={e => setFormCategoria(f => ({ ...f, nombre: e.target.value }))} className={inputCls} />
               <select value={formCategoria.tipo} onChange={e => setFormCategoria(f => ({ ...f, tipo: e.target.value }))} className={inputCls}>
@@ -709,31 +709,31 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
               <table className="w-full text-sm">
                 <thead className="border-b border-zinc-800 text-xs text-zinc-600 uppercase tracking-wide">
                   <tr>
-                    <th className="px-5 py-3 text-left">Descripción</th>
-                    <th className="px-5 py-3 text-left">Categoría</th>
-                    <th className="px-5 py-3 text-left">Cuenta</th>
-                    <th className="px-5 py-3 text-left">Fecha</th>
-                    <th className="px-5 py-3 text-right">Monto</th>
-                    <th className="px-5 py-3 text-right"></th>
+                    <th className="px-3 py-3 text-left">Descripción</th>
+                    <th className="px-3 py-3 text-left hidden sm:table-cell">Categoría</th>
+                    <th className="px-3 py-3 text-left hidden sm:table-cell">Cuenta</th>
+                    <th className="px-3 py-3 text-left hidden sm:table-cell">Fecha</th>
+                    <th className="px-3 py-3 text-right">Monto</th>
+                    <th className="px-3 py-3 text-right"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {egresos.map(e => (
                     <tr key={e.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                      <td className="px-5 py-3 text-zinc-200">
+                      <td className="px-3 py-3 text-zinc-200">
                         {e.descripcion}
                         {e.es_recurrente && <span className="ml-1.5 text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-full">Fijo</span>}
                       </td>
-                      <td className="px-5 py-3 text-xs text-zinc-400">
+                      <td className="px-3 py-3 text-xs text-zinc-400 hidden sm:table-cell">
                         {(e.categoria as any)?.icono} {(e.categoria as any)?.nombre ?? '—'}
                         {(e.subcategoria as any)?.nombre && (
                           <span className="text-zinc-600"> › {(e.subcategoria as any).nombre}</span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-xs text-zinc-400">{(e.cuenta as any)?.nombre ?? '—'}</td>
-                      <td className="px-5 py-3 text-xs text-zinc-500">{new Date(e.fecha).toLocaleDateString('es-EC')}</td>
-                      <td className="px-5 py-3 text-right font-medium text-rose-400">-{fmt(Number(e.monto))}</td>
-                      <td className="px-5 py-3 text-right">
+                      <td className="px-3 py-3 text-xs text-zinc-400 hidden sm:table-cell">{(e.cuenta as any)?.nombre ?? '—'}</td>
+                      <td className="px-3 py-3 text-xs text-zinc-500 hidden sm:table-cell">{new Date(e.fecha).toLocaleDateString('es-EC')}</td>
+                      <td className="px-3 py-3 text-right font-medium text-rose-400">-{fmt(Number(e.monto))}</td>
+                      <td className="px-3 py-3 text-right">
                         <button onClick={() => eliminarEgreso(e.id)} className="text-xs text-zinc-600 hover:text-rose-400 transition-colors" title="Eliminar y revertir saldo">✕</button>
                       </td>
                     </tr>
@@ -790,21 +790,21 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
               <table className="w-full text-sm">
                 <thead className="border-b border-zinc-800 text-xs text-zinc-600 uppercase tracking-wide">
                   <tr>
-                    <th className="px-5 py-3 text-left">Origen</th>
-                    <th className="px-5 py-3 text-left">Destino</th>
-                    <th className="px-5 py-3 text-left">Descripción</th>
-                    <th className="px-5 py-3 text-left">Fecha</th>
-                    <th className="px-5 py-3 text-right">Monto</th>
+                    <th className="px-3 py-3 text-left">Origen</th>
+                    <th className="px-3 py-3 text-left">Destino</th>
+                    <th className="px-3 py-3 text-left hidden sm:table-cell">Descripción</th>
+                    <th className="px-3 py-3 text-left hidden sm:table-cell">Fecha</th>
+                    <th className="px-3 py-3 text-right">Monto</th>
                   </tr>
                 </thead>
                 <tbody>
                   {transferencias.map(t => (
                     <tr key={t.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                      <td className="px-5 py-3 text-zinc-300">{(t.cuenta_origen as any)?.nombre}</td>
-                      <td className="px-5 py-3 text-zinc-300">{(t.cuenta_destino as any)?.nombre}</td>
-                      <td className="px-5 py-3 text-xs text-zinc-500">{t.descripcion ?? '—'}</td>
-                      <td className="px-5 py-3 text-xs text-zinc-500">{new Date(t.fecha).toLocaleDateString('es-EC')}</td>
-                      <td className="px-5 py-3 text-right font-medium text-violet-400">{fmt(Number(t.monto))}</td>
+                      <td className="px-3 py-3 text-zinc-300">{(t.cuenta_origen as any)?.nombre}</td>
+                      <td className="px-3 py-3 text-zinc-300">{(t.cuenta_destino as any)?.nombre}</td>
+                      <td className="px-3 py-3 text-xs text-zinc-500 hidden sm:table-cell">{t.descripcion ?? '—'}</td>
+                      <td className="px-3 py-3 text-xs text-zinc-500 hidden sm:table-cell">{new Date(t.fecha).toLocaleDateString('es-EC')}</td>
+                      <td className="px-3 py-3 text-right font-medium text-violet-400">{fmt(Number(t.monto))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -842,12 +842,12 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
               <table className="w-full text-sm">
                 <thead className="border-b border-zinc-800 text-xs text-zinc-600 uppercase tracking-wide">
                   <tr>
-                    <th className="px-5 py-3 text-left">Mes</th>
-                    <th className="px-5 py-3 text-right">Ingresos</th>
-                    <th className="px-5 py-3 text-right">− C. Variables</th>
-                    <th className="px-5 py-3 text-right">= Margen Bruto</th>
-                    <th className="px-5 py-3 text-right">− C. Fijos</th>
-                    <th className="px-5 py-3 text-right">= Utilidad Neta</th>
+                    <th className="px-3 py-3 text-left">Mes</th>
+                    <th className="px-3 py-3 text-right">Ingresos</th>
+                    <th className="px-3 py-3 text-right hidden sm:table-cell">− C. Variables</th>
+                    <th className="px-3 py-3 text-right hidden sm:table-cell">= Margen Bruto</th>
+                    <th className="px-3 py-3 text-right hidden sm:table-cell">− C. Fijos</th>
+                    <th className="px-3 py-3 text-right">= Utilidad Neta</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -859,12 +859,12 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
                     const utilidadNeta = margenBruto - fijo
                     return (
                       <tr key={mes} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                        <td className="px-5 py-3 text-zinc-300 font-medium capitalize">{mes}</td>
-                        <td className="px-5 py-3 text-right text-emerald-400">{fmt(ing)}</td>
-                        <td className="px-5 py-3 text-right text-rose-400">-{fmt(variable)}</td>
-                        <td className={`px-5 py-3 text-right font-medium ${margenBruto >= 0 ? 'text-blue-400' : 'text-rose-400'}`}>{fmt(margenBruto)}</td>
-                        <td className="px-5 py-3 text-right text-amber-400">-{fmt(fijo)}</td>
-                        <td className={`px-5 py-3 text-right font-bold ${utilidadNeta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmt(utilidadNeta)}</td>
+                        <td className="px-3 py-3 text-zinc-300 font-medium capitalize">{mes}</td>
+                        <td className="px-3 py-3 text-right text-emerald-400">{fmt(ing)}</td>
+                        <td className="px-3 py-3 text-right text-rose-400 hidden sm:table-cell">-{fmt(variable)}</td>
+                        <td className={`px-3 py-3 text-right font-medium hidden sm:table-cell ${margenBruto >= 0 ? 'text-blue-400' : 'text-rose-400'}`}>{fmt(margenBruto)}</td>
+                        <td className="px-3 py-3 text-right text-amber-400 hidden sm:table-cell">-{fmt(fijo)}</td>
+                        <td className={`px-3 py-3 text-right font-bold ${utilidadNeta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmt(utilidadNeta)}</td>
                       </tr>
                     )
                   })}
