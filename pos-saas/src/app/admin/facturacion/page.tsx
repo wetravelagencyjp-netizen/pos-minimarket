@@ -106,7 +106,7 @@ export default function FacturacionPage() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-56 border-r border-slate-100 bg-white p-4 space-y-1">
+        <aside className="hidden sm:block w-56 border-r border-slate-100 bg-white p-4 space-y-1">
           {[
             { id: 'comprobantes', label: 'Comprobantes', icon: Icon.Document },
             { id: 'credenciales', label: 'Credenciales SRI', icon: Icon.Sliders },
@@ -129,7 +129,20 @@ export default function FacturacionPage() {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {/* Selector móvil */}
+          <div className="flex gap-2 mb-4 sm:hidden">
+            {[
+              { id: 'comprobantes', label: '📄 Comprobantes' },
+              { id: 'credenciales', label: '⚙️ Credenciales' },
+              { id: 'clientes', label: '👤 Clientes' },
+            ].map(({ id, label }) => (
+              <button key={id} onClick={() => setSeccion(id as Seccion)}
+                className={`flex-1 rounded-xl px-2 py-2 text-xs font-medium transition-colors ${seccion === id ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
           {seccion === 'comprobantes' && <SeccionComprobantes establecimientoId={usuario?.establecimiento_id ?? 1} />}
           {seccion === 'credenciales' && <SeccionCredenciales establecimientoId={usuario?.establecimiento_id ?? 1} />}
           {seccion === 'clientes' && <SeccionClientes establecimientoId={usuario?.establecimiento_id ?? 1} />}
@@ -195,32 +208,32 @@ function SeccionComprobantes({ establecimientoId }: { establecimientoId: number 
           <table className="w-full text-sm">
             <thead className="border-b border-slate-100 text-xs text-slate-400">
               <tr>
-                <th className="px-6 py-4 text-left font-medium">Número</th>
-                <th className="px-6 py-4 text-left font-medium">Cliente</th>
-                <th className="px-6 py-4 text-left font-medium">Fecha</th>
-                <th className="px-6 py-4 text-right font-medium">Total</th>
-                <th className="px-6 py-4 text-center font-medium">Estado</th>
-                <th className="px-6 py-4 text-right font-medium">Acciones</th>
+                <th className="px-3 py-4 text-left font-medium hidden sm:table-cell">Número</th>
+                <th className="px-3 py-4 text-left font-medium">Cliente</th>
+                <th className="px-3 py-4 text-left font-medium hidden sm:table-cell">Fecha</th>
+                <th className="px-3 py-4 text-right font-medium">Total</th>
+                <th className="px-3 py-4 text-center font-medium">Estado</th>
+                <th className="px-3 py-4 text-right font-medium hidden sm:table-cell">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {comprobantes.map(c => (
                 <tr key={c.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition-colors">
-                  <td className="px-6 py-4 font-mono text-xs text-slate-600">{c.numero_comprobante}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-4 font-mono text-xs text-slate-600 hidden sm:table-cell">{c.numero_comprobante}</td>
+                  <td className="px-3 py-4">
                     <p className="font-medium text-slate-800 text-xs">{c.cliente_razon_social}</p>
                     <p className="text-slate-400 text-[11px]">{c.cliente_identificacion}</p>
                   </td>
-                  <td className="px-6 py-4 text-xs text-slate-500">
+                  <td className="px-3 py-4 text-xs text-slate-500 hidden sm:table-cell">
                     {new Date(c.fecha_emision).toLocaleDateString('es-EC')}
                   </td>
-                  <td className="px-6 py-4 text-right font-medium text-slate-800">${c.total?.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-3 py-4 text-right font-medium text-slate-800">${c.total?.toFixed(2)}</td>
+                  <td className="px-3 py-4 text-center">
                     <span className={`rounded-full px-3 py-1 text-xs font-medium ${estadoColor[c.estado] ?? 'bg-slate-100 text-slate-600'}`}>
                       {c.estado}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-3 py-4 text-right hidden sm:table-cell">
                     <div className="flex justify-end gap-3">
                       {c.xml_firmado && (
                         <button onClick={() => {
@@ -762,19 +775,19 @@ function SeccionClientes({ establecimientoId }: { establecimientoId: number }) {
           <table className="w-full text-sm">
             <thead className="border-b border-slate-100 text-xs text-slate-400">
               <tr>
-                <th className="px-6 py-4 text-left font-medium">Identificación</th>
-                <th className="px-6 py-4 text-left font-medium">Nombre</th>
-                <th className="px-6 py-4 text-left font-medium">Correo</th>
-                <th className="px-6 py-4 text-left font-medium">Teléfono</th>
+                <th className="px-3 py-4 text-left font-medium hidden sm:table-cell">Identificación</th>
+                <th className="px-3 py-4 text-left font-medium">Nombre</th>
+                <th className="px-3 py-4 text-left font-medium hidden sm:table-cell">Correo</th>
+                <th className="px-3 py-4 text-left font-medium hidden sm:table-cell">Teléfono</th>
               </tr>
             </thead>
             <tbody>
               {clientesFiltrados.map(c => (
                 <tr key={c.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition-colors">
-                  <td className="px-6 py-4 font-mono text-xs text-slate-600">{c.identificacion}</td>
-                  <td className="px-6 py-4 font-medium text-slate-800">{c.razon_social}</td>
-                  <td className="px-6 py-4 text-slate-500 text-xs">{c.email ?? '—'}</td>
-                  <td className="px-6 py-4 text-slate-500 text-xs">{c.telefono ?? '—'}</td>
+                  <td className="px-3 py-4 font-mono text-xs text-slate-600 hidden sm:table-cell">{c.identificacion}</td>
+                  <td className="px-3 py-4 font-medium text-slate-800">{c.razon_social}</td>
+                  <td className="px-3 py-4 text-slate-500 text-xs hidden sm:table-cell">{c.email ?? '—'}</td>
+                  <td className="px-3 py-4 text-slate-500 text-xs hidden sm:table-cell">{c.telefono ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
