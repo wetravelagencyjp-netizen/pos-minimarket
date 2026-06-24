@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase'
 
 const fmt = (n: number) => `$${Number(n).toFixed(2)}`
 
-const GIROS = ['todos', 'minimarket', 'licorera', 'bar', 'restaurante', 'retail'] as const
+const GIROS_FIJOS = ['minimarket', 'licorera', 'bar', 'restaurante', 'retail']
 const PLANES = ['basico', 'premium', 'enterprise'] as const
 const ESTADOS = ['activo', 'trial', 'suspendido', 'cancelado'] as const
 
@@ -62,6 +62,7 @@ export default function SuperAdminPage() {
 
   // Forms
   const [formTienda, setFormTienda] = useState({ nombre: '', giro_negocio: 'minimarket', plan_activo: 'basico', fecha_vencimiento: '2027-12-31' })
+  const girosUnicos = ['todos', ...Array.from(new Set([...GIROS_FIJOS, ...establecimientos.map(e => e.giro_negocio).filter(Boolean)]))]
   const [creandoTienda, setCreandoTienda] = useState(false)
   const [mensajeTienda, setMensajeTienda] = useState<string | null>(null)
   const [formUsuario, setFormUsuario] = useState({ email: '', password: '', nombre: '', rol: 'cajero', establecimiento_id: '1' })
@@ -292,12 +293,12 @@ export default function SuperAdminPage() {
                     {/* Tabs giro */}
                     <div className="overflow-x-auto">
                       <div className="flex gap-1 bg-zinc-800/50 rounded-2xl p-1 w-fit">
-                        {GIROS.map(giro => (
+                        {girosUnicos.map(giro => (
                           <button key={giro} onClick={() => setGiroFiltro(giro)}
                             className={`px-3 py-2 text-xs font-medium rounded-xl transition-colors capitalize whitespace-nowrap ${
                               giroFiltro === giro ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300'
                             }`}>
-                            {giro === 'todos' ? '🌐 Todos' : giro === 'minimarket' ? '🛒 Mini' : giro === 'licorera' ? '🍺 Lic.' : giro === 'bar' ? '🍸 Bar' : giro === 'restaurante' ? '🍽️ Rest.' : '🏪 Retail'}
+                            {giro === 'todos' ? '🌐 Todos' : giro}
                           </button>
                         ))}
                       </div>
@@ -357,14 +358,17 @@ export default function SuperAdminPage() {
                     <input placeholder="Nombre *" value={formTienda.nombre} onChange={e => setFormTienda(f => ({ ...f, nombre: e.target.value }))} className={inp} />
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-zinc-500 block mb-1">Giro</label>
-                        <select value={formTienda.giro_negocio} onChange={e => setFormTienda(f => ({ ...f, giro_negocio: e.target.value }))} className={inp}>
-                          <option value="minimarket">🛒 Minimarket</option>
-                          <option value="licorera">🍺 Licorera</option>
-                          <option value="bar">🍸 Bar</option>
-                          <option value="restaurante">🍽️ Restaurante</option>
-                          <option value="retail">🏪 Retail</option>
-                        </select>
+                        <label className="text-xs text-zinc-500 block mb-1">Giro (escribe o elige)</label>
+                        <input
+                          list="giros-lista"
+                          value={formTienda.giro_negocio}
+                          onChange={e => setFormTienda(f => ({ ...f, giro_negocio: e.target.value.toLowerCase() }))}
+                          placeholder="minimarket, farmacia…"
+                          className={inp}
+                        />
+                        <datalist id="giros-lista">
+                          {girosUnicos.filter(g => g !== 'todos').map(g => <option key={g} value={g} />)}
+                        </datalist>
                       </div>
                       <div>
                         <label className="text-xs text-zinc-500 block mb-1">Plan</label>
@@ -476,13 +480,16 @@ export default function SuperAdminPage() {
                 <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Contrato</h3>
                 <input value={formEditar.nombre ?? ''} onChange={e => setFormEditar((f: any) => ({ ...f, nombre: e.target.value }))} className={inp} placeholder="Nombre" />
                 <div className="grid grid-cols-2 gap-2">
-                  <select value={formEditar.giro_negocio ?? 'minimarket'} onChange={e => setFormEditar((f: any) => ({ ...f, giro_negocio: e.target.value }))} className={inp}>
-                    <option value="minimarket">Minimarket</option>
-                    <option value="licorera">Licorera</option>
-                    <option value="bar">Bar</option>
-                    <option value="restaurante">Restaurante</option>
-                    <option value="retail">Retail</option>
-                  </select>
+                  <input
+                    list="giros-lista-panel"
+                    value={formEditar.giro_negocio ?? 'minimarket'}
+                    onChange={e => setFormEditar((f: any) => ({ ...f, giro_negocio: e.target.value.toLowerCase() }))}
+                    className={inp}
+                    placeholder="minimarket, farmacia…"
+                  />
+                  <datalist id="giros-lista-panel">
+                    {girosUnicos.filter(g => g !== 'todos').map(g => <option key={g} value={g} />)}
+                  </datalist>
                   <select value={formEditar.plan_activo ?? 'basico'} onChange={e => setFormEditar((f: any) => ({ ...f, plan_activo: e.target.value }))} className={inp}>
                     {PLANES.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
