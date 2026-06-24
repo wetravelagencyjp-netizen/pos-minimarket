@@ -1901,7 +1901,7 @@ function SeccionCierres({ establecimientoId }: { establecimientoId: number }) {
               { label: 'Ticket promedio', valor: fmt(datos.ticketPromedio), color: 'text-violet-400' },
             ].map(kpi => (
               <div key={kpi.label} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5">
-                <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.valor}</p>
+                <p className={`font-bold ${kpi.color} ${kpi.valor.length > 7 ? 'text-lg' : 'text-2xl'} truncate`}>{kpi.valor}</p>
                 <p className="text-xs text-zinc-500 mt-1">{kpi.label}</p>
               </div>
             ))}
