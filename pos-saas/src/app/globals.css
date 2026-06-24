@@ -7,3 +7,10 @@
 /* Esconde scrollbar horizontal en filtros de categoría */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+@supports (height: 100dvh) {
+  .h-screen {
+    height: 100dvh;
+  }
+}
+fix(pos/móvil): usar 100dvh para evitar corte con teclado iOS
