@@ -7,9 +7,12 @@ import ModalEmitirFactura from '@/components/pos/ModalEmitirFactura'
 import SeccionContabilidad from '@/components/admin/SeccionContabilidad'
 import SeccionCotizaciones from '@/components/admin/SeccionCotizaciones'
 import IngresoInventarioInteligente from '@/components/admin/IngresoInventarioInteligente'
+import SeccionClientes from '@/components/admin/SeccionClientes'
+import SeccionProveedores from '@/components/admin/SeccionProveedores'
+import SeccionConfigSRI from '@/components/admin/SeccionConfigSRI'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 
-type Seccion = 'dashboard' | 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes' | 'contabilidad' | 'cotizaciones' | 'cierres' | 'inventario'
+type Seccion = 'dashboard' | 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes' | 'contabilidad' | 'cotizaciones' | 'cierres' | 'inventario' | 'clientes' | 'proveedores' | 'sri'
 
 export default function AdminPage() {
   const { usuario, logout } = useAuth()
@@ -116,14 +119,17 @@ export default function AdminPage() {
           <NavItem id="reportes" icono="📊" label="Ventas" onClick={() => setSeccion('reportes')} />
 
           <Divider label="Gestión" />
+          <NavItem id="clientes" icono="👤" label="Clientes" onClick={() => setSeccion('clientes')} />
+          <NavItem id="proveedores" icono="🚚" label="Proveedores" onClick={() => setSeccion('proveedores')} />
           <NavItem id="inventario" icono="📥" label="Inventario" onClick={() => setSeccion('inventario')} />
           <NavItem id="productos" icono="📦" label="Productos" onClick={() => setSeccion('productos')} />
           <NavItem id="cotizaciones" icono="📋" label="Cotizaciones" onClick={() => setSeccion('cotizaciones')} />
           <NavItem id="categorias" icono="🏷️" label="Categorías" onClick={() => setSeccion('categorias')} />
-          <NavItem id="vendedores" icono="👤" label="Vendedores" onClick={() => setSeccion('vendedores')} />
+
+          <Divider label="Personal" />
+          <NavItem id="vendedores" icono="🧑‍💼" label="Vendedores" onClick={() => setSeccion('vendedores')} />
           <NavItem id="equipo" icono="👥" label="Mi equipo" onClick={() => setSeccion('equipo')} />
           <NavItem icono="💸" label="Gastos" onClick={() => router.push('/admin/gastos')} />
-          <NavItem icono="📈" label="Finanzas" onClick={() => router.push('/admin/finanzas')} />
 
           {tieneContabilidad && (
             <>
@@ -131,12 +137,13 @@ export default function AdminPage() {
               <NavItem id="contabilidad" icono="📒" label="Contabilidad" onClick={() => setSeccion('contabilidad')} />
             </>
           )}
-          <NavItem id="cierres" icono="📊" label="Cierres y Reportes" onClick={() => setSeccion('cierres' as any)} />
+          <NavItem id="cierres" icono="📊" label="Cierres y Reportes" onClick={() => setSeccion('cierres')} />
+
           <Divider label="Sistema" />
+          <NavItem id="sri" icono="🧾" label="Config. SRI" onClick={() => setSeccion('sri')} />
           <NavItem icono="⚙️" label="Configuración" onClick={() => router.push('/admin/configuracion')} />
           <NavItem icono="👥" label="Usuarios" onClick={() => router.push('/admin/usuarios')} />
           <NavItem icono="📋" label="Cierres de Caja" onClick={() => router.push('/admin/cajas')} />
-          <NavItem icono="🧾" label="Facturación SRI" onClick={() => router.push('/admin/facturacion')} />
 
         </nav>
 
@@ -173,7 +180,10 @@ export default function AdminPage() {
                seccion === 'contabilidad' ? 'Contabilidad de GRPM' :
                seccion === 'cotizaciones' ? 'Cotizaciones' :
                seccion === 'cierres' ? 'Cierres y Reportes' :
-               seccion === 'inventario' ? 'Ingreso de Inventario' : 'Reportes'}
+               seccion === 'inventario' ? 'Ingreso de Inventario' :
+               seccion === 'clientes' ? 'Clientes' :
+               seccion === 'proveedores' ? 'Proveedores' :
+               seccion === 'sri' ? 'Configuración SRI' : 'Reportes'}
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -211,6 +221,9 @@ export default function AdminPage() {
           {seccion === 'reportes' && <SeccionReportes establecimientoId={estabId} />}
           {seccion === 'cierres' && <SeccionCierres establecimientoId={estabId} />}
           {seccion === 'inventario' && <IngresoInventarioInteligente establecimientoId={estabId} />}
+          {seccion === 'clientes' && <SeccionClientes establecimientoId={estabId} />}
+          {seccion === 'proveedores' && <SeccionProveedores establecimientoId={estabId} />}
+          {seccion === 'sri' && <SeccionConfigSRI establecimientoId={estabId} />}
         </main>
       </div>
     </div>
