@@ -9,7 +9,7 @@ import SeccionCotizaciones from '@/components/admin/SeccionCotizaciones'
 import IngresoInventarioInteligente from '@/components/admin/IngresoInventarioInteligente'
 import { useEstablecimiento } from '@/core/context/EstablecimientoContext'
 
-type Seccion = 'dashboard' | 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes' | 'contabilidad' | 'cotizaciones' | 'cierres'
+type Seccion = 'dashboard' | 'productos' | 'vendedores' | 'categorias' | 'equipo' | 'reportes' | 'contabilidad' | 'cotizaciones' | 'cierres' | 'inventario'
 
 export default function AdminPage() {
   const { usuario, logout } = useAuth()
@@ -116,7 +116,7 @@ export default function AdminPage() {
           <NavItem id="reportes" icono="📊" label="Ventas" onClick={() => setSeccion('reportes')} />
 
           <Divider label="Gestión" />
-          <NavItem id="inventario" icono="📥" label="Inventario" onClick={() => setSeccion('inventario' as any)} />
+          <NavItem id="inventario" icono="📥" label="Inventario" onClick={() => setSeccion('inventario')} />
           <NavItem id="productos" icono="📦" label="Productos" onClick={() => setSeccion('productos')} />
           <NavItem id="cotizaciones" icono="📋" label="Cotizaciones" onClick={() => setSeccion('cotizaciones')} />
           <NavItem id="categorias" icono="🏷️" label="Categorías" onClick={() => setSeccion('categorias')} />
