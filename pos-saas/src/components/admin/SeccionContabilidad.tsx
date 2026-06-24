@@ -557,21 +557,21 @@ export default function SeccionContabilidad({ establecimientoId }: { establecimi
               <table className="w-full text-sm">
                 <thead className="border-b border-zinc-800 text-xs text-zinc-600 uppercase tracking-wide">
                   <tr>
-                    <th className="px-5 py-3 text-left">Cuenta</th>
-                    <th className="px-5 py-3 text-left">Tipo</th>
-                    <th className="px-5 py-3 text-right">Saldo inicial</th>
-                    <th className="px-5 py-3 text-right">Saldo actual</th>
-                    <th className="px-5 py-3 text-right"></th>
+                    <th className="px-3 py-3 text-left">Cuenta</th>
+                    <th className="px-3 py-3 text-left hidden sm:table-cell">Tipo</th>
+                    <th className="px-3 py-3 text-right hidden sm:table-cell">Saldo inicial</th>
+                    <th className="px-3 py-3 text-right">Saldo actual</th>
+                    <th className="px-3 py-3 text-right"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {cuentas.map(c => (
                     <tr key={c.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                      <td className="px-5 py-3 text-zinc-200 font-medium">{c.nombre}</td>
-                      <td className={`px-5 py-3 text-xs ${TIPO_CUENTA_COLOR[c.tipo]}`}>{TIPO_CUENTA_LABEL[c.tipo]}</td>
-                      <td className="px-5 py-3 text-right text-zinc-500">{fmt(Number(c.saldo_inicial))}</td>
-                      <td className="px-5 py-3 text-right text-white font-bold">{fmt(Number(c.saldo_actual))}</td>
-                      <td className="px-5 py-3 text-right">
+                      <td className="px-3 py-3 text-zinc-200 font-medium">{c.nombre}</td>
+                      <td className={`px-3 py-3 text-xs hidden sm:table-cell ${TIPO_CUENTA_COLOR[c.tipo]}`}>{TIPO_CUENTA_LABEL[c.tipo]}</td>
+                      <td className="px-3 py-3 text-right text-zinc-500 hidden sm:table-cell">{fmt(Number(c.saldo_inicial))}</td>
+                      <td className="px-3 py-3 text-right text-white font-bold">{fmt(Number(c.saldo_actual))}</td>
+                      <td className="px-3 py-3 text-right">
                         <button
                           onClick={() => { setAjustandoCuenta(c); setNuevoSaldo(String(c.saldo_actual)) }}
                           className="text-xs font-medium text-zinc-500 hover:text-amber-400 transition-colors"
